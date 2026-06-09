@@ -28,3 +28,21 @@ Homestead.json
 .env.production
 .phpactor.json
 auth.json
+# 1. SECURITY RISKS (Never push these!)
+.env
+.env.local
+.env.development.local
+
+# 2. MASSIVE DEPENDENCY FOLDERS (Will freeze Git)
+node_modules/
+bower_components/
+
+# 3. ENVIRONMENT & OS JUNK
+.DS_Store
+Thumbs.db
+.vscode/
+
+# 4. CACHES & LOGS
+npm-debug.log*
+yarn-error.log*
+.eslintcache

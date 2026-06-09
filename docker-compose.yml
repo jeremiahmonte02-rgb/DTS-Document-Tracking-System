@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+ # PHP 8.3 + Apache Application Server
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      APA_DOC_ROOT: /var/www/html
+    volumes:
+      - ./src:/var/www/html
+    ports:
+      - "8082:80"
+    depends_on:
+      - db
+    networks:
+      - dts-network
+
+  # MySQL 8.0 Database Server Engine
+  db:
+    image: mysql:8.0
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - dts-network
+
+  # phpMyAdmin Web Database Interface
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+    depends_on:
+      - db
+    networks:
+      - dts-network
+
+networks:
+  dts-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
