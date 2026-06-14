@@ -128,11 +128,9 @@
                         <div class="col-md-2">
                             <select class="form-select" data-filter="type">
                                 <option value="">All Types</option>
-                                <option value="Financial Report">Financial Report</option>
-                                <option value="HR Document">HR Document</option>
-                                <option value="Legal Document">Legal Document</option>
-                                <option value="Marketing Report">Marketing Report</option>
-                                <option value="Policy Document">Policy Document</option>
+                                @foreach($documentTypes as $type)
+                                    <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-md-2">

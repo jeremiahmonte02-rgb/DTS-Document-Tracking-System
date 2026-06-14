@@ -438,7 +438,8 @@ class DocumentController extends Controller
 
     public function inbox()
     {
-        return view('inbox');
+        $documentTypes = \DB::table('document_types')->where('is_active', 1)->select('id', 'name')->get();
+        return view('inbox', compact('documentTypes'));
     }
 
     public function getInboxData(Request $request)
@@ -485,11 +486,69 @@ class DocumentController extends Controller
         }
 
         if ($request->filled('type')) {
-            $query->where('document_types.name', $request->type);
+            $query->where('documents.document_type_id', $request->type);
         }
 
         $paginatedData = $query->orderBy('documents.updated_at', 'desc')
             ->paginate(10);
+
+        return response()->json($paginatedData);
+    }
+
+    public function outbox()
+    {
+        $documentTypes = \DB::table('document_types')->where('is_active', 1)->select('id', 'name')->get();
+        return view('outbox', compact('documentTypes'));
+    }
+
+    public function getOutboxData(Request $request)
+    {
+        $userDeptId = auth()->user()->department_id ?? 2;
+
+        $query = DB::table('documents')
+            ->join('document_types', 'documents.document_type_id', '=', 'document_types.id')
+            ->join('departments as current_dept', 'documents.current_department_id', '=', 'current_dept.id')
+            ->leftJoin('document_routes as next_route', function ($join) {
+                $join->on('next_route.document_id', '=', 'documents.id')
+                     ->whereRaw('next_route.route_order = (SELECT MIN(r2.route_order) FROM document_routes r2 WHERE r2.document_id = documents.id AND r2.status = "current" AND r2.route_order > (SELECT COALESCE(MAX(r3.route_order), 0) FROM document_routes r3 WHERE r3.document_id = documents.id AND r3.status = "received"))');
+            })
+            ->select(
+                'documents.id as doc_id',
+                'documents.document_number',
+                'documents.title',
+                'document_types.name as type_name',
+                'current_dept.name as current_department',
+                'current_dept.name as current_location',
+                'documents.created_at as date_uploaded',
+                'documents.status as computed_status'
+            )
+            ->where('documents.sender_department_id', $userDeptId)
+            ->whereIn('documents.status', ['pending_transfer', 'in_transit', 'received', 'rejected']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('documents.title', 'like', '%' . $search . '%')
+                  ->orWhere('documents.document_number', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($request->filled('type')) {
+            $query->where('documents.document_type_id', $request->type);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('documents.status', str_replace(' ', '_', strtolower($request->status)));
+        }
+
+        $paginatedData = $query->orderBy('documents.updated_at', 'desc')
+            ->paginate(10);
+
+        $paginatedData->getCollection()->transform(function ($doc) {
+            $doc->date_sent_formatted = \Carbon\Carbon::parse($doc->date_uploaded)->format('M d, Y');
+            $doc->computed_status = ucwords(str_replace('_', ' ', $doc->computed_status));
+            return $doc;
+        });
 
         return response()->json($paginatedData);
     }

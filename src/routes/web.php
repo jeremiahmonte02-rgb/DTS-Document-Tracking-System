@@ -21,8 +21,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/scan', [App\Http\Controllers\DocumentController::class, 'showScanPage'])->name('scan');
     Route::get('/scan/lookup', [App\Http\Controllers\DocumentController::class, 'lookupDocument'])->name('scan.lookup');
     Route::post('/scan/receive', [App\Http\Controllers\DocumentController::class, 'receiveDocument'])->name('scan.receive');
-    Route::get('/inbox', fn () => view('inbox'))->name('inbox');
-    Route::get('/outbox', fn () => view('outbox'))->name('outbox');
+    Route::get('/inbox', [App\Http\Controllers\DocumentController::class, 'inbox'])->name('inbox');
+    Route::get('/api/inbox/data', [App\Http\Controllers\DocumentController::class, 'getInboxData'])->name('api.inbox.data');
+    Route::get('/outbox', [App\Http\Controllers\DocumentController::class, 'outbox'])->name('outbox');
+    Route::get('/api/outbox/data', [App\Http\Controllers\DocumentController::class, 'getOutboxData'])->name('api.outbox.data');
     Route::get('/document-details/{document_number}', [App\Http\Controllers\DocumentController::class, 'showDocumentDetails'])->name('document-details.show');
     Route::post('/documents/confirm-receipt', [App\Http\Controllers\DocumentController::class, 'confirmReceipt'])->name('documents.confirm-receipt');
 });

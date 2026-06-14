@@ -128,11 +128,9 @@
                         <div class="col-md-2">
                             <select class="form-select" data-filter="type">
                                 <option value="">All Types</option>
-                                <option value="Financial Report">Financial Report</option>
-                                <option value="HR Document">HR Document</option>
-                                <option value="Legal Document">Legal Document</option>
-                                <option value="Marketing Report">Marketing Report</option>
-                                <option value="Policy Document">Policy Document</option>
+                                @foreach($documentTypes as $type)
+                                    <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -149,7 +147,7 @@
                                    placeholder="Filter by date">
                         </div>
                         <div class="col-md-2">
-                            <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                            <button class="btn btn-outline-secondary w-100" data-action="clear-filters">
                                 <i class="bi bi-x-circle"></i> Clear
                             </button>
                         </div>
@@ -165,16 +163,16 @@
                         <span class="badge bg-primary ms-2" id="documentCount">0</span>
                     </h5>
                     <div>
-                        <button class="btn btn-sm btn-outline-primary" onclick="refreshOutbox()">
+                        <button class="btn btn-sm btn-outline-primary" data-action="refresh-outbox">
                             <i class="bi bi-arrow-clockwise"></i> Refresh
                         </button>
-                        <button class="btn btn-sm btn-outline-success" onclick="exportOutbox()">
+                        <button class="btn btn-sm btn-outline-success" data-action="export-outbox">
                             <i class="bi bi-download"></i> Export
                         </button>
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive" id="outbox-table-wrapper" data-fetch-url="{{ route('api.outbox.data') }}">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
@@ -247,42 +245,7 @@
 
     <!-- Custom JS -->
     @include('partials.auth-context')
-    <script src="{{ asset('js/main.js') }}"></script>
+    <script src="{{ asset('js/modules/outbox.js') }}"></script>
 
-    <script>
-        // Update document count after loading
-        setTimeout(() => {
-            const outboxTable = document.getElementById('outboxTable');
-            const rowCount = outboxTable.querySelectorAll('tr').length;
-            document.getElementById('documentCount').textContent = rowCount;
-            document.getElementById('showingCount').textContent = rowCount;
-        }, 500);
-
-        function clearFilters() {
-            document.querySelectorAll('[data-filter]').forEach(input => {
-                input.value = '';
-            });
-            document.getElementById('searchInput').value = '';
-
-            // Show all rows
-            document.querySelectorAll('tbody tr').forEach(row => {
-                row.style.display = '';
-            });
-        }
-
-        function refreshOutbox() {
-            showToast('Outbox refreshed', 'success');
-            location.reload();
-        }
-
-        function exportOutbox() {
-            showToast('Exporting outbox data...', 'info');
-            // In a real application, this would generate and download a CSV file
-            setTimeout(() => {
-                showToast('Export complete!', 'success');
-            }, 1500);
-        }
-
-    </script>
 </body>
 </html>
