@@ -388,7 +388,12 @@ class DocumentController extends Controller
             DB::table('document_routes')
                 ->where('document_id', $documentId)
                 ->where('status', 'current')
-                ->update(['status' => 'received', 'updated_at' => now()]);
+                ->update([
+                    'status' => 'received',
+                    'received_at' => now(),
+                    'received_by_user_id' => $userId,
+                    'updated_at' => now()
+                ]);
 
             $nextRoute = DB::table('document_routes')
                 ->where('document_id', $documentId)
@@ -429,5 +434,63 @@ class DocumentController extends Controller
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Database storage failure: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function inbox()
+    {
+        return view('inbox');
+    }
+
+    public function getInboxData(Request $request)
+    {
+        $userDeptId = auth()->user()->department_id ?? 2;
+
+        $query = DB::table('documents')
+            ->join('document_routes as my_route', 'documents.id', '=', 'my_route.document_id')
+            ->join('document_types', 'documents.document_type_id', '=', 'document_types.id')
+            ->join('departments as sender_dept', 'documents.sender_department_id', '=', 'sender_dept.id')
+            ->join('departments as current_dept', 'documents.current_department_id', '=', 'current_dept.id')
+            ->select(
+                'documents.id as doc_id',
+                'documents.document_number',
+                'documents.title',
+                'document_types.name as type_name',
+                'sender_dept.name as sender_name',
+                'current_dept.name as current_department',
+                'documents.created_at as date_uploaded',
+                'my_route.status as step_status'
+            )
+            ->where('my_route.department_id', $userDeptId)
+            ->whereNotNull('my_route.received_at')
+            ->whereNotExists(function ($subQuery) use ($userDeptId) {
+                $subQuery->select(DB::raw(1))
+                    ->from('document_routes as next_route')
+                    ->whereColumn('next_route.document_id', 'documents.id')
+                    ->where('next_route.route_order', '>', function ($seqQuery) use ($userDeptId) {
+                        $seqQuery->select('route_order')
+                            ->from('document_routes')
+                            ->whereColumn('document_id', 'documents.id')
+                            ->where('department_id', $userDeptId)
+                            ->limit(1);
+                    })
+                    ->whereNotNull('next_route.received_at');
+            });
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('documents.title', 'like', '%' . $search . '%')
+                  ->orWhere('documents.document_number', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($request->filled('type')) {
+            $query->where('document_types.name', $request->type);
+        }
+
+        $paginatedData = $query->orderBy('documents.updated_at', 'desc')
+            ->paginate(10);
+
+        return response()->json($paginatedData);
     }
 }

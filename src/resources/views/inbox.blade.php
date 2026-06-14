@@ -149,7 +149,7 @@
                                    placeholder="Filter by date">
                         </div>
                         <div class="col-md-2">
-                            <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                            <button class="btn btn-outline-secondary w-100" data-action="clear-filters">
                                 <i class="bi bi-x-circle"></i> Clear
                             </button>
                         </div>
@@ -165,16 +165,16 @@
                         <span class="badge bg-primary ms-2" id="documentCount">0</span>
                     </h5>
                     <div>
-                        <button class="btn btn-sm btn-outline-primary" onclick="refreshInbox()">
+                        <button class="btn btn-sm btn-outline-primary" data-action="refresh-inbox">
                             <i class="bi bi-arrow-clockwise"></i> Refresh
                         </button>
-                        <button class="btn btn-sm btn-outline-success" onclick="exportInbox()">
+                        <button class="btn btn-sm btn-outline-success" data-action="export-inbox">
                             <i class="bi bi-download"></i> Export
                         </button>
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive" id="inbox-table-wrapper" data-fetch-url="{{ route('api.inbox.data') }}">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
@@ -247,42 +247,7 @@
 
     <!-- Custom JS -->
     @include('partials.auth-context')
-    <script src="{{ asset('js/main.js') }}"></script>
+    <script src="{{ asset('js/modules/inbox.js') }}"></script>
 
-    <script>
-        // Update document count after loading
-        setTimeout(() => {
-            const inboxTable = document.getElementById('inboxTable');
-            const rowCount = inboxTable.querySelectorAll('tr').length;
-            document.getElementById('documentCount').textContent = rowCount;
-            document.getElementById('showingCount').textContent = rowCount;
-        }, 500);
-
-        function clearFilters() {
-            document.querySelectorAll('[data-filter]').forEach(input => {
-                input.value = '';
-            });
-            document.getElementById('searchInput').value = '';
-
-            // Show all rows
-            document.querySelectorAll('tbody tr').forEach(row => {
-                row.style.display = '';
-            });
-        }
-
-        function refreshInbox() {
-            showToast('Inbox refreshed', 'success');
-            location.reload();
-        }
-
-        function exportInbox() {
-            showToast('Exporting inbox data...', 'info');
-            // In a real application, this would generate and download a CSV file
-            setTimeout(() => {
-                showToast('Export complete!', 'success');
-            }, 1500);
-        }
-
-    </script>
 </body>
 </html>
