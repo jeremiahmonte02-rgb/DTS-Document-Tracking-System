@@ -251,8 +251,16 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(data => {
             if (data.success) {
+                const docId = data.document_number || data.id;
                 const gDocIdField = document.getElementById('generatedDocId');
-                if (gDocIdField) gDocIdField.innerText = data.document_number || data.id;
+                if (gDocIdField) gDocIdField.innerText = docId;
+
+                const docNumber = data.document_number;
+
+                console.log("=== UPLOAD SUCCESS TRIGGERED ===");
+                console.log("Returned document number data:", typeof docNumber !== 'undefined' ? docNumber : 'UNDEFINED');
+                console.log("modalViewDetailsBtn in DOM:", !!document.getElementById('modalViewDetailsBtn'));
+                console.log("modalPrintQrBtn in DOM:", !!document.getElementById('modalPrintQrBtn'));
 
                 const qrCanvasTarget = document.getElementById('modalQrCode');
                 if (qrCanvasTarget && typeof QRCode === 'function') {
@@ -297,3 +305,75 @@ document.addEventListener('DOMContentLoaded', function() {
         return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 });
+
+// Target the specific structural modal container element to bypass parent event bubbling traps
+var successModalContainer = document.getElementById('qrCodeModal');
+
+if (successModalContainer) {
+    console.log("Success modal layout component found! Registering internal actions...");
+
+    successModalContainer.addEventListener('click', function (e) {
+        // Gracefully find the button element even if the user clicks on an internal text or icon layer
+        const viewBtn = e.target.closest('#modalViewDetailsBtn');
+        const printBtn = e.target.closest('#modalPrintQrBtn');
+
+        // --- FIX BUG #3: View Details Button ---
+        if (viewBtn) {
+            e.preventDefault();
+            console.log("=== VIEW DETAILS BUTTON TRIGGERED ===");
+
+            const docRefElement = document.querySelector('.modal-body strong, #generatedDocId');
+            let docNumber = '';
+
+            if (docRefElement) {
+                docNumber = docRefElement.textContent.replace('Document Reference:', '').trim();
+            }
+
+            if (docNumber) {
+                window.location.href = `/document-details/${encodeURIComponent(docNumber)}`;
+            } else {
+                console.error("Failed to read document registration sequence ID from layout.");
+            }
+        }
+
+        // --- FIX BUG #2: Print QR Code Button ---
+        if (printBtn) {
+            e.preventDefault();
+            console.log("=== PRINT QR CODE BUTTON TRIGGERED ===");
+
+            const qrContainer = document.querySelector('.qr-code-container') || document.querySelector('.modal-body .text-center');
+            if (!qrContainer) {
+                console.error("Print source container element was not found in the modal window context.");
+                return;
+            }
+
+            const printWindow = window.open('', '_blank', 'width=600,height=600');
+            if (!printWindow) {
+                alert("Please enable window popups to print.");
+                return;
+            }
+
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Print QR Code</title>
+                    <style>
+                        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; }
+                        img, canvas { max-width: 250px; height: auto; margin-bottom: 15px; }
+                        div { font-size: 20px; font-weight: bold; color: #333; }
+                    </style>
+                </head>
+                <body>
+                    ${qrContainer.innerHTML}
+                    <script>
+                        window.onload = function() { window.print(); window.close(); };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+    });
+} else {
+    console.error("CRITICAL ERROR: Could not find any modal wrapper structure target in the DOM layout.");
+}

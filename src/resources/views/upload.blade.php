@@ -55,7 +55,7 @@
             </li>
             @if(auth()->user()->role_id === 1)
             <li class="nav-item">
-                <a class="nav-link" href="/users">
+                <a class="nav-link" href="/manage-users">
                     <i class="bi bi-people"></i>
                     <span>User Management</span>
                 </a>
@@ -208,7 +208,7 @@
 
                                 <div class="mb-4">
                                     <label for="documentSelect" class="form-label">Load Existing Document</label>
-                                    <select class="form-select" id="documentSelect" onchange="populateFormFromDocument()">
+                                    <select class="form-select" id="documentSelect">
                                         <option value="">-- Pre-fill form from document --</option>
                                     </select>
                                     <small class="form-text text-muted">
@@ -291,7 +291,7 @@
                     <h5 class="modal-title" id="qrCodeModalLabel">
                         <i class="bi bi-check-circle"></i> Document Uploaded Successfully
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" onclick="closeQrModal()" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="qr-code-container">
@@ -304,10 +304,10 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="printQRCode()">
+                    <button type="button" id="modalPrintQrBtn" class="btn btn-primary">
                         <i class="bi bi-printer"></i> Print QR Code
                     </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="viewDocument(document.getElementById('generatedDocId').textContent)">
+                    <button type="button" id="modalViewDetailsBtn" class="btn btn-outline-secondary">
                         <i class="bi bi-eye"></i> View Details
                     </button>
                     <button type="button" id="doneQrBtn" class="btn btn-success" data-bs-dismiss="modal">
@@ -327,6 +327,6 @@
     <!-- Custom JS -->
     @include('partials.auth-context')
 
-    <script src="{{ asset('js/modules/upload.js') }}"></script>
+    <script src="{{ asset('js/modules/upload.js') }}?v={{ filemtime(public_path('js/modules/upload.js')) }}"></script>
 </body>
 </html>
