@@ -55,7 +55,7 @@
             </li>
             @if(auth()->user()->role_id === 1)
             <li class="nav-item">
-                <a class="nav-link" href="/users">
+                <a class="nav-link" href="/manage-users">
                     <i class="bi bi-people"></i>
                     <span>User Management</span>
                 </a>
@@ -160,12 +160,25 @@
                                     <span id="docSender">{{ $document->origin_department }}</span>
                                 </div>
                             </div>
+                            @php
+                                // Find the last step in the routing chain that has been marked received or completed
+                                $lastReceivedStep = collect($routes)
+                                    ->whereIn('status', ['received', 'completed'])
+                                    ->sortByDesc('route_order')
+                                    ->first();
+
+                                // Determine display name: use the last receiving department, or fall back to the sender department
+                                $currentLocationName = $lastReceivedStep
+                                    ? $lastReceivedStep->department_name
+                                    : ($document->origin_department ?? 'Originating Office');
+                            @endphp
+
                             <div class="row mb-3">
                                 <div class="col-md-4">
-                                    <strong class="text-muted">Current Department:</strong>
+                                    <strong class="text-muted">Current Location:</strong>
                                 </div>
                                 <div class="col-md-8">
-                                    <span id="docReceiver">{{ $document->current_department ?? 'N/A' }}</span>
+                                    <span id="docReceiver" class="fw-bold">{{ $currentLocationName }}</span>
                                 </div>
                             </div>
                             <div class="row mb-3">
@@ -267,7 +280,7 @@
                             </h6>
                         </div>
                         <div class="card-body text-center">
-                            <div class="text-center p-3 border rounded bg-white shadow-3xs mb-4">
+                            <div id="qrCodePrintContainer" class="text-center p-3 border rounded bg-white shadow-3xs mb-4">
                                 <div class="qr-code-wrapper d-inline-block p-2 bg-light rounded border border-secondary-subtle">
                                     <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={{ urlencode($document->document_number) }}&ecc=M"
                                          alt="Document QR Code ({{ $document->document_number }})"
@@ -278,9 +291,53 @@
                                     {{ $document->document_number }}
                                 </div>
                             </div>
-                            <button class="btn btn-primary btn-sm w-100" onclick="printQRCode()">
+                            <button type="button" id="detailsPrintQrBtn" class="btn btn-primary btn-sm w-100">
                                 <i class="bi bi-printer"></i> Print QR Code
                             </button>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 shadow-3xs">
+                        <div class="card-header bg-transparent border-bottom-0 pt-3 pb-1">
+                            <h6 class="card-title text-muted text-uppercase text-xs fw-bold tracking-wider m-0">
+                                <i class="bi bi-diagram-3 me-1"></i> Scheduled Routing Path
+                            </h6>
+                        </div>
+                        <div class="card-body pt-1">
+                            <div class="d-flex flex-column gap-2">
+                                @php $currentReceiverDepartmentId = 'null'; @endphp
+                                @foreach($routes as $route)
+                                    @php
+                                        $isCurrent = strtolower($route->status) === 'current';
+                                        if ($isCurrent) {
+                                            $currentReceiverDepartmentId = $route->department_id;
+                                        }
+
+                                        $badgeStyle = 'bg-secondary text-white';
+                                        $rowModifier = 'border-light-subtle bg-white';
+
+                                        if ($isCurrent) {
+                                            $badgeStyle = 'bg-warning text-dark fw-bold';
+                                            $rowModifier = 'border-warning bg-warning-subtle bg-opacity-10';
+                                        } elseif (in_array(strtolower($route->status), ['received', 'completed'])) {
+                                            $badgeStyle = 'bg-success text-white';
+                                            $rowModifier = 'border-success-subtle';
+                                        }
+                                    @endphp
+
+                                    <div class="p-2 border rounded d-flex align-items-center justify-content-between {{ $rowModifier }}">
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge {{ $badgeStyle }} rounded-circle me-2 font-mono d-flex align-items-center justify-content-center" style="width: 22px; height: 22px;">
+                                                {{ $route->route_order }}
+                                            </span>
+                                            <span class="fw-semibold text-xs text-dark">{{ $route->department_name }}</span>
+                                        </div>
+                                        <span class="badge text-uppercase text-xxs px-2 py-1 {{ $badgeStyle }}">
+                                            {{ $route->status }}
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
 
@@ -292,13 +349,13 @@
                         </div>
                         <div class="card-body">
                             <div class="d-grid gap-2">
-                                <button class="btn btn-outline-primary btn-sm" onclick="markAsReceived()">
+                                <button type="button" id="markAsReceivedBtn" class="btn btn-outline-primary btn-sm">
                                     <i class="bi bi-check-circle"></i> Mark as Received
                                 </button>
-                                <button class="btn btn-outline-warning btn-sm" onclick="requestUpdate()">
-                                    <i class="bi bi-pencil"></i> Request Update
+                                <button type="button" id="requestAccessBtn" class="btn btn-outline-warning btn-sm">
+                                    <i class="bi bi-pencil"></i> Request Access
                                 </button>
-                                <button class="btn btn-outline-danger btn-sm" onclick="reportIssue()">
+                                <button type="button" id="reportIssueBtn" class="btn btn-outline-danger btn-sm">
                                     <i class="bi bi-exclamation-triangle"></i> Report Issue
                                 </button>
                             </div>
@@ -330,6 +387,8 @@
             </div>
         </div>
     </div>
+
+    @include('partials.access-denied-modal')
 
     <!-- Report Issue Modal -->
     <div class="modal fade" id="reportIssueModal" tabindex="-1" aria-labelledby="reportIssueLabel" aria-hidden="true">
@@ -533,6 +592,141 @@
             }, 1200);
         }
 
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const printQrBtn = document.getElementById('detailsPrintQrBtn');
+
+            if (printQrBtn) {
+                printQrBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+
+                    const qrContainer = document.getElementById('qrCodePrintContainer');
+                    if (!qrContainer) {
+                        console.error("Target print structural container (#qrCodePrintContainer) missing from DOM.");
+                        return;
+                    }
+
+                    // Open an isolated printing iframe pop-up canvas
+                    const printWindow = window.open('', '_blank', 'width=600,height=600');
+                    if (!printWindow) {
+                        alert("Please enable popups to launch the printing utility.");
+                        return;
+                    }
+
+                    // Write isolated document template mirroring the reference styling sheet
+                    printWindow.document.write(`
+                        <html>
+                        <head>
+                            <title>Print Document QR Code</title>
+                            <style>
+                                body { 
+                                    display: flex; 
+                                    flex-direction: column; 
+                                    align-items: center; 
+                                    justify-content: center; 
+                                    height: 100vh; 
+                                    margin: 0; 
+                                    font-family: Arial, sans-serif;
+                                }
+                                img { max-width: 250px; height: auto; margin-bottom: 15px; image-rendering: crisp-edges; }
+                                .font-mono { font-size: 20px; font-weight: bold; color: #333; letter-spacing: 0.5px; }
+                            </style>
+                        </head>
+                        <body>
+                            ${qrContainer.innerHTML}
+                            <script>
+                                window.onload = function() { 
+                                    window.print(); 
+                                    window.close(); 
+                                };
+                            <\/script>
+                        </body>
+                        </html>
+                    `);
+                    printWindow.document.close();
+                });
+            }
+
+            // --- QUICK ACTIONS: MARK AS RECEIVED VALIDATION ---
+            const markAsReceivedBtn = document.getElementById('markAsReceivedBtn');
+
+            if (markAsReceivedBtn) {
+                markAsReceivedBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+
+                    const userDepartmentId = window.DTS_AUTH_CONTEXT && window.DTS_AUTH_CONTEXT.departmentId
+                        ? window.DTS_AUTH_CONTEXT.departmentId.toString().trim()
+                        : null;
+
+                    // Target the actual scheduled route receiver department computed by the Blade engine
+                    const activeReceiverDepartmentId = '{{ $currentReceiverDepartmentId }}'.trim();
+
+                    console.log("Validating route sequence tracking alignment...", {
+                        userDept: userDepartmentId,
+                        activeReceiverDept: activeReceiverDepartmentId
+                    });
+
+                    if (!userDepartmentId || !activeReceiverDepartmentId || userDepartmentId !== activeReceiverDepartmentId) {
+                        console.warn("ACCESS DENIED: User's department does not match the active scheduled destination step.");
+
+                        const accessModalElement = document.getElementById('routedDocumentErrorModal');
+                        if (accessModalElement && typeof bootstrap !== 'undefined') {
+                            const modalInstance = bootstrap.Modal.getOrCreateInstance(accessModalElement);
+                            modalInstance.show();
+                        } else {
+                            alert("Access Denied: Your department is not authorized to receive this tracking file at this step.");
+                        }
+                        return;
+                    }
+
+                    console.log("ACCESS GRANTED: User is authorized to transition this tracking file step.");
+
+                    // Disable the button instantly and show processing state to prevent double submissions
+                    markAsReceivedBtn.disabled = true;
+                    const originalBtnContent = markAsReceivedBtn.innerHTML;
+                    markAsReceivedBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...`;
+
+                    // Build target endpoint URL targeting the system's DocumentController receipt route mapping
+                    const documentNumber = '{{ $document->document_number }}';
+                    const targetEndpoint = `/documents/${documentNumber}/receive`;
+
+                    // Send backend state-machine transformation request
+                    fetch(targetEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                        },
+                        body: JSON.stringify({
+                            document_number: documentNumber
+                        })
+                    })
+                    .then(async response => {
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            throw new Error(data.message || `Server returned response status error code: ${response.status}`);
+                        }
+                        return data;
+                    })
+                    .then(data => {
+                        console.log("State machine successfully updated document tracking layer:", data);
+
+                        // Reload the location instantly so all view components, timelines, and status labels refresh with the fresh data states
+                        window.location.reload();
+                    })
+                    .catch(error => {
+                        console.error("Workflow transmission transaction breakdown error:", error);
+                        alert(`Failed to complete transaction check: ${error.message}`);
+
+                        // Restore button interface accessibility state on execution failure loops
+                        markAsReceivedBtn.disabled = false;
+                        markAsReceivedBtn.innerHTML = originalBtnContent;
+                    });
+                });
+            }
+        });
     </script>
 </body>
 </html>
