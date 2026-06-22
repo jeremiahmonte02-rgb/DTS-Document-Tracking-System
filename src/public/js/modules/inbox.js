@@ -3,6 +3,8 @@
  * Handles asynchronous data table pipelines, server-side pagination, and filter queries
  */
 
+console.log("[inbox.js] Module loaded, registering DOMContentLoaded handler.");
+
 document.addEventListener('DOMContentLoaded', function () {
     const tableWrapper = document.getElementById('inbox-table-wrapper');
     if (!tableWrapper) return;
@@ -18,7 +20,8 @@ document.addEventListener('DOMContentLoaded', function () {
         page: 1,
         search: '',
         type: '',
-        status: ''
+        status: '',
+        date: ''
     };
 
     initEventListeners();
@@ -41,6 +44,42 @@ document.addEventListener('DOMContentLoaded', function () {
                 fetchInboxRecords();
             });
         });
+
+        const statusEl = document.querySelector('[data-filter="status"]') || document.getElementById('status-filter') || document.querySelector('select[name="status"]');
+        if (statusEl) {
+            statusEl.addEventListener('change', function(e) {
+                console.log("Status filter change detected! New value:", e.target.value);
+                currentFilters.status = this.value;
+                currentFilters.page = 1;
+                fetchInboxRecords();
+            });
+        } else {
+            console.error("Critical: Status filter element missing from DOM during init.");
+        }
+
+        const typeEl = document.querySelector('[data-filter="type"]') || document.getElementById('type-filter') || document.querySelector('select[name="type"]');
+        if (typeEl) {
+            typeEl.addEventListener('change', function(e) {
+                console.log("Type filter change detected! New value:", e.target.value);
+                currentFilters.type = this.value;
+                currentFilters.page = 1;
+                fetchInboxRecords();
+            });
+        } else {
+            console.error("Critical: Type filter element missing from DOM during init.");
+        }
+
+        const dateInput = document.querySelector('[data-filter="date"]') || document.getElementById('date-filter') || document.querySelector('input[type="date"]');
+        if (dateInput) {
+            dateInput.addEventListener('change', function(e) {
+                console.log("Date input change detected! New value:", e.target.value);
+                currentFilters.date = this.value;
+                currentFilters.page = 1;
+                fetchInboxRecords();
+            });
+        } else {
+            console.error("Critical: Date filter input element was missing from the DOM during script initialization.");
+        }
 
         document.addEventListener('click', function (e) {
             const actionButton = e.target.closest('[data-action]');
@@ -67,7 +106,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 </td>
             </tr>`;
 
-        const queryParams = new URLSearchParams(currentFilters).toString();
+        const dateInput = document.querySelector('[data-filter="date"]') || document.getElementById('date-filter') || document.querySelector('input[type="date"]');
+        const statusEl = document.querySelector('[data-filter="status"]') || document.getElementById('status-filter') || document.querySelector('select[name="status"]');
+        const typeEl = document.querySelector('[data-filter="type"]') || document.getElementById('type-filter') || document.querySelector('select[name="type"]');
+
+        const queryParams = new URLSearchParams({
+            page: currentFilters.page,
+            search: searchInput ? searchInput.value : '',
+            type: typeEl ? typeEl.value : '',
+            status: statusEl ? statusEl.value : '',
+            date: dateInput ? dateInput.value : ''
+        }).toString();
+
+        console.log("Params built:", { search: searchInput ? searchInput.value : '', type: typeEl ? typeEl.value : '', status: statusEl ? statusEl.value : '', date: dateInput ? dateInput.value : '' });
         
         fetch(`${fetchUrl}?${queryParams}`, {
             method: 'GET',
@@ -99,6 +150,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 year: 'numeric', month: 'short', day: 'numeric'
             });
 
+            let badgeClass = 'bg-secondary';
+            const status = doc.step_status || '';
+            const displayStatus = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            if (status === 'received') badgeClass = 'bg-success';
+            else if (status === 'in_transit') badgeClass = 'bg-info text-white';
+            else if (status === 'pending_transfer') badgeClass = 'bg-warning text-dark';
+            else if (status === 'rejected') badgeClass = 'bg-danger';
+
             return `
                 <tr class="clickable-row" data-document-number="${escapeHtml(doc.document_number)}" style="cursor: pointer;">
                     <td><strong class="text-primary">${escapeHtml(doc.document_number)}</strong></td>
@@ -107,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <td>${escapeHtml(doc.sender_name)}</td>
                     <td><span class="text-muted">${escapeHtml(doc.current_department)}</span></td>
                     <td>${formattedDate}</td>
-                    <td><span class="badge bg-warning text-dark px-2.5 py-1.5 fw-semibold uppercase small">${escapeHtml(doc.step_status)}</span></td>
+                    <td><span class="badge ${badgeClass}">${escapeHtml(displayStatus)}</span></td>
                 </tr>`;
         }).join('');
 
@@ -152,9 +211,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function clearAllActiveFilters() {
         if (searchInput) searchInput.value = '';
-        document.querySelectorAll('select[data-filter]').forEach(select => select.value = '');
+        const statusEl = document.querySelector('[data-filter="status"]') || document.getElementById('status-filter') || document.querySelector('select[name="status"]');
+        const typeEl = document.querySelector('[data-filter="type"]') || document.getElementById('type-filter') || document.querySelector('select[name="type"]');
+        const dateInput = document.querySelector('[data-filter="date"]') || document.getElementById('date-filter') || document.querySelector('input[type="date"]');
+        if (statusEl) statusEl.value = '';
+        if (typeEl) typeEl.value = '';
+        if (dateInput) dateInput.value = '';
         
-        currentFilters = { page: 1, search: '', type: '', status: '' };
+        currentFilters = { page: 1, search: '', type: '', status: '', date: '' };
         fetchInboxRecords();
     }
 

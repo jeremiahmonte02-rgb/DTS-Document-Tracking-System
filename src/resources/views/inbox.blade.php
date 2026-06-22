@@ -55,7 +55,7 @@
             </li>
             @if(auth()->user()->role_id === 1)
             <li class="nav-item">
-                <a class="nav-link" href="/users">
+                <a class="nav-link" href="/manage-users">
                     <i class="bi bi-people"></i>
                     <span>User Management</span>
                 </a>
@@ -126,7 +126,7 @@
                             </div>
                         </div>
                         <div class="col-md-2">
-                            <select class="form-select" data-filter="type">
+                            <select class="form-select" id="type-filter" data-filter="type">
                                 <option value="">All Types</option>
                                 @foreach($documentTypes as $type)
                                     <option value="{{ $type->id }}">{{ $type->name }}</option>
@@ -134,16 +134,16 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <select class="form-select" data-filter="status">
+                            <select class="form-select" id="status-filter" data-filter="status">
                                 <option value="">All Status</option>
-                                <option value="Received">Received</option>
-                                <option value="Pending Transfer">Pending Transfer</option>
-                                <option value="In Transit">In Transit</option>
-                                <option value="Rejected">Rejected</option>
+                                <option value="received">Received</option>
+                                <option value="pending_transfer">Pending Transfer</option>
+                                <option value="in_transit">In Transit</option>
+                                <option value="rejected">Rejected</option>
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <input type="date" class="form-control" data-filter="date"
+                            <input type="date" class="form-control" id="date-filter" data-filter="date"
                                    placeholder="Filter by date">
                         </div>
                         <div class="col-md-2">
@@ -245,7 +245,7 @@
 
     <!-- Custom JS -->
     @include('partials.auth-context')
-    <script src="{{ asset('js/modules/inbox.js') }}"></script>
+    <script src="{{ asset('js/modules/inbox.js') }}?v={{ filemtime(public_path('js/modules/inbox.js')) }}"></script>
 
 </body>
 </html>

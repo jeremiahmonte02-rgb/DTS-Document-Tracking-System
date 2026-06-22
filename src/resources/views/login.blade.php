@@ -24,7 +24,7 @@
                         </div>
                         <div class="card-body p-4">
                             
-                            <form method="POST" action="{{ route('login.submit') }}" autocomplete="off">
+                            <form method="POST" action="{{ route('login.submit') }}" autocomplete="on">
                                 @csrf
 
                                 @if ($errors->any())
@@ -40,7 +40,8 @@
                                 <div class="mb-3">
                                     <label for="email" class="form-label font-medium text-muted">Email Address</label>
                                     <input type="email" id="email" name="email" value="{{ old('email') }}" 
-                                           class="form-control" required autofocus placeholder="name@company.com">
+                                           class="form-control" required placeholder="name@company.com" 
+                                           autocomplete="one-time-code">
                                 </div>
 
                                 <div class="mb-3">
@@ -49,7 +50,7 @@
                                         <a href="#" id="forgotPasswordLink" class="text-sm text-primary text-decoration-none">Forgot Password?</a>
                                     </div>
                                     <div class="input-group">
-                                        <input type="password" id="password" name="password" class="form-control" required placeholder="••••••••" autocomplete="new-password">
+                                        <input type="password" id="password" name="password" class="form-control" required placeholder="••••••••" autocomplete="one-time-code">
                                         <button class="btn btn-outline-secondary" type="button" id="togglePasswordBtn">
                                             <i id="toggleIcon" class="bi bi-eye"></i>
                                         </button>

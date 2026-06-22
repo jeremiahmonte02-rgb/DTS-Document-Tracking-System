@@ -3,6 +3,8 @@
  * Handles asynchronous data table pipelines, server-side pagination, and filter queries
  */
 
+console.log("[outbox.js] Module loaded, registering DOMContentLoaded handler.");
+
 document.addEventListener('DOMContentLoaded', function () {
     const tableWrapper = document.getElementById('outbox-table-wrapper');
     if (!tableWrapper) return;
@@ -18,7 +20,8 @@ document.addEventListener('DOMContentLoaded', function () {
         page: 1,
         search: '',
         type: '',
-        status: ''
+        status: '',
+        date: ''
     };
 
     const style = document.createElement('style');
@@ -48,6 +51,42 @@ document.addEventListener('DOMContentLoaded', function () {
                 loadOutboxData();
             });
         });
+
+        const statusEl = document.querySelector('[data-filter="status"]') || document.getElementById('status-filter') || document.querySelector('select[name="status"]');
+        if (statusEl) {
+            statusEl.addEventListener('change', function(e) {
+                console.log("Status filter change detected! New value:", e.target.value);
+                currentFilters.status = this.value;
+                currentFilters.page = 1;
+                loadOutboxData();
+            });
+        } else {
+            console.error("Critical: Status filter element missing from DOM during init.");
+        }
+
+        const typeEl = document.querySelector('[data-filter="type"]') || document.getElementById('type-filter') || document.querySelector('select[name="type"]');
+        if (typeEl) {
+            typeEl.addEventListener('change', function(e) {
+                console.log("Type filter change detected! New value:", e.target.value);
+                currentFilters.type = this.value;
+                currentFilters.page = 1;
+                loadOutboxData();
+            });
+        } else {
+            console.error("Critical: Type filter element missing from DOM during init.");
+        }
+
+        const dateInput = document.querySelector('[data-filter="date"]') || document.getElementById('date-filter') || document.querySelector('input[type="date"]');
+        if (dateInput) {
+            dateInput.addEventListener('change', function(e) {
+                console.log("Date input change detected! New value:", e.target.value);
+                currentFilters.date = this.value;
+                currentFilters.page = 1;
+                loadOutboxData();
+            });
+        } else {
+            console.error("Critical: Date filter input element was missing from the DOM during script initialization.");
+        }
 
         document.addEventListener('click', function (e) {
             const actionButton = e.target.closest('[data-action]');
@@ -82,7 +121,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 </td>
             </tr>`;
 
-        const queryParams = new URLSearchParams(currentFilters).toString();
+        const dateInput = document.querySelector('[data-filter="date"]') || document.getElementById('date-filter') || document.querySelector('input[type="date"]');
+        const statusEl = document.querySelector('[data-filter="status"]') || document.getElementById('status-filter') || document.querySelector('select[name="status"]');
+        const typeEl = document.querySelector('[data-filter="type"]') || document.getElementById('type-filter') || document.querySelector('select[name="type"]');
+
+        const queryParams = new URLSearchParams({
+            page: currentFilters.page,
+            search: searchInput ? searchInput.value : '',
+            type: typeEl ? typeEl.value : '',
+            status: statusEl ? statusEl.value : '',
+            date: dateInput ? dateInput.value : ''
+        }).toString();
+
+        console.log("Params built:", { search: searchInput ? searchInput.value : '', type: typeEl ? typeEl.value : '', status: statusEl ? statusEl.value : '', date: dateInput ? dateInput.value : '' });
 
         fetch(`${fetchUrl}?${queryParams}`, {
             method: 'GET',
@@ -165,8 +216,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function clearAllActiveFilters() {
         if (searchInput) searchInput.value = '';
-        document.querySelectorAll('select[data-filter]').forEach(select => select.value = '');
-        currentFilters = { page: 1, search: '', type: '', status: '' };
+        const statusEl = document.querySelector('[data-filter="status"]') || document.getElementById('status-filter') || document.querySelector('select[name="status"]');
+        const typeEl = document.querySelector('[data-filter="type"]') || document.getElementById('type-filter') || document.querySelector('select[name="type"]');
+        const dateInput = document.querySelector('[data-filter="date"]') || document.getElementById('date-filter') || document.querySelector('input[type="date"]');
+        if (statusEl) statusEl.value = '';
+        if (typeEl) typeEl.value = '';
+        if (dateInput) dateInput.value = '';
+        currentFilters = { page: 1, search: '', type: '', status: '', date: '' };
         loadOutboxData();
     }
 

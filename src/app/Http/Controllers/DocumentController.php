@@ -228,6 +228,7 @@ class DocumentController extends Controller
                 'documents.completed_at',
                 'document_types.name as type_name',
                 'sender_dept.name as origin_department',
+                'current_dept.id as current_department_id',
                 'current_dept.name as current_department',
                 'users.name as uploaded_by_user'
             )
@@ -307,7 +308,12 @@ class DocumentController extends Controller
 
                 DB::table('document_routes')
                     ->where('id', $currentRouteStep->id)
-                    ->update(['status' => 'received']);
+                    ->update([
+                        'status' => 'received',
+                        'received_at' => now(),
+                        'received_by_user_id' => auth()->id(),
+                        'updated_at' => now(),
+                    ]);
 
                 $nextRouteStep = DB::table('document_routes')
                     ->where('document_id', $document->id)
@@ -459,7 +465,7 @@ class DocumentController extends Controller
                 'sender_dept.name as sender_name',
                 'current_dept.name as current_department',
                 'documents.created_at as date_uploaded',
-                'my_route.status as step_status'
+                'documents.status as step_status'
             )
             ->where('my_route.department_id', $userDeptId)
             ->whereNotNull('my_route.received_at')
@@ -487,6 +493,15 @@ class DocumentController extends Controller
 
         if ($request->filled('type')) {
             $query->where('documents.document_type_id', $request->type);
+        }
+
+        if ($request->filled('date')) {
+            $query->whereDate('documents.created_at', $request->date);
+        }
+
+        if ($request->filled('status')) {
+            $statusValue = str_replace(' ', '_', strtolower($request->status));
+            $query->where('documents.status', $statusValue);
         }
 
         $paginatedData = $query->orderBy('documents.updated_at', 'desc')
@@ -538,7 +553,12 @@ class DocumentController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('documents.status', str_replace(' ', '_', strtolower($request->status)));
+            $statusValue = str_replace(' ', '_', strtolower($request->status));
+            $query->where('documents.status', $statusValue);
+        }
+
+        if ($request->filled('date')) {
+            $query->whereDate('documents.created_at', $request->date);
         }
 
         $paginatedData = $query->orderBy('documents.updated_at', 'desc')
@@ -551,5 +571,38 @@ class DocumentController extends Controller
         });
 
         return response()->json($paginatedData);
+    }
+
+    public function completeDocument(Request $request, $documentNumber)
+    {
+        $document = DB::table('documents')->where('document_number', $documentNumber)->first();
+        if (!$document) {
+            return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
+        }
+
+        // Get routing details
+        $routes = DB::table('document_routes')
+            ->where('document_id', $document->id)
+            ->orderBy('route_order', 'asc')
+            ->get();
+
+        $lastStep = $routes->last();
+        $user = auth()->user();
+
+        // Guard: Only the last department can complete it
+        if (!$lastStep || $lastStep->department_id !== $user->department_id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. Only the final department can mark this document as complete.'], 403);
+        }
+
+        // Update main document status and timestamp
+        DB::table('documents')
+            ->where('id', $document->id)
+            ->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'updated_at' => now()
+            ]);
+
+        return response()->json(['success' => true, 'message' => 'Document marked as completed successfully.']);
     }
 }

@@ -2,6 +2,7 @@
 <script>
     window.DTS_AUTH_CONTEXT = {
         userId: @json($authUser?->id),
+        departmentId: {{ $authUser?->department_id ?? 'null' }},
         userName: @json($authUser?->name ?? 'Guest'),
         departmentName: @json($authUser?->department?->name ?? 'No Department Assigned'),
         departmentCode: @json($authUser?->department?->code ?? 'N/A'),

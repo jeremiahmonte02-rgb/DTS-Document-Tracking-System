@@ -231,6 +231,12 @@
                             </div>
                         </div>
                         <div class="card-footer bg-white">
+                            @php
+                                $lastStep = collect($routes)->sortBy('route_order')->last();
+                                $isFinalDepartment = $lastStep && auth()->user() && $lastStep->department_id === auth()->user()->department_id;
+                                $isLastStepReceived = $lastStep && in_array(strtolower($lastStep->status), ['received', 'completed']);
+                                $isDocumentCompleted = isset($document->status) && strtolower($document->status) === 'completed';
+                            @endphp
                             <div class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-primary" onclick="window.print()">
                                     <i class="bi bi-printer"></i> Print Details
@@ -241,6 +247,11 @@
                                 <button class="btn btn-info" onclick="shareDocument()">
                                     <i class="bi bi-share"></i> Share
                                 </button>
+                                @if($isFinalDepartment && $isLastStepReceived && !$isDocumentCompleted)
+                                <button class="btn btn-dark" id="markAsCompleteBtn" onclick="markDocumentAsComplete('{{ $document->document_number }}')">
+                                    <i class="bi bi-check-all"></i> Mark as Complete
+                                </button>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -480,6 +491,40 @@
     <script src="{{ asset('js/main.js') }}"></script>
 
     <script>
+        function markDocumentAsComplete(documentNumber) {
+            console.log("Starting finalization for:", documentNumber);
+            if (!confirm('Are you sure you want to officially mark this document as complete? This will finalize its routing record.')) return;
+
+            // Securely pull the CSRF token directly from Laravel's rendering engine
+            const token = "{{ csrf_token() }}";
+
+            fetch(`/documents/${documentNumber}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token
+                }
+            })
+            .then(response => {
+                console.log("Server HTTP Status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log("Server JSON Response:", data);
+                if (data.success) {
+                    console.log("Success! Reloading viewport context...");
+                    window.location.reload();
+                } else {
+                    alert("Backend Error: " + (data.message || 'An error occurred.'));
+                }
+            })
+            .catch(error => {
+                console.error("Network Fetch Failure:", error);
+                alert("Network Error: Check browser console for network stream logs.");
+            });
+        }
+
         function downloadDocument() {
             showToast('Downloading document...', 'info');
             setTimeout(() => {

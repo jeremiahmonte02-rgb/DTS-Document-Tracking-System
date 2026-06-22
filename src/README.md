@@ -1,4 +1,4 @@
-# Document Tracking System (DTS)
+t# Document Tracking System (DTS)
 
 A full-stack web application for managing, routing, and tracking physical documents across organizational departments. Built on **Laravel 13** with a **MySQL** backend, DTS replaces paper-based logbooks with a digital workflow that assigns each document a unique tracking number and QR code, enabling real-time status visibility, department-to-department routing, and a complete audit trail.
 
@@ -284,10 +284,18 @@ This project is open-sourced software licensed under the [MIT license](https://o
 
 
 ## BUGS to be FIXED
+- after the document route completion the document does not disappear from the last departments/step's inbox
+- when uploading a document, when selecting the departments involve/route, a department can only be placed in order once, it must allow to add multiple instance of the same department.
+
+
+
 
 - Login email textbox does not auto fill after a failed login attempt.
 - Print QR code button in successfull document upload modal does not work
 - View document details in successfull document upload modal does not work
 - Print QR code button in document details screen prints the entire screen instead of only printing the QR code 
-- After a document is done its process(status "Received") or the route is complete, viewing its full details does not show its completed date. 
 - Current department property in document-details screen does not reflect/change during document travel(does not show true location)
+- After a document is done its process(status "Received") or the route is complete, viewing its full details does not show its completed date. 
+
+
+

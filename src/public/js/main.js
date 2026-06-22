@@ -278,19 +278,6 @@ const sampleDocuments = [
     }
 ];
 
-const sampleUsers = [
-        { id: 1, name: 'Sarah Johnson', email: 'sarah.johnson@company.com', department: 'Executive Office', role: 'Administrator', status: 'Active' },
-        { id: 2, name: 'John Smith', email: 'john.smith@company.com', department: 'Finance', role: 'Department User', status: 'Active' },
-    { id: 3, name: 'Emily Davis', email: 'emily.davis@company.com', department: 'HR', role: 'Department User', status: 'Active' },
-    { id: 4, name: 'Robert Wilson', email: 'robert.wilson@company.com', department: 'IT', role: 'Department User', status: 'Active' },
-    { id: 5, name: 'David Martinez', email: 'david.martinez@company.com', department: 'Legal', role: 'Auditor', status: 'Active' },
-    { id: 6, name: 'Jennifer Lee', email: 'jennifer.lee@company.com', department: 'Marketing', role: 'Department User', status: 'Active' },
-    { id: 7, name: 'Lisa Anderson', email: 'lisa.anderson@company.com', department: 'Operations', role: 'Department User', status: 'Active' },
-    { id: 8, name: 'Amanda White', email: 'amanda.white@company.com', department: 'Customer Service', role: 'Department User', status: 'Active' },
-    { id: 9, name: 'Michael Brown', email: 'michael.brown@company.com', department: 'Finance', role: 'Department User', status: 'Inactive' },
-    { id: 10, name: 'Jessica Taylor', email: 'jessica.taylor@company.com', department: 'HR', role: 'Auditor', status: 'Active' }
-];
-
 const sampleDocumentsWithRoutes = [
     {
         id: 'DOC-2026-001',
@@ -363,8 +350,7 @@ function initializePage() {
         case '/outbox':
             loadOutbox();
             break;
-        case '/users':
-            loadUsers();
+        case '/manage-users':
             break;
         case '/document-details':
             loadDocumentDetails();
@@ -645,50 +631,6 @@ function loadAuditTrail(history) {
     `).join('');
 
     timeline.innerHTML = html;
-}
-
-// Users functionality
-function loadUsers() {
-    const usersTable = document.getElementById('usersTable');
-    if (!usersTable) return;
-
-    const html = sampleUsers.map(user => `
-        <tr>
-            <td>${user.name}</td>
-            <td>${user.email}</td>
-            <td>${user.department}</td>
-            <td><span class="badge bg-info">${user.role}</span></td>
-            <td><span class="badge ${user.status === 'Active' ? 'bg-success' : 'bg-secondary'}">${user.status}</span></td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary" onclick="editUser(${user.id})">
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
-
-    usersTable.innerHTML = html;
-}
-
-// Edit user
-function editUser(userId) {
-    const user = sampleUsers.find(u => u.id === userId);
-    if (user) {
-        showToast(`Edit user: ${user.name}`, 'info');
-        // In a real application, open a modal with edit form
-    }
-}
-
-// Delete user
-function deleteUser(userId) {
-    const user = sampleUsers.find(u => u.id === userId);
-    if (user && confirm(`Are you sure you want to delete ${user.name}?`)) {
-        showToast(`User ${user.name} deleted`, 'success');
-        // In a real application, actually delete the user
-    }
 }
 
 // Upload form setup — removed; handled by external modules/upload.js
@@ -1015,8 +957,6 @@ function formatTimeAgo(dateTimeString) {
 
 // Export for global access
 window.viewDocument = viewDocument;
-window.editUser = editUser;
-window.deleteUser = deleteUser;
 window.confirmReceipt = confirmReceipt;
 window.printQRCode = printQRCode;
 window.advanceRoute = advanceRoute;

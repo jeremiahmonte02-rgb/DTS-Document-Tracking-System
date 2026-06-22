@@ -56,7 +56,7 @@
             </li>
             @if(auth()->user()->role_id === 1)
             <li class="nav-item">
-                <a class="nav-link" href="/users">
+                <a class="nav-link" href="/manage-users">
                     <i class="bi bi-people"></i>
                     <span>User Management</span>
                 </a>
