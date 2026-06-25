@@ -52,7 +52,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!listItem) return;
 
                 if (targetBtn.classList.contains('remove-step-btn')) {
+                    const deptId = listItem.getAttribute('data-dept-id');
                     listItem.remove();
+                    if (receiverDeptSelect && deptId) {
+                        const opt = Array.from(receiverDeptSelect.options).find(o => String(o.value) === String(deptId));
+                        if (opt) opt.selected = false;
+                        const visualItem = document.querySelector(`#visual-dept-pool li[data-value="${CSS.escape(deptId)}"]`);
+                        if (visualItem) {
+                            visualItem.classList.remove('bg-success', 'bg-opacity-10', 'text-success', 'fw-semibold');
+                            visualItem.style.backgroundColor = '';
+                            visualItem.style.color = '';
+                        }
+                    }
                 } else if (targetBtn.classList.contains('move-up-btn')) {
                     const previousSibling = listItem.previousElementSibling;
                     if (previousSibling) listItem.parentNode.insertBefore(listItem, previousSibling);
@@ -136,6 +147,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function wipeRouteChainCanvas() {
         if (routeListContainer) routeListContainer.innerHTML = '';
         if (routesHiddenInput) routesHiddenInput.value = '';
+        if (receiverDeptSelect) {
+            Array.from(receiverDeptSelect.options).forEach(opt => opt.selected = false);
+        }
+        document.querySelectorAll('#visual-dept-pool .list-group-item').forEach(item => {
+            item.classList.remove('bg-success', 'bg-opacity-10', 'text-success', 'fw-semibold');
+            item.style.backgroundColor = '';
+            item.style.color = '';
+        });
     }
 
     function synchronizeSerializedRouteInputs() {

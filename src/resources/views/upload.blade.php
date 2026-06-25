@@ -146,50 +146,178 @@
                                     </div>
                                 </div>
 
-                                <div class="row">
-                                    <div class="col-lg-8">
-                                        <div class="mb-3">
-                                            <label for="department" class="form-label">Your Department *</label>
-                                            <select class="form-select" id="department" name="department" required>
-                                                <option value="">Select your department</option>
-                                                @foreach($departments as $dept)
-                                                <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
+                                <div class="mb-3">
+                                    <label for="department" class="form-label">Your Department *</label>
+                                    <select class="form-select" id="department" name="department" required>
+                                        <option value="">Select your department</option>
+                                        @foreach($departments as $dept)
+                                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
-                                        <div class="mb-3">
-                                            <label for="receiverDepartments" class="form-label">Receiver Departments (ordered)</label>
-                                            <select class="form-select" id="receiverDepartments" multiple size="8" style="min-width:380px;">
-                                                @foreach($departments as $dept)
-                                                <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                                                @endforeach
-                                            </select>
+                                <div class="w-100 my-4" data-purpose="route-builder" style="font-family: 'Manrope', sans-serif;">
+                                    <div class="row g-4 align-items-center">
 
-                                            <input type="hidden" id="routesInput" name="routes">
-                                            <small class="form-text text-muted d-block mt-1">
-                                                Select departments above, then click "Add Selected" on the right to build an ordered route. The document will be received by departments in this sequence.
-                                            </small>
-                                        </div>
-                                    </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label text-secondary fw-semibold mb-2" style="font-size: 0.875rem;">Receiver Departments (ordered)</label>
+                                            <div class="border rounded-3 bg-white shadow-sm" style="border-color: #d1d5db !important; height: 240px; overflow: hidden;">
+                                                <div class="w-100 h-100 p-1" style="overflow-x: auto; overflow-y: auto;">
 
-                                    <div class="col-lg-4">
-                                        <div class="card h-100">
-                                            <div class="card-body d-flex flex-column">
-                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                    <small class="text-muted">Route (ordered)</small>
-                                                    <div>
-                                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" id="addToRouteBtn">Add Selected</button>
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearRouteBtn">Clear</button>
-                                                    </div>
-                                                </div>
-                                                <div class="flex-grow-1 overflow-auto">
-                                                    <ul class="list-group" id="routeList" style="min-height:160px; max-height:420px; overflow:auto;"></ul>
+                                                    <ul class="list-group list-group-flush" id="visual-dept-pool" style="min-width: 360px; font-size: 0.875rem;">
+                                                        @foreach($departments ?? [] as $dept)
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark transition-colors"
+                                                                data-value="{{ $dept->id ?? $dept }}" style="letter-spacing: -0.01em;">
+                                                                {{ $dept->name ?? $dept }}
+                                                            </li>
+                                                        @endforeach
+
+                                                        @if(empty($departments))
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Central Services">Central Services</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="College of Computing and Information Sciences">College of Computing and Information Sciences</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Customer Service">Customer Service</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Executive Office">Executive Office</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Facilities">Facilities</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Finance Department">Finance Department</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="HR Department">HR Department</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="IT Department">IT Department</li>
+                                                        @endif
+                                                    </ul>
+
                                                 </div>
                                             </div>
+
+                                            <select id="receiverDepartments" name="receiver_departments[]" class="d-none" multiple>
+                                                @foreach($departments ?? [] as $dept)
+                                                    <option value="{{ $dept->id ?? $dept }}">{{ $dept->name ?? $dept }}</option>
+                                                @endforeach
+                                                @if(empty($departments))
+                                                    <option value="Central Services">Central Services</option>
+                                                    <option value="College of Computing and Information Sciences">College of Computing and Information Sciences</option>
+                                                    <option value="Customer Service">Customer Service</option>
+                                                    <option value="Executive Office">Executive Office</option>
+                                                    <option value="Facilities">Facilities</option>
+                                                    <option value="Finance Department">Finance Department</option>
+                                                    <option value="HR Department">HR Department</option>
+                                                    <option value="IT Department">IT Department</option>
+                                                @endif
+                                            </select>
                                         </div>
+
+                                        <div class="col-md-2 d-flex flex-column gap-2.5 px-1 pt-4">
+                                            <button id="addToRouteBtn" type="button" class="btn btn-custom-academic btn-sm w-100 fw-bold border-2 text-center text-nowrap py-2" style="font-size: 0.75rem; letter-spacing: 0.05em; border-radius: 8px;">
+                                                ADD SELECTED
+                                            </button>
+                                            <button id="clearRouteBtn" type="button" class="btn btn-custom-clear btn-sm w-100 fw-bold border-2 text-center text-nowrap py-2" style="font-size: 0.75rem; letter-spacing: 0.05em; border-radius: 8px;">
+                                                CLEAR
+                                            </button>
+                                        </div>
+
+                                        <div class="col-md-5">
+                                            <label class="form-label text-secondary fw-semibold mb-2" style="font-size: 0.875rem;">Route (ordered)</label>
+                                            <div class="border rounded-3 bg-white d-flex flex-column align-items-center justify-content-center text-center p-4 shadow-sm position-relative" style="height: 240px; border-color: #d1d5db !important;">
+
+                                                <div id="route-placeholder" class="d-flex flex-column align-items-center justify-content-center text-muted opacity-50">
+                                                    <svg class="mb-2" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                                                    </svg>
+                                                    <p class="mb-0" style="font-size: 0.75rem;">Selected departments will appear here in sequence</p>
+                                                </div>
+
+                                                <ul id="routeList" class="list-group list-group-flush w-100 h-100 overflow-y-auto custom-scrollbar d-none" style="font-size: 0.875rem; max-height: 210px;"></ul>
+                                            </div>
+                                        </div>
+
                                     </div>
+
+                                    <input type="hidden" id="routesInput" name="routes">
+                                    <p class="text-muted fst-italic mt-2 mb-0" style="font-size: 0.75rem;">Select departments above, then click "Add Selected" to build the routing sequence.</p>
                                 </div>
+
+                                <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const listItems = document.querySelectorAll('#visual-dept-pool .list-group-item');
+                                    const hiddenSelect = document.getElementById('receiverDepartments');
+
+                                    listItems.forEach(item => {
+                                        item.addEventListener('click', function() {
+                                            const val = this.getAttribute('data-value');
+                                            const correspondingOption = Array.from(hiddenSelect.options).find(opt => opt.value === val);
+
+                                            if (correspondingOption) {
+                                                correspondingOption.selected = !correspondingOption.selected;
+
+                                                if (correspondingOption.selected) {
+                                                    this.classList.add('bg-success', 'bg-opacity-10', 'text-success', 'fw-semibold');
+                                                    this.style.backgroundColor = 'rgba(27, 115, 68, 0.08)';
+                                                    this.style.color = '#1b7344';
+                                                } else {
+                                                    this.classList.remove('bg-success', 'bg-opacity-10', 'text-success', 'fw-semibold');
+                                                    this.style.backgroundColor = '';
+                                                    this.style.color = '';
+                                                }
+
+                                                hiddenSelect.dispatchEvent(new Event('change'));
+                                            }
+                                        });
+                                    });
+
+                                    const clearButton = document.getElementById('clearRouteBtn');
+                                    if (clearButton) {
+                                        clearButton.addEventListener('click', function() {
+                                            listItems.forEach(item => {
+                                                item.classList.remove('bg-success', 'bg-opacity-10', 'text-success', 'fw-semibold');
+                                                item.style.backgroundColor = '';
+                                                item.style.color = '';
+                                            });
+                                        });
+                                    }
+
+                                    const routeList = document.getElementById('routeList');
+                                    const placeholder = document.getElementById('route-placeholder');
+                                    if (routeList && placeholder) {
+                                        const checkVisibility = () => {
+                                            if (routeList.children.length > 0) {
+                                                routeList.classList.remove('d-none');
+                                                placeholder.classList.add('d-none');
+                                            } else {
+                                                routeList.classList.add('d-none');
+                                                placeholder.classList.remove('d-none');
+                                            }
+                                        };
+                                        checkVisibility();
+                                        new MutationObserver(checkVisibility).observe(routeList, { childList: true });
+                                    }
+                                });
+                                </script>
+
+                                <style>
+                                .cursor-pointer { cursor: pointer; }
+                                #visual-dept-pool .list-group-item:hover {
+                                    background-color: rgba(27, 115, 68, 0.04) !important;
+                                }
+                                .btn-custom-academic {
+                                    color: #1b7344 !important;
+                                    border-color: #1b7344 !important;
+                                    background-color: transparent;
+                                    transition: all 0.2s ease-in-out;
+                                }
+                                .btn-custom-academic:hover {
+                                    color: #ffffff !important;
+                                    background-color: #1b7344 !important;
+                                }
+                                .btn-custom-clear {
+                                    color: #6c757d !important;
+                                    border-color: #ced4da !important;
+                                    background-color: transparent;
+                                    transition: all 0.2s ease-in-out;
+                                }
+                                .btn-custom-clear:hover {
+                                    color: #ffffff !important;
+                                    background-color: #6c757d !important;
+                                    border-color: #6c757d !important;
+                                }
+                                </style>
 
                                 <div class="mb-3">
                                     <label for="description" class="form-label">Description/Notes</label>

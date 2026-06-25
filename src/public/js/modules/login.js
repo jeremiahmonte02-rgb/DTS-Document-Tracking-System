@@ -13,12 +13,10 @@ document.addEventListener('DOMContentLoaded', function() {
         togglePasswordBtn.addEventListener('click', function() {
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
-                toggleIcon.classList.remove('bi-eye');
-                toggleIcon.classList.add('bi-eye-slash');
+                toggleIcon.textContent = 'visibility_off';
             } else {
                 passwordInput.type = 'password';
-                toggleIcon.classList.remove('bi-eye-slash');
-                toggleIcon.classList.add('bi-eye');
+                toggleIcon.textContent = 'visibility';
             }
         });
     }
