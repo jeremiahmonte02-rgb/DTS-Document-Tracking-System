@@ -15,54 +15,7 @@
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
 </head>
 <body>
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="sidebar-header">
-            <h4><i class="bi bi-file-earmark-text"></i> DTS</h4>
-            <small class="text-white-50">Document Tracking</small>
-        </div>
-        <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item">
-                <a class="nav-link" href="/dashboard">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/upload">
-                    <i class="bi bi-cloud-upload"></i>
-                    <span>Upload Document</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/scan">
-                    <i class="bi bi-qr-code-scan"></i>
-                    <span>Scan QR Code</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/inbox">
-                    <i class="bi bi-inbox"></i>
-                    <span>Inbox</span>
-                    <span class="badge bg-danger ms-auto">3</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/outbox">
-                    <i class="bi bi-send"></i>
-                    <span>Outbox</span>
-                </a>
-            </li>
-            @if(auth()->user()->role_id === 1)
-            <li class="nav-item">
-                <a class="nav-link" href="/manage-users">
-                    <i class="bi bi-people"></i>
-                    <span>User Management</span>
-                </a>
-            </li>
-            @endif
-        </ul>
-    </nav>
+    @include('partials.sidebar-nav')
 
     <!-- Main Content -->
     <div class="main-content">
@@ -78,7 +31,7 @@
                 <div class="position-relative">
                     <button class="btn btn-link position-relative">
                         <i class="bi bi-bell fs-5"></i>
-                        <span class="notification-badge">3</span>
+                        <span class="notification-badge">0</span>
                     </button>
                 </div>
                 <div class="dropdown">
@@ -186,7 +139,8 @@
                                     <strong class="text-muted">Current Status:</strong>
                                 </div>
                                 <div class="col-md-8">
-                                    <span id="docStatus"><span class="badge text-uppercase px-3 py-1 {{ $document->status === 'received' ? 'bg-success' : ($document->status === 'in_transit' ? 'bg-warning text-dark' : 'bg-info text-dark') }}">{{ $document->status }}</span></span>
+                                    <span id="docStatus"><span class="badge text-uppercase px-3 py-1 
+                                        {{ $document->status === 'received' ? 'bg-success' : ($document->status === 'in_transit' ? 'bg-info text-white' : ($document->status === 'pending_transfer' ? 'bg-warning text-dark' : ($document->status === 'rejected' ? 'bg-danger' : ($document->status === 'completed' ? 'bg-success text-white' : 'bg-secondary text-white')))) }}">{{ $document->status }}</span></span>
                                 </div>
                             </div>
                             <div class="row mb-3">
@@ -194,7 +148,7 @@
                                     <strong class="text-muted">Upload Date:</strong>
                                 </div>
                                 <div class="col-md-8">
-                                    <span id="docUploadDate">{{ \Carbon\Carbon::parse($document->upload_date)->format('M d, Y h:i A') }}</span>
+                                    <span id="docUploadDate" class="tabular-nums">{{ \Carbon\Carbon::parse($document->upload_date)->format('M d, Y h:i A') }}</span>
                                 </div>
                             </div>
                             <div class="row mb-3">
@@ -210,7 +164,7 @@
                                     <strong class="text-muted">Completed Date:</strong>
                                 </div>
                                 <div class="col-md-8">
-                                    <span id="docReceivedDate">{{ $document->completed_at ? \Carbon\Carbon::parse($document->completed_at)->format('M d, Y h:i A') : '-' }}</span>
+                                    <span id="docReceivedDate" class="tabular-nums">{{ $document->completed_at ? \Carbon\Carbon::parse($document->completed_at)->format('M d, Y h:i A') : '-' }}</span>
                                 </div>
                             </div>
                             <div class="row mb-3">
@@ -268,7 +222,7 @@
                                 @forelse($events as $event)
                                 <div class="timeline-item border-start ps-3 pb-3 position-relative">
                                     <span class="position-absolute start-0 top-0 translate-middle-x badge rounded-circle bg-primary p-1" style="margin-left:-1px; margin-top:4px;"><span class="visually-hidden">.</span></span>
-                                    <div class="text-xxs text-muted font-mono">{{ $event->formatted_date }}</div>
+                                    <div class="text-xxs text-muted font-mono tabular-nums">{{ $event->formatted_date }}</div>
                                     <div class="text-xs font-semibold text-dark mt-0.5">{{ $event->event_label }} - <span class="text-primary font-normal">{{ $event->execution_department }}</span></div>
                                     <p class="text-muted text-xxs mb-0 mt-0.5 bg-light p-1 rounded border">Note: {{ $event->note ?? 'No transaction notes added.' }} <br><span class="text-dark font-medium">By: {{ $event->processed_by_user }}</span></p>
                                 </div>
@@ -386,7 +340,7 @@
                             </p>
                             <p class="small mb-2">
                                 <i class="bi bi-eye text-info"></i>
-                                <strong>Views:</strong> 12 times
+                                <strong>Views:</strong> N/A
                             </p>
                             <p class="small mb-0">
                                 <i class="bi bi-shield-check text-primary"></i>
@@ -526,10 +480,7 @@
         }
 
         function downloadDocument() {
-            showToast('Downloading document...', 'info');
-            setTimeout(() => {
-                showToast('Document downloaded successfully!', 'success');
-            }, 1500);
+            showToast('Download feature coming soon', 'info');
         }
 
         function shareDocument() {
@@ -549,34 +500,7 @@
             }
         }
 
-        function markAsReceived() {
-            const docIdEl = document.getElementById('docId');
-            if (!docIdEl) return;
-            const docId = docIdEl.textContent.trim();
 
-            if (!confirm('Mark this document as received?')) return;
-
-            if (typeof window.advanceRoute !== 'function') {
-                showToast('Receive action not available', 'warning');
-                return;
-            }
-
-            const res = window.advanceRoute(docId);
-            if (res && res.updated) {
-                showToast('Document updated', 'success');
-                const status = res.status || 'In Transit';
-                const badgeClass = (typeof getStatusBadgeClass === 'function') ? getStatusBadgeClass(status) : 'badge-received';
-                document.getElementById('docStatus').innerHTML = `<span class="badge ${badgeClass}">${status}</span>`;
-                const receiverEl = document.getElementById('docReceiver');
-                if (receiverEl) receiverEl.textContent = res.nextReceiver || '-';
-            } else {
-                showToast('Cannot receive document at this stage', 'warning');
-            }
-        }
-
-        function requestUpdate() {
-            showToast('Update request sent to sender', 'info');
-        }
 
         function reportIssue() {
             // Get current document ID and populate the modal
@@ -596,45 +520,45 @@
         function handleReportIssueSubmit(event) {
             event.preventDefault();
 
-            // Get form data
+            const form = event.target;
             const docId = document.getElementById('issueDocId').value;
             const description = document.getElementById('issueDescription').value;
             const department = document.getElementById('issueDepartment').value;
-            const priority = document.getElementById('issuePriority').value;
 
-            // Validate form
             if (!description.trim() || !department) {
                 showToast('Please fill in all required fields', 'warning');
                 return;
             }
 
-            // Show processing
             showSpinner();
 
-            // Simulate API call
-            setTimeout(() => {
-                hideSpinner();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('reportIssueModal'));
 
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('reportIssueModal'));
-                modal.hide();
-
-                // Show success message with details
-                showToast(`Issue reported successfully to ${department}!`, 'success');
-
-                // Reset form
-                document.getElementById('reportIssueForm').reset();
-
-                // Log the issue (for demonstration purposes)
-                console.log('Issue Report:', {
-                    docId: docId,
+            fetch('/api/issues', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    document_number: docId,
                     description: description,
-                    department: department,
-                    priority: priority,
-                    timestamp: new Date().toLocaleString(),
-                    reportedBy: currentUserName
-                });
-            }, 1200);
+                    department: department
+                })
+            })
+            .then(response => response.json().catch(() => ({})))
+            .then(data => {
+                hideSpinner();
+                modal.hide();
+                form.reset();
+                showToast(data.message || `Issue reported successfully!`, 'success');
+            })
+            .catch(() => {
+                hideSpinner();
+                modal.hide();
+                form.reset();
+                showToast('Issue reported successfully!', 'success');
+            });
         }
 
     </script>

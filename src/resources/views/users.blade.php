@@ -11,53 +11,7 @@
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
 </head>
 <body>
-    <nav class="sidebar">
-        <div class="sidebar-header">
-            <h4><i class="bi bi-file-earmark-text"></i> DTS</h4>
-            <small class="text-white-50">Document Tracking</small>
-        </div>
-        <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item">
-                <a class="nav-link" href="/dashboard">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/upload">
-                    <i class="bi bi-cloud-upload"></i>
-                    <span>Upload Document</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/scan">
-                    <i class="bi bi-qr-code-scan"></i>
-                    <span>Scan QR Code</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/inbox">
-                    <i class="bi bi-inbox"></i>
-                    <span>Inbox</span>
-                    <span class="badge bg-danger ms-auto">3</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/outbox">
-                    <i class="bi bi-send"></i>
-                    <span>Outbox</span>
-                </a>
-            </li>
-            @if(auth()->user()->role_id === 1)
-            <li class="nav-item">
-                <a class="nav-link active" href="/manage-users">
-                    <i class="bi bi-people"></i>
-                    <span>User Management</span>
-                </a>
-            </li>
-            @endif
-        </ul>
-    </nav>
+    @include('partials.sidebar-nav')
 
     <div class="main-content">
         <nav class="top-navbar d-flex justify-content-between align-items-center">

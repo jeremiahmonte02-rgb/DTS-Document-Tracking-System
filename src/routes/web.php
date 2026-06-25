@@ -27,17 +27,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/outbox', [App\Http\Controllers\DocumentController::class, 'outbox'])->name('outbox');
     Route::get('/api/outbox/data', [App\Http\Controllers\DocumentController::class, 'getOutboxData'])->name('api.outbox.data');
     Route::get('/document-details/{document_number}', [App\Http\Controllers\DocumentController::class, 'showDocumentDetails'])->name('document-details.show');
-    Route::post('/documents/confirm-receipt', [App\Http\Controllers\DocumentController::class, 'confirmReceipt'])->name('documents.confirm-receipt');
+    //Route::post('/documents/confirm-receipt', [App\Http\Controllers\DocumentController::class, 'confirmReceipt'])->name('documents.confirm-receipt');
     Route::post('/documents/{document_number}/receive', [App\Http\Controllers\DocumentController::class, 'receiveDocument'])->name('documents.receive');
     Route::post('/documents/{document_number}/complete', [App\Http\Controllers\DocumentController::class, 'completeDocument'])->name('documents.complete');
+    Route::post('/documents/{document_number}/reject', [App\Http\Controllers\DocumentController::class, 'rejectDocument'])->name('documents.reject');
+    Route::post('/documents/{document_number}/cancel', [App\Http\Controllers\DocumentController::class, 'cancelDocument'])->name('documents.cancel');
+    Route::post('/api/issues', [App\Http\Controllers\DocumentController::class, 'reportIssue'])->name('api.issues.report');
 });
 
-// Admin-only routes
-Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/manage-users', [UserController::class, 'index'])->name('users');
-    Route::get('/api/users/data', [UserController::class, 'getUsersData'])->name('api.users.data');
-    Route::get('/api/users/stats', [UserController::class, 'stats'])->name('api.users.stats');
-    Route::post('/api/users', [UserController::class, 'store'])->name('api.users.store');
-    Route::put('/api/users/{id}', [UserController::class, 'update'])->name('api.users.update');
-    Route::patch('/api/users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('api.users.toggle-status');
+// Admin-only routes (gated via UserPolicy)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/manage-users', [UserController::class, 'index'])->name('users')->can('viewAny', App\Models\User::class);
+    Route::get('/api/users/data', [UserController::class, 'getUsersData'])->name('api.users.data')->can('viewAny', App\Models\User::class);
+    Route::get('/api/users/stats', [UserController::class, 'stats'])->name('api.users.stats')->can('viewAny', App\Models\User::class);
+    Route::post('/api/users', [UserController::class, 'store'])->name('api.users.store')->can('create', App\Models\User::class);
+    Route::put('/api/users/{id}', [UserController::class, 'update'])->name('api.users.update')->can('update', App\Models\User::class);
+    Route::patch('/api/users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('api.users.toggle-status')->can('toggleStatus', App\Models\User::class);
 });

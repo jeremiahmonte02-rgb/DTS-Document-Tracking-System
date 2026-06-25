@@ -22,4 +22,24 @@ class Department extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function sentDocuments(): HasMany
+    {
+        return $this->hasMany(Document::class, 'sender_department_id');
+    }
+
+    public function currentDocuments(): HasMany
+    {
+        return $this->hasMany(Document::class, 'current_department_id');
+    }
+
+    public function documentRoutes(): HasMany
+    {
+        return $this->hasMany(DocumentRoute::class);
+    }
+
+    public function documentEvents(): HasMany
+    {
+        return $this->hasMany(DocumentEvent::class);
+    }
 }

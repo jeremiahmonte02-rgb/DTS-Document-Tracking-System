@@ -42,54 +42,7 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="sidebar-header">
-            <h4><i class="bi bi-file-earmark-text"></i> DTS</h4>
-            <small class="text-white-50">Document Tracking</small>
-        </div>
-        <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item">
-                <a class="nav-link" href="/dashboard">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/upload">
-                    <i class="bi bi-cloud-upload"></i>
-                    <span>Upload Document</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/scan">
-                    <i class="bi bi-qr-code-scan"></i>
-                    <span>Scan QR Code</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/inbox">
-                    <i class="bi bi-inbox"></i>
-                    <span>Inbox</span>
-                    <span class="badge bg-danger ms-auto">3</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/outbox">
-                    <i class="bi bi-send"></i>
-                    <span>Outbox</span>
-                </a>
-            </li>
-            @if(auth()->user()->role_id === 1)
-            <li class="nav-item">
-                <a class="nav-link" href="/manage-users">
-                    <i class="bi bi-people"></i>
-                    <span>User Management</span>
-                </a>
-            </li>
-            @endif
-        </ul>
-    </nav>
+    @include('partials.sidebar-nav')
 
     <!-- Main Content -->
     <div class="main-content">
@@ -105,7 +58,7 @@
                 <div class="position-relative">
                     <button class="btn btn-link position-relative">
                         <i class="bi bi-bell fs-5"></i>
-                        <span class="notification-badge">3</span>
+                        <span class="notification-badge">0</span>
                     </button>
                 </div>
                 <div class="dropdown">
@@ -191,9 +144,9 @@
 
                                             <h6 class="small fw-bold">Quick Test IDs:</h6>
                                             <div class="d-flex flex-wrap gap-2">
-                                                <button type="button" class="btn btn-xs btn-outline-secondary quick-test-btn" data-target-id="DOC-2026-0001">Test 1</button>
-                                                <button type="button" class="btn btn-xs btn-outline-secondary quick-test-btn" data-target-id="DOC-2026-0002">Test 2</button>
-                                                <button type="button" class="btn btn-xs btn-outline-secondary quick-test-btn" data-target-id="DOC-2026-0003">Test 3</button>
+                                                <button type="button" class="btn btn-xs btn-outline-secondary quick-test-btn" data-target-id="DTS-2026-0001">Test 1</button>
+                                                <button type="button" class="btn btn-xs btn-outline-secondary quick-test-btn" data-target-id="DTS-2026-0002">Test 2</button>
+                                                <button type="button" class="btn btn-xs btn-outline-secondary quick-test-btn" data-target-id="DTS-2026-0003">Test 3</button>
                                             </div>
                                         </div>
                                     </div>

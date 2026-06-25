@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         // Call your custom script to inject all departments, roles, and users!
         $this->call([
             DepartmentAndUserSeeder::class,
+            RolePermissionSeeder::class,
             DocumentTransactionSeeder::class,
         ]);
     }

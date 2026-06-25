@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const confirmBtn = document.getElementById('actionConfirmReceiptBtn');
             if (confirmBtn) {
                 confirmBtn.addEventListener('click', function() {
-                    executeReceiptTransaction(doc.id || doc.document_number);
+                    executeReceiptTransaction(doc.document_number || doc.id);
                 });
             }
 
@@ -269,23 +269,26 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * Dispatch Receipt Confirmation to server pipeline
      */
-    function executeReceiptTransaction(docId) {
+    function executeReceiptTransaction(docNumber) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-        fetch('/documents/confirm-receipt', {
+        fetch('/scan/receive', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrfToken
             },
-            body: JSON.stringify({ document_id: docId })
+            body: JSON.stringify({ document_number: docNumber })
         })
         .then(function(response) {
+            if (!response.ok) {
+                throw new Error('HTTP Error status ' + response.status);
+            }
             return response.json();
         })
         .then(function(data) {
             if (data.success) {
-                alert('Receipt successfully verified and saved to database!');
+                alert(data.message || 'Receipt successfully verified and saved to database!');
                 if (lookupInput && lookupInput.value) {
                     executeDocumentLookupQuery(lookupInput.value);
                 }
@@ -294,8 +297,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(function(err) {
-            console.error('Network execution failure:', err);
-            alert('Critical connection failure during document state modification.');
+            console.error('executeReceiptTransaction failure:', err);
+            alert('Receipt failed: ' + err.message);
         });
     }
 

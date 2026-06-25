@@ -141,6 +141,16 @@ body {
     color: #004085;
 }
 
+.stat-card.danger .stat-icon {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: #721c24;
+}
+
+.stat-card.dark .stat-icon {
+    background: linear-gradient(135deg, #434343 0%, #000000 100%);
+    color: #fff;
+}
+
 /* Status Badges */
 .badge-pending {
     background-color: #ffc107;
@@ -432,6 +442,10 @@ body {
 /* Utility Classes */
 .cursor-pointer {
     cursor: pointer;
+}
+
+.tabular-nums {
+    font-variant-numeric: tabular-nums;
 }
 
 .shadow-sm-hover:hover {

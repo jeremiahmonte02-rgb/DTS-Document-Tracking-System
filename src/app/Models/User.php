@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['name', 'email', 'password', 'department_id', 'role_id', 'status'])]
 #[Hidden(['password', 'remember_token'])]
@@ -16,27 +17,50 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    /**
-     * Get the department that the user belongs to.
-     */
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'department_id');
     }
 
-    /**
-     * Get the role assigned to the user.
-     */
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'role_id');
     }
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    public function uploadedDocuments(): HasMany
+    {
+        return $this->hasMany(Document::class, 'uploaded_by_user_id');
+    }
+
+    public function receivedRoutes(): HasMany
+    {
+        return $this->hasMany(DocumentRoute::class, 'received_by_user_id');
+    }
+
+    public function documentEvents(): HasMany
+    {
+        return $this->hasMany(DocumentEvent::class, 'user_id');
+    }
+
+    public function isAdmin(): bool
+    {
+        return (int) $this->role_id === 1;
+    }
+
+    public function isAuditor(): bool
+    {
+        return (int) $this->role_id === 3;
+    }
+
+    public function hasPermission(string $slug): bool
+    {
+        if (!$this->relationLoaded('role') && $this->role) {
+            $this->load('role.permissions');
+        }
+
+        return $this->role?->permissions?->contains('slug', $slug) ?? false;
+    }
+
     protected function casts(): array
     {
         return [

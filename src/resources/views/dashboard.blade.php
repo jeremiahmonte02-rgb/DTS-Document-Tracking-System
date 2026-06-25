@@ -16,54 +16,7 @@
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
 </head>
 <body>
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="sidebar-header">
-            <h4><i class="bi bi-file-earmark-text"></i> DTS</h4>
-            <small class="text-white-50">Document Tracking</small>
-        </div>
-        <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item">
-                <a class="nav-link" href="/dashboard">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/upload">
-                    <i class="bi bi-cloud-upload"></i>
-                    <span>Upload Document</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/scan">
-                    <i class="bi bi-qr-code-scan"></i>
-                    <span>Scan QR Code</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/inbox">
-                    <i class="bi bi-inbox"></i>
-                    <span>Inbox</span>
-                    <span class="badge bg-danger ms-auto">{{ $unreadNotificationsCount }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/outbox">
-                    <i class="bi bi-send"></i>
-                    <span>Outbox</span>
-                </a>
-            </li>
-            @if(auth()->user()->role_id === 1)
-            <li class="nav-item">
-                <a class="nav-link" href="/manage-users">
-                    <i class="bi bi-people"></i>
-                    <span>User Management</span>
-                </a>
-            </li>
-            @endif
-        </ul>
-    </nav>
+    @include('partials.sidebar-nav')
 
     <!-- Main Content -->
     <div class="main-content">
@@ -77,7 +30,7 @@
             </div>
             <div class="d-flex align-items-center gap-3">
                 <div class="position-relative">
-                    <button class="btn btn-link position-relative" onclick="showNotifications()">
+                    <button class="btn btn-link position-relative">
                         <i class="bi bi-bell fs-5"></i>
                         <span class="notification-badge">{{ $unreadNotificationsCount }}</span>
                     </button>
@@ -130,7 +83,7 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="text-muted mb-2">Total Documents</h6>
-                                    <h2 class="mb-0">{{ $totalDocuments }}</h2>
+                                    <h2 class="mb-0 tabular-nums">{{ $totalDocuments }}</h2>
                                 </div>
                                 <div class="stat-icon">
                                     <i class="bi bi-file-earmark-text"></i>
@@ -146,7 +99,7 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="text-muted mb-2">Pending Transfer</h6>
-                                    <h2 class="mb-0">{{ $pendingDocuments }}</h2>
+                                    <h2 class="mb-0 tabular-nums">{{ $pendingDocuments }}</h2>
                                 </div>
                                 <div class="stat-icon">
                                     <i class="bi bi-hourglass-split"></i>
@@ -162,7 +115,7 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="text-muted mb-2">Received Today</h6>
-                                    <h2 class="mb-0">{{ $receivedToday }}</h2>
+                                    <h2 class="mb-0 tabular-nums">{{ $receivedToday }}</h2>
                                 </div>
                                 <div class="stat-icon">
                                     <i class="bi bi-check-circle"></i>
@@ -178,10 +131,58 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="text-muted mb-2">In Transit</h6>
-                                    <h2 class="mb-0">{{ $inTransitDocuments }}</h2>
+                                    <h2 class="mb-0 tabular-nums">{{ $inTransitDocuments }}</h2>
                                 </div>
                                 <div class="stat-icon">
                                     <i class="bi bi-arrow-left-right"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-3">
+                    <div class="card stat-card dark">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted mb-2">Avg Dwell Time</h6>
+                                    <h2 class="mb-0 tabular-nums">{{ $avgDwellHours }} <small class="fs-6 text-muted">hrs</small></h2>
+                                </div>
+                                <div class="stat-icon">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-3">
+                    <div class="card stat-card {{ $overdueCount > 0 ? 'danger' : 'success' }}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted mb-2">Overdue</h6>
+                                    <h2 class="mb-0 tabular-nums">{{ $overdueCount }}</h2>
+                                </div>
+                                <div class="stat-icon">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-3">
+                    <div class="card stat-card primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted mb-2">Avg Completion</h6>
+                                    <h2 class="mb-0 tabular-nums">{{ $avgCompletionHours }} <small class="fs-6 text-muted">hrs</small></h2>
+                                </div>
+                                <div class="stat-icon">
+                                    <i class="bi bi-check2-all"></i>
                                 </div>
                             </div>
                         </div>
