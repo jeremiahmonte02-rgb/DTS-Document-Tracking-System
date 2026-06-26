@@ -260,8 +260,9 @@ class DocumentController extends Controller
     public function showDocumentDetails($document_number)
     {
         $documentModel = Document::where('document_number', $document_number)->first();
-        if ($documentModel) {
-            $this->authorize('view', $documentModel);
+        if ($documentModel && auth()->user()->cannot('view', $documentModel)) {
+            $deptName = auth()->user()->department->name ?? 'Not Assigned';
+            abort(403, 'Your department (' . $deptName . ') is not authorized to view the lifecycle operations of this file.');
         }
 
         $document = DB::table('documents')
