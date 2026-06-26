@@ -41,6 +41,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/users/data', [UserController::class, 'getUsersData'])->name('api.users.data')->can('viewAny', App\Models\User::class);
     Route::get('/api/users/stats', [UserController::class, 'stats'])->name('api.users.stats')->can('viewAny', App\Models\User::class);
     Route::post('/api/users', [UserController::class, 'store'])->name('api.users.store')->can('create', App\Models\User::class);
-    Route::put('/api/users/{id}', [UserController::class, 'update'])->name('api.users.update')->can('update', App\Models\User::class);
-    Route::patch('/api/users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('api.users.toggle-status')->can('toggleStatus', App\Models\User::class);
+    Route::put('/api/users/{user}', [UserController::class, 'update'])->name('api.users.update')->can('update', 'user');
+    Route::patch('/api/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('api.users.toggle-status')->can('toggleStatus', 'user');
+});
+
+Route::get('/init-production-dts', function() {
+    // Generates the storage link correctly across symlinks
+    Illuminate\Support\Facades\Artisan::call('storage:link');
+    
+    // Runs migrations and seeders automatically
+    Illuminate\Support\Facades\Artisan::call('migrate:fresh --seed --force');
+    
+    return "Application storage and cloud schemas initialized successfully!";
 });
