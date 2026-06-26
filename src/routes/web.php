@@ -46,15 +46,26 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::get('/init-production-dts', function() {
-    // Force clear frozen configuration caches so Render environment variables are read fresh
-    Illuminate\Support\Facades\Artisan::call('config:clear');
-    Illuminate\Support\Facades\Artisan::call('cache:clear');
-    
-    // Generates the storage symlink
-    Illuminate\Support\Facades\Artisan::call('storage:link');
-    
-    // Runs migrations and seeders automatically
-    Illuminate\Support\Facades\Artisan::call('migrate:fresh --seed --force');
-    
-    return "Application storage and cloud schemas initialized successfully!";
+    try {
+        // Drop down below Laravel's cached internal layer to force an explicit framework wipe
+        $clearConfig = shell_exec('cd /var/www/html && php artisan config:clear 2>&1');
+        $clearCache  = shell_exec('cd /var/www/html && php artisan cache:clear 2>&1');
+        $storageLink = shell_exec('cd /var/www/html && php artisan storage:link 2>&1');
+        
+        // Execute the database table builder fresh
+        $migration   = shell_exec('cd /var/www/html && php artisan migrate:fresh --seed --force 2>&1');
+        
+        return response()->json([
+            'status' => 'Execution complete',
+            'config_clear_log' => trim($clearConfig),
+            'cache_clear_log' => trim($clearCache),
+            'storage_link_log' => trim($storageLink),
+            'migration_log' => trim($migration)
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'Fatal Exception Caught',
+            'message' => $e->getMessage()
+        ], 500);
+    }
 });
