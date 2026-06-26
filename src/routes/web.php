@@ -46,7 +46,11 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::get('/init-production-dts', function() {
-    // Generates the storage link correctly across symlinks
+    // Force clear frozen configuration caches so Render environment variables are read fresh
+    Illuminate\Support\Facades\Artisan::call('config:clear');
+    Illuminate\Support\Facades\Artisan::call('cache:clear');
+    
+    // Generates the storage symlink
     Illuminate\Support\Facades\Artisan::call('storage:link');
     
     // Runs migrations and seeders automatically
