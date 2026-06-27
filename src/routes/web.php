@@ -45,27 +45,39 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/api/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('api.users.toggle-status')->can('toggleStatus', 'user');
 });
 
-Route::get('/init-production-dts', function() {
+Route::get('/init-production-dts', function () {
     try {
-        // Drop down below Laravel's cached internal layer to force an explicit framework wipe
-        $clearConfig = shell_exec('cd /var/www/html/src && php artisan config:clear 2>&1');
-        $clearCache  = shell_exec('cd /var/www/html/src && php artisan cache:clear 2>&1');
-        $storageLink = shell_exec('cd /var/www/html/src && php artisan storage:link 2>&1');
+        $configClear = Illuminate\Support\Facades\Artisan::call('config:clear');
+        $cacheClear = Illuminate\Support\Facades\Artisan::call('cache:clear');
         
-        // Execute the database table builder fresh
-        $migration   = shell_exec('cd /var/www/html/src && php artisan migrate:refresh --seed --force 2>&1');
+        // 1. Raw SQL Purge to bypass constraint blocks
+        Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
+        
+        $tables = Illuminate\Support\Facades\DB::select('SHOW TABLES');
+        $colName = 'Tables_in_' . config('database.connections.mysql.database');
+        
+        foreach ($tables as $table) {
+            $tableName = $table->$colName;
+            Illuminate\Support\Facades\DB::statement("DROP TABLE IF EXISTS `$tableName`;");
+        }
+        
+        Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
+        
+        // 2. Run clean migration and seeding
+        $migrationOut = '';
+        Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true, '--seed' => true]);
+        $migrationOut = Illuminate\Support\Facades\Artisan::output();
         
         return response()->json([
-            'status' => 'Execution complete',
-            'config_clear_log' => trim($clearConfig),
-            'cache_clear_log' => trim($clearCache),
-            'storage_link_log' => trim($storageLink),
-            'migration_log' => trim($migration)
+            'status' => 'Database successfully wiped and migrated!',
+            'migration_log' => $migrationOut
         ]);
-    } catch (\Throwable $e) {
+        
+    } catch (\Exception $e) {
         return response()->json([
-            'status' => 'Fatal Exception Caught',
-            'message' => $e->getMessage()
+            'status' => 'Error during initialization',
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
         ], 500);
     }
 });
