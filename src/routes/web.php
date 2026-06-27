@@ -47,35 +47,24 @@ Route::middleware(['auth'])->group(function () {
 
 Route::get('/init-production-dts', function () {
     try {
-        $configClear = Illuminate\Support\Facades\Artisan::call('config:clear');
-        $cacheClear = Illuminate\Support\Facades\Artisan::call('cache:clear');
+        Illuminate\Support\Facades\Artisan::call('config:clear');
+        Illuminate\Support\Facades\Artisan::call('cache:clear');
         
-        // 1. Raw SQL Purge to bypass constraint blocks
-        Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
+        // Native full structural purge across the active target connection
+        Illuminate\Support\Facades\Artisan::call('db:wipe', ['--force' => true]);
         
-        $tables = Illuminate\Support\Facades\DB::select('SHOW TABLES');
-        $colName = 'Tables_in_' . config('database.connections.mysql.database');
-        
-        foreach ($tables as $table) {
-            $tableName = $table->$colName;
-            Illuminate\Support\Facades\DB::statement("DROP TABLE IF EXISTS `$tableName`;");
-        }
-        
-        Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
-        
-        // 2. Run clean migration and seeding
-        $migrationOut = '';
+        // Completely pristine structural rebuild and database seeder routine
         Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true, '--seed' => true]);
         $migrationOut = Illuminate\Support\Facades\Artisan::output();
         
         return response()->json([
-            'status' => 'Database successfully wiped and migrated!',
+            'status' => 'Success! Remote storage structures and HanapAral / Smart Campus data pipelines fully deployed.',
             'migration_log' => $migrationOut
         ]);
         
     } catch (\Exception $e) {
         return response()->json([
-            'status' => 'Error during initialization',
+            'status' => 'Error during final synchronization sequence',
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
         ], 500);
