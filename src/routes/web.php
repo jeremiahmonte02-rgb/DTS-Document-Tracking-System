@@ -48,12 +48,12 @@ Route::middleware(['auth'])->group(function () {
 Route::get('/init-production-dts', function() {
     try {
         // Drop down below Laravel's cached internal layer to force an explicit framework wipe
-        $clearConfig = shell_exec('cd /var/www/html && php artisan config:clear 2>&1');
-        $clearCache  = shell_exec('cd /var/www/html && php artisan cache:clear 2>&1');
-        $storageLink = shell_exec('cd /var/www/html && php artisan storage:link 2>&1');
+        $clearConfig = shell_exec('cd /var/www/html/src && php artisan config:clear 2>&1');
+        $clearCache  = shell_exec('cd /var/www/html/src && php artisan cache:clear 2>&1');
+        $storageLink = shell_exec('cd /var/www/html/src && php artisan storage:link 2>&1');
         
         // Execute the database table builder fresh
-        $migration   = shell_exec('cd /var/www/html && php artisan migrate:fresh --seed --force 2>&1');
+        $migration   = shell_exec('cd /var/www/html/src && php artisan migrate:fresh --seed --force 2>&1');
         
         return response()->json([
             'status' => 'Execution complete',

@@ -284,12 +284,12 @@ This project is open-sourced software licensed under the [MIT license](https://o
 
 
 ## BUGS to be FIXED
-- after the document route completion the document does not disappear from the last departments/step's inbox
+
 - when uploading a document, when selecting the departments involve/route, a department can only be placed in order once, it must allow to add multiple instance of the same department.
 
 
 
-
+-after the document route completion the document does not disappear from the last departments/step's inbox
 - Login email textbox does not auto fill after a failed login attempt.
 - Print QR code button in successfull document upload modal does not work
 - View document details in successfull document upload modal does not work

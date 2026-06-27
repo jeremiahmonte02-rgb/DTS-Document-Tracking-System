@@ -486,7 +486,8 @@ class DocumentController extends Controller
                             ->limit(1);
                     })
                     ->whereNotNull('next_route.received_at');
-            });
+            })
+            ->whereNotIn('documents.status', ['completed', 'rejected', 'cancelled']);
 
         if ($request->filled('search')) {
             $search = $request->search;

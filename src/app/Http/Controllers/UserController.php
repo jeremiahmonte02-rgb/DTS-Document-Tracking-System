@@ -47,16 +47,15 @@ class UserController extends Controller
         return response()->json($paginatedData);
     }
 
-    public function toggleStatus($id)
+    public function toggleStatus(User $user)
     {
-        $user = User::findOrFail($id);
         $user->status = $user->status === 'active' ? 'inactive' : 'active';
         $user->save();
 
         return response()->json([
             'success' => true,
-            'new_status' => $user->status,
-            'message' => "User {$user->name} is now " . ($user->status === 'active' ? 'active' : 'inactive') . "."
+            'message' => 'User status updated successfully.',
+            'status' => $user->status
         ]);
     }
 
@@ -101,33 +100,26 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, User $user)
     {
-        $user = User::findOrFail($id);
-
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
+            'email' => 'required|email|unique:users,email,' . $user->id,
             'role_id' => 'required|exists:roles,id',
             'department_id' => 'required|exists:departments,id',
         ]);
 
-        $user->name = $validated['name'];
-        $user->email = $validated['email'];
-        $user->role_id = $validated['role_id'];
-        $user->department_id = $validated['department_id'];
+        $user->update($request->only(['name', 'email', 'department_id', 'role_id']));
 
         if ($request->filled('password')) {
             $request->validate(['password' => 'string|min:8']);
             $user->password = Hash::make($request->password);
+            $user->save();
         }
-
-        $user->save();
 
         return response()->json([
             'success' => true,
-            'message' => "User {$user->name} updated successfully.",
-            'user' => $user->fresh()->load(['role', 'department']),
+            'message' => 'Account details updated successfully.',
         ]);
     }
 }
