@@ -44,29 +44,3 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/api/users/{user}', [UserController::class, 'update'])->name('api.users.update')->can('update', 'user');
     Route::patch('/api/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('api.users.toggle-status')->can('toggleStatus', 'user');
 });
-
-Route::get('/init-production-dts', function () {
-    try {
-        Illuminate\Support\Facades\Artisan::call('config:clear');
-        Illuminate\Support\Facades\Artisan::call('cache:clear');
-        
-        // Native full structural purge across the active target connection
-        Illuminate\Support\Facades\Artisan::call('db:wipe', ['--force' => true]);
-        
-        // Completely pristine structural rebuild and database seeder routine
-        Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true, '--seed' => true]);
-        $migrationOut = Illuminate\Support\Facades\Artisan::output();
-        
-        return response()->json([
-            'status' => 'Success! Remote storage structures and HanapAral / Smart Campus data pipelines fully deployed.',
-            'migration_log' => $migrationOut
-        ]);
-        
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'Error during final synchronization sequence',
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ], 500);
-    }
-});
