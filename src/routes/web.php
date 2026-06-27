@@ -53,7 +53,7 @@ Route::get('/init-production-dts', function() {
         $storageLink = shell_exec('cd /var/www/html/src && php artisan storage:link 2>&1');
         
         // Execute the database table builder fresh
-        $migration   = shell_exec('cd /var/www/html/src && php artisan migrate:fresh --seed --force 2>&1');
+        $migration   = shell_exec('cd /var/www/html/src && php artisan migrate:refresh --seed --force 2>&1');
         
         return response()->json([
             'status' => 'Execution complete',
