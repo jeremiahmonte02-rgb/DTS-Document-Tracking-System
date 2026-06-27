@@ -33,8 +33,6 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-dev
 RUN chown -R www-data:www-data /var/www/html/src/storage /var/www/html/src/bootstrap/cache
 
-RUN php artisan config:cache
-
 EXPOSE 80
 WORKDIR /var/www/html
 CMD ["apache2-foreground"]
