@@ -63,7 +63,6 @@ class DocumentController extends Controller
         $validated = $request->validate([
             'title'        => ['required', 'string', 'max:255'],
             'documentType' => ['required', 'integer', 'exists:document_types,id'],
-            'department'   => ['required', 'integer', 'exists:departments,id'],
             'description'  => ['nullable', 'string', 'max:2000'],
             'fileUpload'   => ['required', 'file', 'mimes:pdf,docx,doc,xls,xlsx,jpg,png', 'max:20480'],
             'routes'       => ['required', 'string', 'json'],
@@ -99,7 +98,7 @@ class DocumentController extends Controller
                 'document_number'       => $documentNumber,
                 'title'                 => $validated['title'],
                 'document_type_id'      => $validated['documentType'],
-                'sender_department_id'  => $validated['department'],
+                'sender_department_id'  => $user->department_id,
                 'uploaded_by_user_id'   => $user->id,
                 'current_department_id' => $user->department_id,
                 'status'                => 'pending_transfer',
@@ -207,7 +206,7 @@ class DocumentController extends Controller
                 'documents.status',
                 'documents.created_at',
                 'document_types.name as type_name',
-                'departments.name as origin_department'
+                'departments.name as sender_department_name'
             )
             ->first();
 

@@ -99,16 +99,6 @@
                                     </div>
                                 </div>
 
-                                <div class="mb-3">
-                                    <label for="department" class="form-label">Your Department *</label>
-                                    <select class="form-select" id="department" name="department" required>
-                                        <option value="">Select your department</option>
-                                        @foreach($departments as $dept)
-                                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
                                 <div class="w-100 my-4" data-purpose="route-builder" style="font-family: 'Manrope', sans-serif;">
                                     <div class="row g-4 align-items-center">
 

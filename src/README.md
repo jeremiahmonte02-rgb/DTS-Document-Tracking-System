@@ -1,4 +1,4 @@
-t# Document Tracking System (DTS)
+# Document Tracking System (DTS)
 
 A full-stack web application for managing, routing, and tracking physical documents across organizational departments. Built on **Laravel 13** with a **MySQL** backend, DTS replaces paper-based logbooks with a digital workflow that assigns each document a unique tracking number and QR code, enabling real-time status visibility, department-to-department routing, and a complete audit trail.
 
@@ -10,20 +10,20 @@ A full-stack web application for managing, routing, and tracking physical docume
 - **Department Routing & Receipt Confirmation** — Multi-step routing: documents move through a sender-defined sequence of departments; each department scans and confirms receipt, advancing the document to the next step.
 - **Inbox / Outbox** — Department-filtered views of incoming and outgoing documents with search, type/status/date filters, and export capabilities.
 - **Dashboard Analytics** — KPI metric cards (total, pending, in-transit, received today), status distribution doughnut chart (Chart.js), documents-by-department bar chart, and a recent activity feed.
-- **User Management (Admin)** — Role-based access control (Administrator, Department User, Auditor) with user CRUD, department assignment, and active/inactive status.
-- **Full Audit Trail** — Every event (creation, scan, receipt, rejection) is timestamped and attributed to a user and department, providing an immutable history.
-- **Role-Based Authentication** — Secure login with session management, inactive account blocking, and admin-only route protection.
+- **User Management (Admin)** — Role-based access control (Administrator, Department User, Auditor) with user CRUD, department assignment, and active/inactive status toggle.
+- **Full Audit Trail** — Every event (creation, scan, receipt, rejection, completion) is timestamped and attributed to a user and department, providing an immutable history.
+- **Role-Based Authentication** — Secure login with session management, inactive account blocking, and admin-only route protection via policies.
 
 ## Tech Stack
 
 | Layer            | Technology                                                              |
 |------------------|-------------------------------------------------------------------------|
 | **Framework**    | [Laravel 13](https://laravel.com/) (PHP 8.3)                            |
-| **Database**     | MySQL 8.0 (via Docker) / SQLite (local dev fallback)                    |
+| **Database**     | MySQL 8.0 (via Docker)                                                  |
 | **Frontend**     | Bootstrap 5.3, Bootstrap Icons, Chart.js 4.4, QRCode.js, html5-qrcode  |
 | **Assets**       | Vite 8 + Laravel Vite Plugin + TailwindCSS 4 (for `welcome.blade.php`) |
-| **Auth**         | Laravel's built-in `Auth` facade with custom controllers                |
-| **Middleware**    | `EnsureUserIsAdmin` (role_id === 1)                                     |
+| **Auth**         | Custom `AuthController` with Laravel's `Auth` facade + bcrypt passwords |
+| **Authorization**| Laravel Policies (`DocumentPolicy`, `UserPolicy`) with route-level `can()` gates |
 | **Infrastructure** | Docker Compose (PHP 8.3-Apache, MySQL 8.0, phpMyAdmin)               |
 
 ## Project Structure
@@ -31,8 +31,8 @@ A full-stack web application for managing, routing, and tracking physical docume
 ```
 document-tracker/
 ├── docker-compose.yml          # PHP, MySQL, phpMyAdmin services
-├── Dockerfile                  # PHP 8.3 + Apache + Composer
-├── .gitignore
+├── Dockerfile                  # Multi-stage: node:20-alpine (assets) → php:8.3-apache
+├── .dockerignore
 └── src/                        # Laravel application root
     ├── .env.example
     ├── artisan
@@ -43,16 +43,26 @@ document-tracker/
     │
     ├── app/
     │   ├── Http/
-    │   │   ├── Controllers/
-    │   │   │   ├── AuthController.php          # Login/logout
-    │   │   │   ├── DashboardController.php     # Dashboard analytics
-    │   │   │   └── DocumentController.php      # Upload, scan, lookup, receive
-    │   │   └── Middleware/
-    │   │       └── EnsureUserIsAdmin.php        # Admin-only gate
+    │   │   └── Controllers/
+    │   │       ├── AuthController.php              # Login/logout
+    │   │       ├── DashboardController.php         # Dashboard analytics
+    │   │       ├── DocumentController.php          # Upload, scan, lookup, receive, complete, reject, cancel
+    │   │       ├── UserController.php              # Admin user CRUD + toggle-status
+    │   │       └── Controller.php
     │   ├── Models/
     │   │   ├── User.php
     │   │   ├── Role.php
-    │   │   └── Department.php
+    │   │   ├── Permission.php
+    │   │   ├── Department.php
+    │   │   ├── Document.php
+    │   │   ├── DocumentType.php
+    │   │   ├── DocumentRoute.php
+    │   │   ├── DocumentEvent.php
+    │   │   ├── DocumentFile.php
+    │   │   └── DocumentNumberSequence.php
+    │   ├── Policies/
+    │   │   ├── DocumentPolicy.php
+    │   │   └── UserPolicy.php
     │   └── Providers/
     │       └── AppServiceProvider.php
     │
@@ -72,11 +82,16 @@ document-tracker/
     │   ├── migrations/
     │   │   ├── 0001_01_01_000001_create_cache_table.php
     │   │   ├── 0001_01_01_000002_create_jobs_table.php
-    │   │   └── 2026_05_23_151257_create_dts_core_tables.php  # 20 custom tables
+    │   │   ├── 2026_05_23_151257_create_dts_core_tables.php
+    │   │   ├── 2026_06_22_125738_add_completed_status_to_documents_table.php
+    │   │   ├── 2026_06_25_000001_create_document_number_sequences_table.php
+    │   │   ├── 2026_06_25_000003_add_dts_performance_indexes.php
+    │   │   └── 2026_06_25_000004_add_slug_to_permissions_table.php
     │   └── seeders/
     │       ├── DatabaseSeeder.php
-    │       ├── DepartmentAndUserSeeder.php        # 12 depts, 3 roles, 10 users
-    │       └── DocumentTransactionSeeder.php       # 20 sample documents + events
+    │       ├── DepartmentAndUserSeeder.php       # 12 depts, 10 users
+    │       ├── RolePermissionSeeder.php           # 3 roles, 9 permissions
+    │       └── DocumentTransactionSeeder.php      # 4 doc types, 20 sample documents
     │
     ├── public/
     │   ├── index.php
@@ -103,7 +118,9 @@ document-tracker/
     │   │   ├── users.blade.php
     │   │   ├── welcome.blade.php
     │   │   └── partials/
-    │   │       └── auth-context.blade.php
+    │   │       ├── sidebar-nav.blade.php
+    │   │       ├── auth-context.blade.php
+    │   │       └── access-denied-modal.blade.php
     │   ├── css/app.css
     │   └── js/app.js
     │
@@ -122,6 +139,14 @@ The core migration (`2026_05_23_151257_create_dts_core_tables.php`) creates:
 
 `departments`, `roles`, `permissions`, `role_permissions`, `users`, `document_types`, `documents`, `document_files`, `document_routes`, `document_events`, `document_qr_codes`, `document_receipts`, `document_scans`, `document_issues`, `document_update_requests`, `notifications`, `document_shares`, `document_views`, `export_logs`, `sessions`
 
+### Document Status Lifecycle
+
+```
+pending_transfer → in_transit → received → completed
+                                         → rejected
+                                         → cancelled
+```
+
 ## Installation & Getting Started
 
 ### Prerequisites
@@ -129,7 +154,7 @@ The core migration (`2026_05_23_151257_create_dts_core_tables.php`) creates:
 - PHP 8.3+
 - Composer
 - Node.js 20+ & npm
-- MySQL 8.0 (or SQLite for development)
+- MySQL 8.0
 - Docker & Docker Compose (optional, for containerized setup)
 
 ### Option A — Local Development
@@ -146,8 +171,7 @@ composer install
 cp .env.example .env
 php artisan key:generate
 
-# 4. Edit .env for MySQL (default: SQLite)
-#    Uncomment and set:
+# 4. Edit .env for MySQL
 #   DB_CONNECTION=mysql
 #   DB_HOST=127.0.0.1
 #   DB_PORT=3306
@@ -166,13 +190,11 @@ php artisan db:seed
 npm install
 npm run build
 
-# 8. Start the dev server (runs server, queue listener, logs, Vite concurrently)
-npm run dev
-# — OR start only the server —
+# 8. Start the dev server
 php artisan serve
 ```
 
-### Option B — Docker (Recommended)
+### Option B — Docker
 
 ```bash
 # 1. Clone and enter the project
@@ -182,26 +204,30 @@ cd document-tracker
 # 2. Start all services (app, mysql, phpmyadmin)
 docker compose up -d
 
-# 3. Install dependencies & bootstrap the application
-docker compose exec app composer install
-docker compose exec app cp .env.example .env
-docker compose exec app php artisan key:generate
+# 3. Enter the app container
+docker compose exec app bash
 
-# 4. Configure .env for Docker MySQL:
-#    DB_CONNECTION=mysql
-#    DB_HOST=db
-#    DB_PORT=3306
-#    DB_DATABASE=testdb
-#    DB_USERNAME=user
-#    DB_PASSWORD=pass
+# 4. Inside the container, run:
+cd src
+composer install
+cp .env.example .env
+php artisan key:generate
 
-# 5. Run migrations and seeders
-docker compose exec app php artisan migrate
-docker compose exec app php artisan db:seed
+# 5. Configure .env for Docker MySQL:
+#   DB_CONNECTION=mysql
+#   DB_HOST=db
+#   DB_PORT=3306
+#   DB_DATABASE=testdb
+#   DB_USERNAME=user
+#   DB_PASSWORD=pass
 
-# 6. Build front-end assets
-docker compose exec app npm install
-docker compose exec app npm run build
+# 6. Run migrations and seeders
+php artisan migrate
+php artisan db:seed
+
+# 7. Build front-end assets
+npm install
+npm run build
 ```
 
 The app is now available at **http://localhost:8082** and phpMyAdmin at **http://localhost:8081**.
@@ -243,27 +269,41 @@ All routes are defined in `routes/web.php`.
 | GET    | `/upload`                      | `documents.create`      | `DocumentController@create`           |
 | POST   | `/upload`                      | `documents.store`       | `DocumentController@store`            |
 | GET    | `/scan`                        | `scan`                  | `DocumentController@showScanPage`     |
-| GET    | `/scan/lookup?document_number=`| `scan.lookup`           | `DocumentController@lookupDocument`   |
+| GET    | `/scan/lookup`                 | `scan.lookup`           | `DocumentController@lookupDocument`   |
 | POST   | `/scan/receive`                | `scan.receive`          | `DocumentController@receiveDocument`  |
-| GET    | `/inbox`                       | `inbox`                 | `view('inbox')`                       |
-| GET    | `/outbox`                      | `outbox`                | `view('outbox')`                      |
+| GET    | `/inbox`                       | `inbox`                 | `DocumentController@inbox`            |
+| GET    | `/api/inbox/data`              | `api.inbox.data`        | `DocumentController@getInboxData`     |
+| GET    | `/outbox`                      | `outbox`                | `DocumentController@outbox`           |
+| GET    | `/api/outbox/data`             | `api.outbox.data`       | `DocumentController@getOutboxData`    |
 | GET    | `/document-details/{number}`   | `document-details.show` | `DocumentController@showDocumentDetails` |
-| POST   | `/documents/confirm-receipt`   | `documents.confirm-receipt` | `DocumentController@confirmReceipt` |
+| POST   | `/documents/{number}/receive`  | `documents.receive`     | `DocumentController@receiveDocument`  |
+| POST   | `/documents/{number}/complete` | `documents.complete`    | `DocumentController@completeDocument` |
+| POST   | `/documents/{number}/reject`   | `documents.reject`      | `DocumentController@rejectDocument`   |
+| POST   | `/documents/{number}/cancel`   | `documents.cancel`      | `DocumentController@cancelDocument`   |
+| POST   | `/api/issues`                  | `api.issues.report`     | `DocumentController@reportIssue`      |
 
-### Admin Only (`auth` + `admin` middleware)
+### Admin Only (`can:viewAny User` gate)
 
-| Method | URI     | Name    | View           |
-|--------|---------|---------|----------------|
-| GET    | `/users`| `users` | `view('users')`|
+| Method | URI                            | Name                    | Controller Action                     |
+|--------|--------------------------------|-------------------------|---------------------------------------|
+| GET    | `/manage-users`                | `users`                 | `UserController@index`                |
+| GET    | `/api/users/data`              | `api.users.data`        | `UserController@getUsersData`         |
+| GET    | `/api/users/stats`             | `api.users.stats`       | `UserController@stats`                |
+| POST   | `/api/users`                   | `api.users.store`       | `UserController@store`                |
+| PUT    | `/api/users/{user}`            | `api.users.update`      | `UserController@update`               |
+| PATCH  | `/api/users/{user}/toggle-status` | `api.users.toggle-status` | `UserController@toggleStatus`      |
 
 ### Key AJAX Endpoints (used by front-end JS)
 
 | Endpoint              | Payload                                                         | Response                     |
 |-----------------------|-----------------------------------------------------------------|------------------------------|
-| `POST /upload`        | `title, documentType, department, description, fileUpload, routes (JSON string)` | `{ success, message, document_number }` |
+| `POST /upload`        | `title, documentType, description, fileUpload, routes (JSON string)` | `{ success, message, document_number }` |
 | `GET /scan/lookup`    | `document_number`                                               | `{ success, document, routes, events }` |
 | `POST /scan/receive`  | `document_number, note`                                         | `{ success, message }`      |
-| `POST /documents/confirm-receipt` | `document_id`                                        | `{ success, message }`      |
+| `POST /documents/{number}/receive` | `note`                                                  | `{ success, message }`      |
+| `POST /documents/{number}/complete` | —                                                      | `{ success, message }`      |
+| `POST /documents/{number}/reject` | `reason`                                                   | `{ success, message }`      |
+| `POST /documents/{number}/cancel` | —                                                       | `{ success, message }`      |
 
 ## Front-End Assets
 
@@ -277,25 +317,16 @@ All routes are defined in `routes/web.php`.
 | `public/js/modules/scan.js`       | QR scanner (html5-qrcode), manual lookup, receipt flow |
 | `public/js/modules/login.js`      | Login form password toggle       |
 
+## Known Issues
+
+- Route builder does not allow adding the same department multiple times in the routing sequence.
+- Login email field does not retain value after a failed login attempt.
+- Print QR code button in successful upload modal does not work.
+- View document details button in successful upload modal does not work.
+- Print QR code button in document details screen prints the entire page instead of only the QR code.
+- Current department field in document-details screen does not reflect the document's actual location during transit.
+- After a document reaches `received` status (route complete), viewing full details does not show the completion date.
+
 ## License
 
 This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
-
-
-## BUGS to be FIXED
-
-- when uploading a document, when selecting the departments involve/route, a department can only be placed in order once, it must allow to add multiple instance of the same department.
-
-
-
--after the document route completion the document does not disappear from the last departments/step's inbox
-- Login email textbox does not auto fill after a failed login attempt.
-- Print QR code button in successfull document upload modal does not work
-- View document details in successfull document upload modal does not work
-- Print QR code button in document details screen prints the entire screen instead of only printing the QR code 
-- Current department property in document-details screen does not reflect/change during document travel(does not show true location)
-- After a document is done its process(status "Received") or the route is complete, viewing its full details does not show its completed date. 
-
-
-

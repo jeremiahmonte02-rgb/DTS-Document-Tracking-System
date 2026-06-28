@@ -194,12 +194,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function populateFormFieldsFromTemplate(doc) {
         const titleEl = document.getElementById('title');
         const typeEl = document.getElementById('documentType');
-        const deptEl = document.getElementById('department');
         const descEl = document.getElementById('description');
 
         if (titleEl) titleEl.value = doc.title || '';
         if (typeEl) typeEl.value = doc.document_type_id || '';
-        if (deptEl) deptEl.value = doc.sender_department_id || '';
         if (descEl) descEl.value = doc.description || '';
 
         wipeRouteChainCanvas();
