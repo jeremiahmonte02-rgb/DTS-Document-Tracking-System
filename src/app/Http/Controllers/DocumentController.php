@@ -205,7 +205,7 @@ class DocumentController extends Controller
                 'documents.description',
                 'documents.status',
                 'documents.created_at',
-                'document_types.name as type_name',
+                'document_types.name as document_type_name',
                 'departments.name as sender_department_name'
             )
             ->first();
@@ -278,7 +278,7 @@ class DocumentController extends Controller
                 'documents.status',
                 'documents.created_at as upload_date',
                 'documents.completed_at',
-                'document_types.name as type_name',
+                'document_types.name as document_type_name',
                 'sender_dept.name as origin_department',
                 'current_dept.id as current_department_id',
                 'current_dept.name as current_department',
@@ -465,7 +465,7 @@ class DocumentController extends Controller
                 'documents.id as doc_id',
                 'documents.document_number',
                 'documents.title',
-                'document_types.name as type_name',
+                'document_types.name as document_type_name',
                 'sender_dept.name as sender_name',
                 'current_dept.name as current_department',
                 'documents.created_at as date_uploaded',
@@ -545,7 +545,7 @@ class DocumentController extends Controller
                 'documents.id as doc_id',
                 'documents.document_number',
                 'documents.title',
-                'document_types.name as type_name',
+                'document_types.name as document_type_name',
                 'current_dept.name as current_department',
                 'current_dept.name as current_location',
                 'documents.created_at as date_uploaded',

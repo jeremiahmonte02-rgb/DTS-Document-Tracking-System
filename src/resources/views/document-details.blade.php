@@ -102,7 +102,7 @@
                                     <strong class="text-muted">Document Type:</strong>
                                 </div>
                                 <div class="col-md-8">
-                                    <span id="docType">{{ $document->type_name }}</span>
+                                    <span id="docType">{{ $document->document_type_name }}</span>
                                 </div>
                             </div>
                             <div class="row mb-3">
