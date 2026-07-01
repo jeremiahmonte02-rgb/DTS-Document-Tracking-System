@@ -232,6 +232,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function executeMultipartFormUpload(event) {
         event.preventDefault();
 
+        const submitBtn = uploadForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Uploading...';
+        }
+
         if (!routesHiddenInput || !routesHiddenInput.value || JSON.parse(routesHiddenInput.value).length === 0) {
             alert('Validation Denied: You must attach at least one department destination routing step to this tracking sequence.');
             return;
@@ -315,6 +321,10 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .finally(() => {
             hideLoadingSpinner();
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-cloud-upload"></i> Upload Document';
+            }
         });
     }
 
