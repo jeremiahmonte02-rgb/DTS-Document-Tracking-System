@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuditorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Api\DocumentTypePolicyController;
 
 // Public Guest Routes
 Route::middleware('guest')->group(function () {
@@ -34,6 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/documents/{document_number}/reject', [App\Http\Controllers\DocumentController::class, 'rejectDocument'])->name('documents.reject');
     Route::post('/documents/{document_number}/cancel', [App\Http\Controllers\DocumentController::class, 'cancelDocument'])->name('documents.cancel');
     Route::post('/api/issues', [App\Http\Controllers\DocumentController::class, 'reportIssue'])->name('api.issues.report');
+    Route::get('/api/document-types/{id}/policy', [DocumentTypePolicyController::class, 'show'])->name('api.document-types.policy');
 });
 
 // Admin-only routes (gated via UserPolicy)
@@ -61,4 +63,8 @@ Route::middleware(['auth'])->group(function () {
     // Department Details & Analytics
     Route::get('/audit/departments/{id}', [AuditorController::class, 'departmentDetails'])->name('audit.departments.details');
     Route::get('/api/audit/departments/{id}/data', [AuditorController::class, 'getDepartmentDetailsData'])->name('api.audit.departments.details.data');
+
+    // Document Type Routing Policies
+    Route::get('/audit/policies', [AuditorController::class, 'indexPolicies'])->name('audit.policies');
+    Route::post('/audit/policies', [AuditorController::class, 'storePolicy'])->name('audit.policies.store');
 });

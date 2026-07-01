@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Department;
 use App\Models\Document;
 use App\Models\DocumentEvent;
+use App\Models\DocumentRoutingPolicy;
+use App\Models\DocumentType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -363,5 +365,42 @@ class AuditorController extends Controller
                 ];
             }),
         ]);
+    }
+
+    public function indexPolicies()
+    {
+        if (!auth()->user() || !auth()->user()->isAuditor()) {
+            abort(403, 'Unauthorized access to the Audit Portal.');
+        }
+
+        $documentTypes = DocumentType::with('routingPolicy')->get();
+        $departments = Department::where('is_active', true)->orderBy('name')->get();
+
+        return view('audit.document-type-policies', compact('documentTypes', 'departments'));
+    }
+
+    public function storePolicy(Request $request)
+    {
+        if (!auth()->user() || !auth()->user()->isAuditor()) {
+            abort(403, 'Unauthorized access to the Audit Portal.');
+        }
+
+        $validated = $request->validate([
+            'document_type_id' => ['required', 'integer', 'exists:document_types,id'],
+            'is_immutable'     => ['required', 'boolean'],
+            'predefined_route' => ['nullable', 'string', 'json'],
+        ]);
+
+        $routeArray = $validated['predefined_route'] ? json_decode($validated['predefined_route'], true) : null;
+
+        DocumentRoutingPolicy::updateOrCreate(
+            ['document_type_id' => $validated['document_type_id']],
+            [
+                'is_immutable'     => $validated['is_immutable'],
+                'predefined_route' => $routeArray,
+            ]
+        );
+
+        return redirect()->back()->with('success', 'Routing policy updated successfully.');
     }
 }

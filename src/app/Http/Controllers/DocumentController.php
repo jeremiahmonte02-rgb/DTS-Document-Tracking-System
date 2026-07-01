@@ -68,6 +68,29 @@ class DocumentController extends Controller
             'routes'       => ['required', 'string', 'json'],
         ]);
 
+        $policy = \App\Models\DocumentRoutingPolicy::where('document_type_id', $validated['documentType'])->first();
+
+        if ($policy && $policy->is_immutable) {
+            $submittedRoutes = json_decode($validated['routes'], true) ?? [];
+            $predefinedRoutes = $policy->predefined_route ?? [];
+
+            if (count($submittedRoutes) !== count($predefinedRoutes)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'routes' => ['The provided routing sequence length does not match the enforced policy.']
+                ]);
+            }
+
+            foreach ($predefinedRoutes as $index => $expectedStep) {
+                $submittedStep = $submittedRoutes[$index] ?? null;
+
+                if (!$submittedStep || (int)$submittedStep['department_id'] !== (int)$expectedStep['department_id']) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'routes' => ["Step " . ($index + 1) . " must be routed to the designated policy department."]
+                    ]);
+                }
+            }
+        }
+
         $this->authorize('create', Document::class);
 
         $user = auth()->user();

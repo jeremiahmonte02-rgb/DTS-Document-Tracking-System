@@ -23,6 +23,12 @@
                     <span>Department Management</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('audit.policies') }}">
+                    <i class="bi bi-diagram-3"></i>
+                    <span>Routing Policies</span>
+                </a>
+            </li>
         @else
             <li class="nav-item">
                 <a class="nav-link" href="/dashboard">

@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const routeListContainer = document.getElementById('routeList');
     const routesHiddenInput = document.getElementById('routesInput');
     const documentDropdownSelect = document.getElementById('documentSelect');
+    const documentTypeSelect = document.getElementById('documentType');
     const doneQrBtn = document.getElementById('doneQrBtn');
 
     if (!uploadForm) return;
@@ -81,6 +82,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 const docId = this.value;
                 const matchedDoc = historicalDocumentsCollection.find(d => String(d.id) === String(docId));
                 if (matchedDoc) populateFormFieldsFromTemplate(matchedDoc);
+            });
+        }
+
+        if (documentTypeSelect) {
+            documentTypeSelect.addEventListener('change', async function() {
+                wipeRouteChainCanvas();
+
+                const typeId = this.value;
+                if (!typeId) {
+                    applyImmutableLockState(false);
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/document-types/${typeId}/policy`);
+                    if (!response.ok) throw new Error('Fetch failed');
+                    const data = await response.json();
+
+                    if (data.has_policy && data.predefined_route && data.predefined_route.length > 0) {
+                        wipeRouteChainCanvas();
+                        data.predefined_route.forEach(step => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-light shadow-2xs mb-1 rounded border';
+                            li.setAttribute('data-dept-id', step.department_id);
+                            li.innerHTML = `
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-primary index-counter-badge me-2">0</span>
+                                    <span class="text-dark font-medium font-mono">${escapeHtml(step.department_name || 'Department')}</span>
+                                </div>
+                                <div class="btn-group shadow-3xs" role="group">
+                                    <button type="button" class="btn btn-white btn-xs move-up-btn" title="Move Up"><i class="bi bi-arrow-up"></i></button>
+                                    <button type="button" class="btn btn-white btn-xs move-down-btn" title="Move Down"><i class="bi bi-arrow-down"></i></button>
+                                    <button type="button" class="btn btn-danger btn-xs remove-step-btn" title="Remove"><i class="bi bi-trash"></i></button>
+                                </div>
+                            `;
+                            routeListContainer.appendChild(li);
+                        });
+                        synchronizeSerializedRouteInputs();
+                        applyImmutableLockState(data.is_immutable === true);
+                    } else {
+                        applyImmutableLockState(false);
+                    }
+                } catch (err) {
+                    console.warn('[Upload Module] Policy fetch failed, falling back to editable route state.', err);
+                    applyImmutableLockState(false);
+                }
             });
         }
 
@@ -177,6 +224,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         routesHiddenInput.value = JSON.stringify(serializedDataArr);
+    }
+
+    function applyImmutableLockState(isImmutable) {
+        const deptPool = document.getElementById('visual-dept-pool');
+        const policyNotice = document.getElementById('immutablePolicyNotice');
+        if (deptPool) deptPool.style.display = isImmutable ? 'none' : '';
+        if (policyNotice) policyNotice.classList.toggle('d-none', !isImmutable);
+        if (addToRouteBtn) addToRouteBtn.style.display = isImmutable ? 'none' : '';
+        if (clearRouteBtn) clearRouteBtn.style.display = isImmutable ? 'none' : '';
+
+        if (routeListContainer) {
+            routeListContainer.querySelectorAll('.move-up-btn, .move-down-btn, .remove-step-btn').forEach(btn => {
+                btn.style.display = isImmutable ? 'none' : '';
+            });
+        }
     }
 
     function populateTemplatesDropdown() {

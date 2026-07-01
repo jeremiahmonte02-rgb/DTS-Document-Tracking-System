@@ -104,7 +104,7 @@
 
                                         <div class="col-md-5">
                                             <label class="form-label text-secondary fw-semibold mb-2" style="font-size: 0.875rem;">Receiver Departments (ordered)</label>
-                                            <div class="border rounded-3 bg-white shadow-sm" style="border-color: #d1d5db !important; height: 240px; overflow: hidden;">
+                                            <div class="border rounded-3 bg-white shadow-sm" style="border-color: #d1d5db !important; height: 240px; overflow: hidden; position: relative;">
                                                 <div class="w-100 h-100 p-1" style="overflow-x: auto; overflow-y: auto;">
 
                                                     <ul class="list-group list-group-flush" id="visual-dept-pool" style="min-width: 360px; font-size: 0.875rem;">
@@ -126,6 +126,14 @@
                                                             <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="IT Department">IT Department</li>
                                                         @endif
                                                     </ul>
+
+                                                    <div id="immutablePolicyNotice" class="d-none my-auto p-4 text-center d-flex flex-column align-items-center justify-content-center w-100 h-100">
+                                                        <i class="bi bi-shield-lock text-danger mb-2" style="font-size: 1.75rem;"></i>
+                                                        <h6 class="fw-bold text-dark mb-1" style="font-family: 'Satoshi', sans-serif;">Enforced Routing Policy</h6>
+                                                        <p class="text-muted small mb-0 px-2" style="font-size: 0.85rem;">
+                                                            The workflow pathway for this document type has been strictly locked by the system Auditor to ensure organizational compliance.
+                                                        </p>
+                                                    </div>
 
                                                 </div>
                                             </div>

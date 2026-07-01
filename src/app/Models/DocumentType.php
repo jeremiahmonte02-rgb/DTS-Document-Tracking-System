@@ -22,4 +22,9 @@ class DocumentType extends Model
     {
         return $this->hasMany(Document::class);
     }
+
+    public function routingPolicy()
+    {
+        return $this->hasOne(DocumentRoutingPolicy::class, 'document_type_id');
+    }
 }
