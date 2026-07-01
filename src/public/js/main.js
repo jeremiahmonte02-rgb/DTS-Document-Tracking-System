@@ -5,6 +5,21 @@
 document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     highlightActiveNav();
+
+    // Global navigation interceptor to mitigate multi-click latency drops
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('a[href]');
+        if (link &&
+            link.hostname === window.location.hostname &&
+            !link.hasAttribute('data-no-spinner') &&
+            link.getAttribute('href') !== '#' &&
+            !link.getAttribute('href').startsWith('#')
+        ) {
+            if (typeof showSpinner === 'function') {
+                showSpinner();
+            }
+        }
+    });
 });
 
 // Setup event listeners

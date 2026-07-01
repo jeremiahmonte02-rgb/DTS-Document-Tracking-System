@@ -55,7 +55,7 @@
                         <p class="text-sm text-gray-500">Secure Document Management</p>
                     </div>
 
-                    <form method="POST" action="{{ route('login.submit') }}" autocomplete="on" class="px-12 pb-12 space-y-6">
+                    <form method="POST" action="{{ route('login.submit') }}" autocomplete="on" class="px-12 pb-12 space-y-6" onsubmit="let btn = this.querySelector('button[type=submit]'); btn.disabled = true; btn.innerHTML = '<span class=\'flex items-center justify-center gap-2\'><span class=\'spinner-border spinner-border-sm\' role=\'status\' aria-hidden=\'true\'></span> Signing In...</span>';">
                         @csrf
 
                         @if ($errors->any())
