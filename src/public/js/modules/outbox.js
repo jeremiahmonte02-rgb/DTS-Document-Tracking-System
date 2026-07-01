@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <tr data-doc-number="${doc.document_number}">
                     <td class="font-monospace fw-bold text-primary">${doc.document_number}</td>
                     <td class="fw-semibold">${doc.title}</td>
-                    <td><span class="badge bg-light text-dark border">${doc.type_name}</span></td>
+                    <td><span class="badge bg-light text-dark border">${doc.document_type_name}</span></td>
                     <td class="text-muted">${doc.current_department}</td>
                     <td><span class="text-secondary fw-medium">${doc.current_location}</span></td>
                     <td>${doc.date_sent_formatted}</td>

@@ -233,6 +233,7 @@ class DocumentController extends Controller
             ->join('users', 'document_events.user_id', '=', 'users.id')
             ->join('departments', 'document_events.department_id', '=', 'departments.id')
             ->where('document_id', $document->id)
+            ->where('event_type', '!=', 'route_defined')
             ->orderBy('created_at', 'asc')
             ->select(
                 'document_events.event_label',
@@ -306,7 +307,8 @@ class DocumentController extends Controller
             ->join('users', 'document_events.user_id', '=', 'users.id')
             ->join('departments', 'document_events.department_id', '=', 'departments.id')
             ->where('document_id', $document->id)
-            ->orderBy('created_at', 'desc')
+            ->where('event_type', '!=', 'route_defined')
+            ->orderBy('created_at', 'asc')
             ->select(
                 'document_events.event_label',
                 'document_events.note',
@@ -315,11 +317,20 @@ class DocumentController extends Controller
                 'users.name as processed_by_user',
                 'departments.name as execution_department'
             )
-            ->get()
-            ->map(function ($event) {
-                $event->formatted_date = Carbon::parse($event->created_at)->format('M d, Y h:i A');
-                return $event;
-            });
+            ->get();
+
+        $events->transform(function ($event, $i) use ($events) {
+            $event->formatted_date = Carbon::parse($event->created_at)->format('M d, Y h:i A');
+            if (isset($events[$i + 1])) {
+                $event->processing_time = Carbon::parse($events[$i + 1]->created_at)
+                    ->diffForHumans(Carbon::parse($event->created_at), \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2);
+            } else {
+                $event->processing_time = null;
+            }
+            return $event;
+        });
+
+        $events = $events->reverse();
 
         return view('document-details', compact('document', 'routes', 'events'));
     }

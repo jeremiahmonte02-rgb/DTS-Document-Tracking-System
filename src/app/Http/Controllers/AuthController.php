@@ -45,7 +45,11 @@ class AuthController extends Controller
             // 4. Securely regenerate the session identifier string
             $request->session()->regenerate();
 
-            // 5. Safely redirect to your dashboard landing page
+            // 5. Role-aware landing page routing
+            if ($user->isAuditor()) {
+                return redirect()->route('audit.dashboard');
+            }
+
             return redirect()->intended(route('dashboard'));
         }
 

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AuditorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 
@@ -43,4 +44,21 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/api/users', [UserController::class, 'store'])->name('api.users.store')->can('create', App\Models\User::class);
     Route::put('/api/users/{user}', [UserController::class, 'update'])->name('api.users.update')->can('update', 'user');
     Route::patch('/api/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('api.users.toggle-status')->can('toggleStatus', 'user');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/audit', [AuditorController::class, 'dashboard'])->name('audit.dashboard');
+    Route::get('/audit/documents', [AuditorController::class, 'documents'])->name('audit.documents');
+    Route::get('/api/audit/documents/data', [AuditorController::class, 'getDocumentData'])->name('api.audit.documents.data');
+
+    // Department Management
+    Route::get('/audit/departments', [AuditorController::class, 'departments'])->name('audit.departments');
+    Route::get('/api/audit/departments/data', [AuditorController::class, 'getDepartmentsData'])->name('api.audit.departments.data');
+    Route::post('/api/audit/departments', [AuditorController::class, 'storeDepartment'])->name('api.audit.departments.store');
+    Route::put('/api/audit/departments/{id}', [AuditorController::class, 'updateDepartment'])->name('api.audit.departments.update');
+    Route::patch('/api/audit/departments/{id}/toggle', [AuditorController::class, 'toggleDepartment'])->name('api.audit.departments.toggle');
+
+    // Department Details & Analytics
+    Route::get('/audit/departments/{id}', [AuditorController::class, 'departmentDetails'])->name('audit.departments.details');
+    Route::get('/api/audit/departments/{id}/data', [AuditorController::class, 'getDepartmentDetailsData'])->name('api.audit.departments.details.data');
 });

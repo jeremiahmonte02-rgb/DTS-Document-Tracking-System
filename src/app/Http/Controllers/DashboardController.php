@@ -62,6 +62,7 @@ class DashboardController extends Controller
         $activityQuery = DB::table('document_events')
             ->join('documents', 'document_events.document_id', '=', 'documents.id')
             ->join('users', 'document_events.user_id', '=', 'users.id')
+            ->where('event_type', '!=', 'route_defined')
             ->select(
                 'document_events.event_label',
                 'document_events.note',

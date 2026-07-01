@@ -222,7 +222,7 @@
                                 @forelse($events as $event)
                                 <div class="timeline-item border-start ps-3 pb-3 position-relative">
                                     <span class="position-absolute start-0 top-0 translate-middle-x badge rounded-circle bg-primary p-1" style="margin-left:-1px; margin-top:4px;"><span class="visually-hidden">.</span></span>
-                                    <div class="text-xxs text-muted font-mono tabular-nums">{{ $event->formatted_date }}</div>
+                                    <div class="text-xxs text-muted font-mono tabular-nums">{{ $event->formatted_date }}@if ($event->processing_time)<span class="text-muted opacity-75 fw-semibold"> · Processing Time: {{ $event->processing_time }}</span>@endif</div>
                                     <div class="text-xs font-semibold text-dark mt-0.5">{{ $event->event_label }} - <span class="text-primary font-normal">{{ $event->execution_department }}</span></div>
                                     <p class="text-muted text-xxs mb-0 mt-0.5 bg-light p-1 rounded border">Note: {{ $event->note ?? 'No transaction notes added.' }} <br><span class="text-dark font-medium">By: {{ $event->processed_by_user }}</span></p>
                                 </div>

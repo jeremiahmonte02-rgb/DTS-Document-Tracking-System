@@ -255,7 +255,7 @@
                     <form id="add-user-form">
                         <div class="mb-3">
                             <label for="input-name" class="form-label">Full Name *</label>
-                            <input type="text" class="form-control" id="input-name" name="name" required>
+                            <input type="text" class="form-control" id="input-name" name="name" placeholder="Given Name, Surname" required>
                         </div>
                         <div class="mb-3">
                             <label for="input-email" class="form-label">Email Address *</label>

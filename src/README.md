@@ -287,6 +287,8 @@ This project is open-sourced software licensed under the [MIT license](https://o
 
 - when uploading a document, when selecting the departments involve/route, a department can only be placed in order once, it must allow to add multiple instance of the same department.
 - Notification count always visible even the count says zero or no inbox notification - Must only be visible when notification is 1 or more.
+- add a loading spinner for all data fetch actions/buttons
+- scan screen receipt reflects the wrong document type
 
 
 - automate the senders deparment id on upload
