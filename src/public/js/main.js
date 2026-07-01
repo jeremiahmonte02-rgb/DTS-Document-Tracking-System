@@ -170,6 +170,9 @@ function showSpinner() {
         document.body.appendChild(spinner);
     }
     spinner.style.display = 'flex';
+
+    // Force a synchronous layout reflow to flush style mutations before browser navigation drops the frame
+    void spinner.offsetHeight;
 }
 
 // Hide loading spinner
