@@ -398,6 +398,7 @@
     <!-- Custom JS -->
     @include('partials.auth-context')
 
+    <script src="{{ asset('js/main.js') }}"></script>
     <script src="{{ asset('js/modules/upload.js') }}?v={{ filemtime(public_path('js/modules/upload.js')) }}"></script>
 </body>
 </html>

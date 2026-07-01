@@ -315,6 +315,7 @@
     <!-- Auth Context -->
     @include('partials.auth-context')
     
+    <script src="{{ asset('js/main.js') }}"></script>
     <script src="{{ asset('js/modules/dashboard.js') }}"></script>
 </body>
 </html>

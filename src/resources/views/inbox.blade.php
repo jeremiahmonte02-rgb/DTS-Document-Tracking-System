@@ -198,6 +198,7 @@
 
     <!-- Custom JS -->
     @include('partials.auth-context')
+    <script src="{{ asset('js/main.js') }}"></script>
     <script src="{{ asset('js/modules/inbox.js') }}?v={{ filemtime(public_path('js/modules/inbox.js')) }}"></script>
 
 </body>
