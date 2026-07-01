@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Department;
 use App\Models\DocumentType;
 use Illuminate\Http\JsonResponse;
 
@@ -28,11 +29,21 @@ class DocumentTypePolicyController extends Controller
             ]);
         }
 
+        $routeSteps = $policy->predefined_route ?? [];
+
+        $hydratedRoute = collect($routeSteps)->map(function ($step) {
+            $department = Department::find($step['department_id']);
+            return [
+                'department_id'   => (int)$step['department_id'],
+                'department_name' => $department ? $department->name : 'Unknown Department',
+            ];
+        });
+
         return response()->json([
             'has_policy'         => true,
             'document_type_name' => $documentType->name,
             'is_immutable'       => (bool)$policy->is_immutable,
-            'predefined_route'   => $policy->predefined_route ?? []
+            'predefined_route'   => $hydratedRoute
         ]);
     }
 }
