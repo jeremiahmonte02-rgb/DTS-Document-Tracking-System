@@ -475,9 +475,29 @@
             </div>
         </nav>
 
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show mx-4 mt-3" role="alert">
+                <i class="bi bi-check-circle me-2"></i> {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show mx-4 mt-3" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i> <strong>Form Validation Failed:</strong>
+                <ul class="mb-0 mt-1">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
         <div class="container-fluid p-4" id="dept-details-wrapper"
              data-fetch-url="{{ route('api.audit.departments.details.data', $department->id) }}"
-             data-department-id="{{ $department->id }}">
+             data-department-id="{{ $department->id }}"
+             data-document-types="{{ json_encode($documentTypes->map(fn($dt) => ['id' => $dt->id, 'name' => $dt->name, 'code' => $dt->code])) }}">
 
             <div class="page-header">
                 <div class="breadcrumb-links">
@@ -599,6 +619,12 @@
                 </div>
             </div>
 
+            <div class="d-flex justify-content-end mb-3">
+                <button type="button" class="btn" style="background: var(--accent); color: #fff; border-radius: 0.75rem; font-size: 0.8125rem; font-weight: 600;" data-bs-toggle="modal" data-bs-target="#configureSlaModal">
+                    <i class="bi bi-clock me-1"></i> Configure SLAs
+                </button>
+            </div>
+
             <div class="row g-4">
                 <div class="col-lg-8">
                     <div class="table-container">
@@ -650,6 +676,40 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Configure SLA Modal -->
+    <div class="modal fade" id="configureSlaModal" tabindex="-1" aria-labelledby="configureSlaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <form id="department-sla-form" method="POST" action="{{ route('audit.departments.update-slas', $department->id) }}" class="modal-content">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="configureSlaModalLabel">Configure Document Processing SLAs</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Set unique processing time thresholds for this department. Leave the value blank to remove the custom threshold and revert to global system fallbacks.</p>
+                    <div class="table-responsive">
+                        <table class="table" id="sla-configuration-table">
+                            <thead>
+                                <tr>
+                                    <th>Document Type</th>
+                                    <th style="width: 200px;">Time Value</th>
+                                    <th style="width: 180px;">Time Unit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sla-configuration-body">
+                                <!-- Hydrated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" style="border: 1px solid var(--whisper); border-radius: 0.75rem; color: var(--steel); font-size: 0.8125rem; font-weight: 600;" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn" style="background: var(--accent); color: #fff; border-radius: 0.75rem; font-size: 0.8125rem; font-weight: 600;">Save SLA Settings</button>
+                </div>
+            </form>
         </div>
     </div>
 

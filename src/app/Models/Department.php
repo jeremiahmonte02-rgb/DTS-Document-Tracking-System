@@ -42,4 +42,9 @@ class Department extends Model
     {
         return $this->hasMany(DocumentEvent::class);
     }
+
+    public function slas(): HasMany
+    {
+        return $this->hasMany(DepartmentDocumentSla::class, 'department_id');
+    }
 }

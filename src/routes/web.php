@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/documents/{document_number}/complete', [App\Http\Controllers\DocumentController::class, 'completeDocument'])->name('documents.complete');
     Route::post('/documents/{document_number}/reject', [App\Http\Controllers\DocumentController::class, 'rejectDocument'])->name('documents.reject');
     Route::post('/documents/{document_number}/cancel', [App\Http\Controllers\DocumentController::class, 'cancelDocument'])->name('documents.cancel');
+    Route::post('/documents/{document_number}/update-routing', [App\Http\Controllers\DocumentController::class, 'updateRoutingPath'])->name('documents.update-routing');
     Route::post('/api/issues', [App\Http\Controllers\DocumentController::class, 'reportIssue'])->name('api.issues.report');
     Route::get('/api/document-types/{id}/policy', [DocumentTypePolicyController::class, 'show'])->name('api.document-types.policy');
 });
@@ -63,8 +64,12 @@ Route::middleware(['auth'])->group(function () {
     // Department Details & Analytics
     Route::get('/audit/departments/{id}', [AuditorController::class, 'departmentDetails'])->name('audit.departments.details');
     Route::get('/api/audit/departments/{id}/data', [AuditorController::class, 'getDepartmentDetailsData'])->name('api.audit.departments.details.data');
+    Route::post('/audit/departments/{id}/slas', [AuditorController::class, 'updateDepartmentSlas'])->name('audit.departments.update-slas');
 
     // Document Type Routing Policies
     Route::get('/audit/policies', [AuditorController::class, 'indexPolicies'])->name('audit.policies');
     Route::post('/audit/policies', [AuditorController::class, 'storePolicy'])->name('audit.policies.store');
+
+    // Reported Issues
+    Route::get('/audit/issues', [AuditorController::class, 'issues'])->name('audit.issues');
 });

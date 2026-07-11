@@ -246,39 +246,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // --- PART C: RENDER TRANSACTION HISTORY TIMELINE ---
-        if (timelineContainer) {
-            timelineContainer.innerHTML = '';
-            if (events.length > 0) {
-                events.forEach((ev, i) => {
-                    let processingTimeHtml = '';
-                    if (events[i + 1]) {
-                        const deltaMs = new Date(events[i + 1].created_at) - new Date(ev.created_at);
-                        const totalSeconds = Math.round(deltaMs / 1000);
-                        if (totalSeconds >= 0) {
-                            const hrs = Math.floor(totalSeconds / 3600);
-                            const mins = Math.floor((totalSeconds % 3600) / 60);
-                            const secs = totalSeconds % 60;
-                            let parts = [];
-                            if (hrs > 0) parts.push(`${hrs}h`);
-                            if (mins > 0) parts.push(`${mins}m`);
-                            if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
-                            const durationText = parts.join(' ');
-                            processingTimeHtml = `<span class="text-muted opacity-75 fw-semibold"> · Processing Time: ${durationText}</span>`;
-                        }
-                    }
-                    const card = document.createElement('div');
-                    card.className = 'timeline-item border-start ps-3 pb-3 position-relative';
-                    card.innerHTML = `
-                        <span class="position-absolute start-0 top-0 translate-middle-x badge rounded-circle bg-primary p-1" style="margin-left:-1px; margin-top:4px;"><span class="visually-hidden">.</span></span>
-                        <div class="text-xxs text-muted font-mono">${escapeHtml(ev.formatted_date || ev.created_at)}${processingTimeHtml}</div>
-                        <div class="text-xs font-semibold text-dark mt-0.5">${escapeHtml(ev.event_label)} - <span class="text-primary font-normal">${escapeHtml(ev.execution_department)}</span></div>
-                        <p class="text-muted text-xxs mb-0 mt-0.5 bg-light p-1 rounded border">Note: ${escapeHtml(ev.note || 'No transaction notes added.')} <br><span class="text-dark font-medium">By: ${escapeHtml(ev.processed_by_user)}</span></p>
-                    `;
-                    timelineContainer.appendChild(card);
-                });
-            } else {
-                timelineContainer.innerHTML = '<div class="text-muted text-xs p-3 bg-light rounded text-center">No transactional logging history logs discovered.</div>';
-            }
+        if (typeof window.renderTimeline === 'function') {
+            window.renderTimeline('trackingTimeline', events, { reverseOrder: false });
         }
     }
 

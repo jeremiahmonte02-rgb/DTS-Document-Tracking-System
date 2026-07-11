@@ -13,6 +13,29 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
+    <style>
+        .btn-custom-academic {
+            color: #1b7344 !important;
+            border-color: #1b7344 !important;
+            background-color: transparent;
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-custom-academic:hover {
+            color: #ffffff !important;
+            background-color: #1b7344 !important;
+        }
+        .btn-custom-clear {
+            color: #6c757d !important;
+            border-color: #ced4da !important;
+            background-color: transparent;
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-custom-clear:hover {
+            color: #ffffff !important;
+            background-color: #6c757d !important;
+            border-color: #6c757d !important;
+        }
+    </style>
 </head>
 <body>
     @include('partials.sidebar-nav')
@@ -219,18 +242,10 @@
                         </div>
                         <div class="card-body">
                             <div class="timeline" id="auditTrail">
-                                @forelse($events as $event)
-                                <div class="timeline-item border-start ps-3 pb-3 position-relative">
-                                    <span class="position-absolute start-0 top-0 translate-middle-x badge rounded-circle bg-primary p-1" style="margin-left:-1px; margin-top:4px;"><span class="visually-hidden">.</span></span>
-                                    <div class="text-xxs text-muted font-mono tabular-nums">{{ $event->formatted_date }}@if ($event->processing_time)<span class="text-muted opacity-75 fw-semibold"> · Processing Time: {{ $event->processing_time }}</span>@endif</div>
-                                    <div class="text-xs font-semibold text-dark mt-0.5">{{ $event->event_label }} - <span class="text-primary font-normal">{{ $event->execution_department }}</span></div>
-                                    <p class="text-muted text-xxs mb-0 mt-0.5 bg-light p-1 rounded border">Note: {{ $event->note ?? 'No transaction notes added.' }} <br><span class="text-dark font-medium">By: {{ $event->processed_by_user }}</span></p>
+                                <div class="text-center py-4 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                    Loading timeline...
                                 </div>
-                                @empty
-                                <div class="text-center text-muted text-xs py-3">
-                                    <i class="bi bi-inbox"></i> No transactional logging history logs discovered.
-                                </div>
-                                @endforelse
                             </div>
                         </div>
                     </div>
@@ -263,10 +278,15 @@
                     </div>
 
                     <div class="card mb-4 shadow-3xs">
-                        <div class="card-header bg-transparent border-bottom-0 pt-3 pb-1">
+                        <div class="card-header bg-transparent border-bottom-0 pt-3 pb-1 d-flex justify-content-between align-items-center">
                             <h6 class="card-title text-muted text-uppercase text-xs fw-bold tracking-wider m-0">
                                 <i class="bi bi-diagram-3 me-1"></i> Scheduled Routing Path
                             </h6>
+                            @if(auth()->user()->department_id == $document->sender_department_id && !$isImmutable)
+                            <button type="button" id="editRoutingPathBtn" class="btn btn-outline-secondary btn-xs" title="Edit Routing Path">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            @endif
                         </div>
                         <div class="card-body pt-1">
                             <div class="d-flex flex-column gap-2">
@@ -290,7 +310,7 @@
                                         }
                                     @endphp
 
-                                    <div class="p-2 border rounded d-flex align-items-center justify-content-between {{ $rowModifier }}">
+                                    <div class="p-2 border rounded d-flex align-items-center justify-content-between {{ $rowModifier }}" data-dept-id="{{ $route->department_id }}" data-dept-name="{{ $route->department_name }}">
                                         <div class="d-flex align-items-center">
                                             <span class="badge {{ $badgeStyle }} rounded-circle me-2 font-mono d-flex align-items-center justify-content-center" style="width: 22px; height: 22px;">
                                                 {{ $route->route_order }}
@@ -320,7 +340,7 @@
                                 <button type="button" id="requestAccessBtn" class="btn btn-outline-warning btn-sm">
                                     <i class="bi bi-pencil"></i> Request Access
                                 </button>
-                                <button type="button" id="reportIssueBtn" class="btn btn-outline-danger btn-sm">
+                                <button type="button" id="reportIssueBtn" class="btn btn-outline-danger btn-sm" onclick="reportIssue()">
                                     <i class="bi bi-exclamation-triangle"></i> Report Issue
                                 </button>
                             </div>
@@ -372,7 +392,7 @@
                             <label for="issueDocId" class="form-label">
                                 <i class="bi bi-file-earmark-text"></i> Document ID
                             </label>
-                            <input type="text" class="form-control" id="issueDocId" readonly style="background-color: #f8f9fa;">
+                            <input type="text" class="form-control" id="issueDocId" value="{{ $document->document_number }}" readonly style="background-color: #f8f9fa;">
                         </div>
 
                         <!-- Issue Description -->
@@ -380,31 +400,41 @@
                             <label for="issueDescription" class="form-label">
                                 <i class="bi bi-chat-left-text"></i> Issue Description <span class="text-danger">*</span>
                             </label>
-                            <textarea class="form-control" id="issueDescription" rows="4" placeholder="Describe the issue in detail..." required style="resize: vertical;"></textarea>
+                            <textarea class="form-control" id="issueDescription" rows="4" placeholder="Describe the issue in detail..." style="resize: vertical;"></textarea>
                             <small class="text-muted d-block mt-1">
                                 <i class="bi bi-info-circle"></i> Please provide as much detail as possible about the issue
                             </small>
                         </div>
 
-                        <!-- Department Selection -->
+                        <!-- Issue Type -->
                         <div class="mb-3">
-                            <label for="issueDepartment" class="form-label">
-                                <i class="bi bi-building"></i> Route to Department <span class="text-danger">*</span>
+                            <label for="issueType" class="form-label">
+                                <i class="bi bi-exclamation-triangle"></i> Issue Type <span class="text-danger">*</span>
                             </label>
-                            <select class="form-select" id="issueDepartment" required>
-                                <option value="">-- Select Department --</option>
-                                <option value="IT Department">IT Department</option>
-                                <option value="Operations">Operations</option>
-                                <option value="Legal Department">Legal Department</option>
-                                <option value="HR Department">HR Department</option>
-                                <option value="Finance Department">Finance Department</option>
-                                <option value="Executive Office">Executive Office</option>
-                                <option value="Customer Service">Customer Service</option>
-                                <option value="Marketing Department">Marketing Department</option>
-                                <option value="Other">Other</option>
+                            <select class="form-select" id="issueType" required>
+                                <option value="">-- Select Issue Type --</option>
+                                <option value="Document Error">Document Error</option>
+                                <option value="Processing Delay">Processing Delay</option>
+                                <option value="Others">Others</option>
                             </select>
                             <small class="text-muted d-block mt-1">
-                                <i class="bi bi-info-circle"></i> Select the department responsible for resolving this issue
+                                <i class="bi bi-info-circle"></i> Select the type of issue you are reporting
+                            </small>
+                        </div>
+
+                        <!-- Responsible Department -->
+                        <div class="mb-3">
+                            <label for="issueDept" class="form-label">
+                                <i class="bi bi-building"></i> Responsible Department
+                            </label>
+                            <select class="form-select" id="issueDept">
+                                <option value="">-- Select Department --</option>
+                                @foreach($routes->unique('department_id') as $route)
+                                    <option value="{{ $route->department_id }}">{{ $route->department_name }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted d-block mt-1">
+                                <i class="bi bi-info-circle"></i> Select the department responsible for this issue
                             </small>
                         </div>
 
@@ -443,6 +473,8 @@
     <!-- Custom JS -->
     @include('partials.auth-context')
     <script src="{{ asset('js/main.js') }}"></script>
+    <script src="{{ asset('js/modules/timeline-renderer.js') }}"></script>
+    <script src="{{ asset('js/modules/document-details.js') }}"></script>
 
     <script>
         function markDocumentAsComplete(documentNumber) {
@@ -503,19 +535,22 @@
 
 
         function reportIssue() {
-            // Get current document ID and populate the modal
-            const docId = document.getElementById('docId').textContent;
-            document.getElementById('issueDocId').value = docId;
-
-            // Reset form
             document.getElementById('reportIssueForm').reset();
-            document.getElementById('issueDepartment').value = '';
+            document.getElementById('issueType').value = '';
+            document.getElementById('issueDept').value = '';
             document.getElementById('issuePriority').value = 'Medium';
 
-            // Show the modal
+            const desc = document.getElementById('issueDescription');
+            desc.required = false;
+
             const modal = new bootstrap.Modal(document.getElementById('reportIssueModal'));
             modal.show();
         }
+
+        document.getElementById('issueType')?.addEventListener('change', function () {
+            const desc = document.getElementById('issueDescription');
+            desc.required = this.value === 'Others';
+        });
 
         function handleReportIssueSubmit(event) {
             event.preventDefault();
@@ -523,9 +558,10 @@
             const form = event.target;
             const docId = document.getElementById('issueDocId').value;
             const description = document.getElementById('issueDescription').value;
-            const department = document.getElementById('issueDepartment').value;
+            const issueType = document.getElementById('issueType').value;
+            const assignedDepartmentId = document.getElementById('issueDept').value;
 
-            if (!description.trim() || !department) {
+            if (!issueType || (issueType === 'Others' && !description.trim())) {
                 showToast('Please fill in all required fields', 'warning');
                 return;
             }
@@ -534,24 +570,30 @@
 
             const modal = bootstrap.Modal.getInstance(document.getElementById('reportIssueModal'));
 
+            const payload = {
+                document_number: docId,
+                description: description,
+                issue_type: issueType
+            };
+
+            if (assignedDepartmentId) {
+                payload.assigned_department_id = assignedDepartmentId;
+            }
+
             fetch('/api/issues', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                 },
-                body: JSON.stringify({
-                    document_number: docId,
-                    description: description,
-                    department: department
-                })
+                body: JSON.stringify(payload)
             })
             .then(response => response.json().catch(() => ({})))
             .then(data => {
                 hideSpinner();
                 modal.hide();
                 form.reset();
-                showToast(data.message || `Issue reported successfully!`, 'success');
+                showToast(data.message || 'Issue reported successfully!', 'success');
             })
             .catch(() => {
                 hideSpinner();
@@ -694,6 +736,302 @@
                         markAsReceivedBtn.innerHTML = originalBtnContent;
                     });
                 });
+            }
+        });
+    </script>
+
+    @include('partials.access-denied-modal')
+
+    <!-- Edit Routing Path Modal -->
+    <div class="modal fade" id="editRoutingModal" tabindex="-1" aria-labelledby="editRoutingModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ route('documents.update-routing', $document->document_number) }}">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editRoutingModalLabel">
+                            <i class="bi bi-diagram-3 me-1"></i> Edit Routing Path
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="w-100" data-purpose="route-builder" style="font-family: 'Manrope', sans-serif;">
+                            <div class="row g-4 align-items-center">
+
+                                <div class="col-md-5">
+                                    <label class="form-label text-secondary fw-semibold mb-2" style="font-size: 0.875rem;">Receiver Departments (ordered)</label>
+                                    <div class="border rounded-3 bg-white shadow-sm" style="border-color: #d1d5db !important; height: 240px; overflow: hidden; position: relative;">
+                                        <div class="w-100 h-100 p-1" style="overflow-x: auto; overflow-y: auto;">
+
+                                            <ul class="list-group list-group-flush" id="edit-visual-dept-pool" style="min-width: 360px; font-size: 0.875rem;">
+                                                @foreach($departments ?? [] as $dept)
+                                                    <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark transition-colors"
+                                                        data-value="{{ $dept->id ?? $dept }}" style="letter-spacing: -0.01em;">
+                                                        {{ $dept->name ?? $dept }}
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+
+                                            <div id="edit-immutablePolicyNotice" class="d-none my-auto p-4 text-center d-flex flex-column align-items-center justify-content-center w-100 h-100">
+                                                <i class="bi bi-shield-lock text-danger mb-2" style="font-size: 1.75rem;"></i>
+                                                <h6 class="fw-bold text-dark mb-1" style="font-family: 'Satoshi', sans-serif;">Enforced Routing Policy</h6>
+                                                <p class="text-muted small mb-0 px-2" style="font-size: 0.85rem;">
+                                                    The workflow pathway for this document type has been strictly locked by the system Auditor to ensure organizational compliance.
+                                                </p>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                    <select id="edit-receiverDepartments" name="edit_receiver_departments[]" class="d-none" multiple>
+                                        @foreach($departments ?? [] as $dept)
+                                            <option value="{{ $dept->id ?? $dept }}">{{ $dept->name ?? $dept }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="col-md-2 d-flex flex-column gap-2.5 px-1 pt-4">
+                                    <button id="edit-addToRouteBtn" type="button" class="btn btn-custom-academic btn-sm w-100 fw-bold border-2 text-center text-nowrap py-2" style="font-size: 0.75rem; letter-spacing: 0.05em; border-radius: 8px;">
+                                        ADD SELECTED
+                                    </button>
+                                    <button id="edit-clearRouteBtn" type="button" class="btn btn-custom-clear btn-sm w-100 fw-bold border-2 text-center text-nowrap py-2" style="font-size: 0.75rem; letter-spacing: 0.05em; border-radius: 8px;">
+                                        CLEAR
+                                    </button>
+                                </div>
+
+                                <div class="col-md-5">
+                                    <label class="form-label text-secondary fw-semibold mb-2" style="font-size: 0.875rem;">Route (ordered)</label>
+                                    <div class="border rounded-3 bg-white d-flex flex-column align-items-center justify-content-center text-center p-4 shadow-sm position-relative" style="height: 240px; border-color: #d1d5db !important;">
+
+                                        <div id="edit-route-placeholder" class="d-flex flex-column align-items-center justify-content-center text-muted opacity-50">
+                                            <svg class="mb-2" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                                            </svg>
+                                            <p class="mb-0" style="font-size: 0.75rem;">Selected departments will appear here in sequence</p>
+                                        </div>
+
+                                        <ul id="edit-routeList" class="list-group list-group-flush w-100 h-100 overflow-y-auto custom-scrollbar d-none" style="font-size: 0.875rem; max-height: 210px;"></ul>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <input type="hidden" id="edit-routesInput" name="edit_routes">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </button>
+                        <button type="submit" id="edit-saveRouteBtn" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function renumberEditRouteModal() {
+            const badges = document.querySelectorAll('#edit-routeList .index-counter-badge');
+            badges.forEach((badge, index) => {
+                badge.textContent = index + 1;
+            });
+        }
+
+        function synchronizeEditRoutesInput() {
+            const listItems = document.querySelectorAll('#edit-routeList li');
+            const data = [];
+            listItems.forEach(function(li, index) {
+                const deptId = li.getAttribute('data-dept-id');
+                if (deptId) {
+                    data.push({
+                        department_id: parseInt(deptId),
+                        route_order: index + 1
+                    });
+                }
+            });
+            const input = document.getElementById('edit-routesInput');
+            if (input) input.value = JSON.stringify(data);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function appendStepToModalRouteList(id, name) {
+            const routeListContainer = document.getElementById('edit-routeList');
+            console.log("[Edit Route] appendStepToModalRouteList invoked with ID:", id, "Name:", name, "| Container found:", !!routeListContainer);
+            if (!routeListContainer) return;
+
+            const existing = routeListContainer.querySelector(`li[data-dept-id="${id}"]`);
+            if (existing) return;
+
+            document.getElementById('edit-route-placeholder')?.classList.add('d-none');
+            routeListContainer.classList.remove('d-none');
+
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-light shadow-2xs mb-1 rounded border';
+            li.setAttribute('data-dept-id', id);
+            li.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary index-counter-badge me-2">0</span>
+                    <span class="text-dark font-medium font-mono">${escapeHtml(name)}</span>
+                </div>
+                <div class="btn-group shadow-3xs" role="group">
+                    <button type="button" class="btn btn-white btn-xs move-up-btn" title="Move Up"><i class="bi bi-arrow-up"></i></button>
+                    <button type="button" class="btn btn-white btn-xs move-down-btn" title="Move Down"><i class="bi bi-arrow-down"></i></button>
+                    <button type="button" class="btn btn-danger btn-xs remove-step-btn" title="Remove"><i class="bi bi-trash"></i></button>
+                </div>
+            `;
+            routeListContainer.appendChild(li);
+            console.log("[Edit Route] Step appended. Route list child count:", routeListContainer.children.length);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const requestAccessBtn = document.getElementById('requestAccessBtn');
+            const errorModalElement = document.getElementById('routedDocumentErrorModal');
+
+            if (requestAccessBtn && errorModalElement) {
+                requestAccessBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const modalInstance = bootstrap.Modal.getOrCreateInstance(errorModalElement);
+                    modalInstance.show();
+                });
+            }
+
+            const editRoutingBtn = document.getElementById('editRoutingPathBtn');
+            const editModalEl = document.getElementById('editRoutingModal');
+            if (editRoutingBtn && editModalEl) {
+                editRoutingBtn.addEventListener('click', function() {
+                    const routeListContainer = document.getElementById('edit-routeList');
+                    routeListContainer.innerHTML = '';
+                    routeListContainer.classList.add('d-none');
+                    const placeholder = document.getElementById('edit-route-placeholder');
+                    if (placeholder) placeholder.classList.remove('d-none');
+
+                    const sidebarCard = document.querySelector('.card.mb-4.shadow-3xs');
+                    const activeSteps = sidebarCard ? sidebarCard.querySelectorAll('[data-dept-id]') : document.querySelectorAll('[data-dept-id]');
+                    console.log("[Edit Route] Found route steps count:", activeSteps.length);
+                    activeSteps.forEach(function(step, index) {
+                        const id = step.getAttribute('data-dept-id');
+                        const name = step.getAttribute('data-dept-name');
+                        console.log("[Edit Route] Step " + index + ": id=" + id + ", name=" + name);
+                        if (id && name) {
+                            appendStepToModalRouteList(id, name);
+                        }
+                    });
+
+                    renumberEditRouteModal();
+                    synchronizeEditRoutesInput();
+
+                    bootstrap.Modal.getOrCreateInstance(editModalEl).show();
+                });
+
+                const editRouteListEl = document.getElementById('edit-routeList');
+                if (editRouteListEl) {
+                    editRouteListEl.addEventListener('click', function(e) {
+                        const btn = e.target.closest('button');
+                        if (!btn) return;
+                        const li = btn.closest('li');
+                        if (!li) return;
+
+                        if (btn.classList.contains('remove-step-btn')) {
+                            li.remove();
+                            renumberEditRouteModal();
+                            synchronizeEditRoutesInput();
+                        } else if (btn.classList.contains('move-up-btn')) {
+                            const prev = li.previousElementSibling;
+                            if (prev) li.parentNode.insertBefore(li, prev);
+                            renumberEditRouteModal();
+                            synchronizeEditRoutesInput();
+                        } else if (btn.classList.contains('move-down-btn')) {
+                            const next = li.nextElementSibling;
+                            if (next) li.parentNode.insertBefore(li, next.nextElementSibling);
+                            renumberEditRouteModal();
+                            synchronizeEditRoutesInput();
+                        }
+                    });
+                }
+
+                const editDeptPool = document.getElementById('edit-visual-dept-pool');
+                if (editDeptPool) {
+                    editDeptPool.addEventListener('click', function(e) {
+                        const item = e.target.closest('.list-group-item');
+                        if (!item) return;
+
+                        const val = item.getAttribute('data-value');
+                        const hiddenSelect = document.getElementById('edit-receiverDepartments');
+                        const option = hiddenSelect ? hiddenSelect.querySelector(`option[value="${val}"]`) : null;
+
+                        if (option) {
+                            option.selected = !option.selected;
+                            item.classList.toggle('bg-success');
+                            item.classList.toggle('bg-opacity-10');
+                            item.classList.toggle('text-success');
+                            item.classList.toggle('fw-semibold');
+                            hiddenSelect.dispatchEvent(new Event('change'));
+                        }
+                    });
+                }
+
+                document.getElementById('edit-addToRouteBtn')?.addEventListener('click', function() {
+                    const deptSelect = document.getElementById('edit-receiverDepartments');
+                    if (!deptSelect) return;
+                    Array.from(deptSelect.selectedOptions).forEach(function(opt) {
+                        appendStepToModalRouteList(opt.value, opt.text);
+                        const poolItem = editDeptPool?.querySelector(`li[data-value="${CSS.escape(opt.value)}"]`);
+                        if (poolItem) {
+                            poolItem.classList.remove('bg-success', 'bg-opacity-10', 'text-success', 'fw-semibold');
+                        }
+                        opt.selected = false;
+                    });
+                    renumberEditRouteModal();
+                    synchronizeEditRoutesInput();
+                });
+
+                document.getElementById('edit-clearRouteBtn')?.addEventListener('click', function() {
+                    const rl = document.getElementById('edit-routeList');
+                    if (rl) {
+                        rl.innerHTML = '';
+                        rl.classList.add('d-none');
+                    }
+                    const ph = document.getElementById('edit-route-placeholder');
+                    if (ph) ph.classList.remove('d-none');
+
+                    if (editDeptPool) {
+                        editDeptPool.querySelectorAll('.list-group-item').forEach(function(item) {
+                            item.classList.remove('bg-success', 'bg-opacity-10', 'text-success', 'fw-semibold');
+                        });
+                    }
+                    const hiddenSelect = document.getElementById('edit-receiverDepartments');
+                    if (hiddenSelect) {
+                        Array.from(hiddenSelect.options).forEach(function(opt) { opt.selected = false; });
+                    }
+                    synchronizeEditRoutesInput();
+                });
+
+                const editRouteListObserve = document.getElementById('edit-routeList');
+                const editPlaceholder = document.getElementById('edit-route-placeholder');
+                if (editRouteListObserve && editPlaceholder) {
+                    new MutationObserver(function() {
+                        if (editRouteListObserve.children.length > 0) {
+                            editRouteListObserve.classList.remove('d-none');
+                            editPlaceholder.classList.add('d-none');
+                        } else {
+                            editRouteListObserve.classList.add('d-none');
+                            editPlaceholder.classList.remove('d-none');
+                        }
+                    }).observe(editRouteListObserve, { childList: true });
+                }
             }
         });
     </script>

@@ -240,6 +240,7 @@
         window.DTS_USER_DEPT_ID = {{ auth()->user()->department_id ?? 'null' }};
     </script>
 
+    <script src="{{ asset('js/modules/timeline-renderer.js') }}"></script>
     <script src="{{ asset('js/core/api.js') }}"></script>
     <script src="{{ asset('js/modules/scan.js') }}"></script>
 </body>

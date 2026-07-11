@@ -88,15 +88,43 @@ class DashboardController extends Controller
             ->value('avg_hours');
         $avgDwellHours = $avgDwellHours ? round((float) $avgDwellHours, 1) : 0;
 
-        // 6. Overdue Detection — current route steps pending > 48 hours
-        $overdueThreshold = Carbon::now('Asia/Manila')->subHours(48);
-        $overdueCount = DB::table('document_routes')
-            ->join('documents', 'document_routes.document_id', '=', 'documents.id')
+        // 6. Overdue Detection — dynamic SLA-based route step dwell time
+        $activeRoutes = \App\Models\DocumentRoute::join('documents', 'document_routes.document_id', '=', 'documents.id')
+            ->select('document_routes.*', 'documents.document_type_id')
             ->where('document_routes.status', 'current')
-            ->where('document_routes.created_at', '<', $overdueThreshold)
             ->whereNotIn('documents.status', ['completed', 'cancelled', 'rejected'])
             ->when(!$canViewAll && $userDeptId, fn ($q) => $q->where('document_routes.department_id', $userDeptId))
-            ->count();
+            ->get();
+
+        $departmentSlas = \App\Models\DepartmentDocumentSla::get()
+            ->groupBy('department_id')
+            ->map(fn($items) => $items->keyBy('document_type_id'));
+
+        $documentTypes = \App\Models\DocumentType::get()->keyBy('id');
+
+        $dynamicOverdueCount = 0;
+        $now = Carbon::now('Asia/Manila');
+
+        foreach ($activeRoutes as $route) {
+            $deptId = $route->department_id;
+            $docTypeId = $route->document_type_id;
+            $allowedMinutes = 1440;
+
+            if (isset($departmentSlas[$deptId][$docTypeId])) {
+                $allowedMinutes = $departmentSlas[$deptId][$docTypeId]->processing_time_minutes;
+            } elseif (isset($documentTypes[$docTypeId]) && !is_null($documentTypes[$docTypeId]->default_processing_time)) {
+                $allowedMinutes = $documentTypes[$docTypeId]->default_processing_time;
+            }
+
+            $routeArrival = Carbon::parse($route->created_at, 'Asia/Manila');
+            $deadline = $routeArrival->addMinutes($allowedMinutes);
+
+            if ($now->greaterThan($deadline)) {
+                $dynamicOverdueCount++;
+            }
+        }
+
+        $overdueCount = $dynamicOverdueCount;
 
         // 7. Average completion time (recently completed docs)
         $avgCompletionHours = DB::table('documents')

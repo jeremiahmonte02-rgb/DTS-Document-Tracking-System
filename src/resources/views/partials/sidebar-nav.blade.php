@@ -29,6 +29,12 @@
                     <span>Routing Policies</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('audit.issues') }}">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span>Reported Issues</span>
+                </a>
+            </li>
         @else
             <li class="nav-item">
                 <a class="nav-link" href="/dashboard">

@@ -27,4 +27,9 @@ class DocumentType extends Model
     {
         return $this->hasOne(DocumentRoutingPolicy::class, 'document_type_id');
     }
+
+    public function slas(): HasMany
+    {
+        return $this->hasMany(DepartmentDocumentSla::class, 'document_type_id');
+    }
 }

@@ -7,6 +7,8 @@ use App\Models\Document;
 use App\Models\DocumentEvent;
 use App\Models\DocumentRoutingPolicy;
 use App\Models\DocumentType;
+use App\Models\DepartmentDocumentSla;
+use App\Models\DocumentIssue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -259,7 +261,9 @@ class AuditorController extends Controller
 
         $department = Department::findOrFail($id);
 
-        return view('audit.department-details', compact('department'));
+        $documentTypes = DocumentType::where('is_active', true)->orderBy('name')->get();
+
+        return view('audit.department-details', compact('department', 'documentTypes'));
     }
 
     /**
@@ -283,11 +287,39 @@ class AuditorController extends Controller
                 DB::raw("COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed"),
                 DB::raw("COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected"),
                 DB::raw("COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled"),
-                DB::raw("COUNT(CASE WHEN status IN ('pending_transfer','in_transit') AND created_at < NOW() - INTERVAL 48 HOUR THEN 1 END) as overdue"),
                 DB::raw("COUNT(CASE WHEN DATE(created_at) = CURDATE() THEN 1 END) as added_today"),
             ])
             ->where('current_department_id', $id)
             ->first();
+
+        // Dynamic SLA-based overdue calculation
+        $currentDocuments = Document::where('current_department_id', $id)
+            ->whereIn('status', ['pending_transfer', 'in_transit'])
+            ->with('documentType')
+            ->get();
+
+        $departmentSlas = DepartmentDocumentSla::where('department_id', $id)
+            ->get()
+            ->keyBy('document_type_id');
+
+        $dynamicOverdueCount = 0;
+        $now = \Carbon\Carbon::now();
+
+        foreach ($currentDocuments as $document) {
+            if (isset($departmentSlas[$document->document_type_id])) {
+                $allowedMinutes = $departmentSlas[$document->document_type_id]->processing_time_minutes;
+            } elseif ($document->documentType && !is_null($document->documentType->default_processing_time)) {
+                $allowedMinutes = $document->documentType->default_processing_time;
+            } else {
+                $allowedMinutes = 1440;
+            }
+
+            $deadline = $document->created_at->addMinutes($allowedMinutes);
+
+            if ($now->greaterThan($deadline)) {
+                $dynamicOverdueCount++;
+            }
+        }
 
         // Received today from document_events
         $receivedToday = DB::table('document_events')
@@ -315,6 +347,11 @@ class AuditorController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
+        // Active SLA overrides for this department
+        $slas = DepartmentDocumentSla::where('department_id', $id)
+            ->get()
+            ->keyBy('document_type_id');
+
         // Recent events for this department (last 20)
         $recentEvents = DocumentEvent::with(['document', 'department'])
             ->where('department_id', $id)
@@ -340,7 +377,7 @@ class AuditorController extends Controller
                 'completed' => (int) ($aggregates->completed ?? 0),
                 'rejected' => (int) ($aggregates->rejected ?? 0),
                 'cancelled' => (int) ($aggregates->cancelled ?? 0),
-                'overdue' => (int) ($aggregates->overdue ?? 0),
+                'overdue' => (int) $dynamicOverdueCount,
                 'added_today' => (int) ($aggregates->added_today ?? 0),
                 'received_today' => (int) $receivedToday,
                 'total_originated' => (int) $totalOriginated,
@@ -364,7 +401,59 @@ class AuditorController extends Controller
                     'created_at' => $event->created_at->toDateTimeString(),
                 ];
             }),
+            'slas' => $slas->map(function ($sla) {
+                return [
+                    'document_type_id' => $sla->document_type_id,
+                    'processing_time_minutes' => $sla->processing_time_minutes,
+                ];
+            }),
         ]);
+    }
+
+    public function updateDepartmentSlas(Request $request, $id)
+    {
+        if (!auth()->user() || !auth()->user()->isAuditor()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'sla' => 'array|nullable',
+            'sla.*.document_type_id' => 'required|exists:document_types,id',
+            'sla.*.value' => 'nullable|numeric|min:1',
+            'sla.*.unit' => 'required|in:minutes,hours,days',
+        ]);
+
+        DB::transaction(function () use ($request, $id) {
+            if (!$request->has('sla')) return;
+
+            foreach ($request->input('sla') as $row) {
+                if (empty($row['value'])) {
+                    DepartmentDocumentSla::where('department_id', $id)
+                        ->where('document_type_id', $row['document_type_id'])
+                        ->delete();
+                    continue;
+                }
+
+                $minutes = (int)$row['value'];
+                if ($row['unit'] === 'hours') {
+                    $minutes *= 60;
+                } elseif ($row['unit'] === 'days') {
+                    $minutes *= 1440;
+                }
+
+                DepartmentDocumentSla::updateOrCreate(
+                    [
+                        'department_id' => $id,
+                        'document_type_id' => $row['document_type_id']
+                    ],
+                    [
+                        'processing_time_minutes' => $minutes
+                    ]
+                );
+            }
+        });
+
+        return redirect()->back()->with('success', 'Department processing time SLAs updated successfully.');
     }
 
     public function indexPolicies()
@@ -377,6 +466,19 @@ class AuditorController extends Controller
         $departments = Department::where('is_active', true)->orderBy('name')->get();
 
         return view('audit.document-type-policies', compact('documentTypes', 'departments'));
+    }
+
+    public function issues()
+    {
+        if (!auth()->user() || !auth()->user()->isAuditor()) {
+            abort(403, 'Unauthorized access to the Audit Portal.');
+        }
+
+        $issues = DocumentIssue::with(['document', 'reportedBy', 'assignedDepartment'])
+            ->latest()
+            ->paginate(25);
+
+        return view('audit.issues', compact('issues'));
     }
 
     public function storePolicy(Request $request)

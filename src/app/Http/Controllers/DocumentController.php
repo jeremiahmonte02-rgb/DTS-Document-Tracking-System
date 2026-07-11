@@ -228,6 +228,7 @@ class DocumentController extends Controller
                 'documents.description',
                 'documents.status',
                 'documents.created_at',
+                'documents.document_type_id',
                 'document_types.name as document_type_name',
                 'departments.name as sender_department_name'
             )
@@ -263,14 +264,73 @@ class DocumentController extends Controller
                 'document_events.note',
                 'document_events.new_status',
                 'document_events.created_at',
+                'document_events.department_id',
                 'users.name as processed_by_user',
                 'departments.name as execution_department'
             )
             ->get()
             ->map(function ($event) {
                 $event->formatted_date = Carbon::parse($event->created_at)->format('M d, Y h:i A');
+                $event->is_sla_breached = false;
                 return $event;
             });
+
+        $allDepartmentSlas = \App\Models\DepartmentDocumentSla::get()
+            ->groupBy('department_id')
+            ->map(fn($items) => $items->keyBy('document_type_id'));
+
+        $allDocumentTypes = \App\Models\DocumentType::get()->keyBy('id');
+
+        $targetDocTypeId = $document->document_type_id;
+
+        foreach ($events as $i => $event) {
+            if (isset($events[$i + 1])) {
+                $currentEventTime = Carbon::parse($event->created_at);
+                $nextEventTime = Carbon::parse($events[$i + 1]->created_at);
+
+                $elapsedMinutes = $currentEventTime->diffInMinutes($nextEventTime);
+
+                $event->processing_time = $nextEventTime->diffForHumans($currentEventTime, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2);
+
+                $deptId = $event->department_id;
+                $allowedMinutes = 1440;
+
+                if (isset($allDepartmentSlas[$deptId][$targetDocTypeId])) {
+                    $allowedMinutes = $allDepartmentSlas[$deptId][$targetDocTypeId]->processing_time_minutes;
+                } elseif (isset($allDocumentTypes[$targetDocTypeId]) && !is_null($allDocumentTypes[$targetDocTypeId]->default_processing_time)) {
+                    $allowedMinutes = $allDocumentTypes[$targetDocTypeId]->default_processing_time;
+                }
+
+                if ($elapsedMinutes > $allowedMinutes) {
+                    $event->is_sla_breached = true;
+                }
+            } else {
+                $documentStatus = $document->status;
+                if (!in_array($documentStatus, ['completed', 'cancelled', 'rejected'])) {
+                    $now = Carbon::now('Asia/Manila');
+                    $currentEventTime = Carbon::parse($event->created_at);
+
+                    $elapsedMinutes = $currentEventTime->diffInMinutes($now);
+
+                    $event->processing_time = $now->diffForHumans($currentEventTime, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2) . ' (Active Step)';
+
+                    $deptId = $event->department_id;
+                    $allowedMinutes = 1440;
+
+                    if (isset($allDepartmentSlas[$deptId][$targetDocTypeId])) {
+                        $allowedMinutes = $allDepartmentSlas[$deptId][$targetDocTypeId]->processing_time_minutes;
+                    } elseif (isset($allDocumentTypes[$targetDocTypeId]) && !is_null($allDocumentTypes[$targetDocTypeId]->default_processing_time)) {
+                        $allowedMinutes = $allDocumentTypes[$targetDocTypeId]->default_processing_time;
+                    }
+
+                    if ($elapsedMinutes > $allowedMinutes) {
+                        $event->is_sla_breached = true;
+                    }
+                } else {
+                    $event->processing_time = null;
+                }
+            }
+        }
 
         return response()->json([
             'success'  => true,
@@ -302,6 +362,8 @@ class DocumentController extends Controller
                 'documents.status',
                 'documents.created_at as upload_date',
                 'documents.completed_at',
+                'documents.sender_department_id',
+                'documents.document_type_id',
                 'document_types.name as document_type_name',
                 'sender_dept.name as origin_department',
                 'current_dept.id as current_department_id',
@@ -337,25 +399,60 @@ class DocumentController extends Controller
                 'document_events.note',
                 'document_events.new_status',
                 'document_events.created_at',
+                'document_events.department_id',
                 'users.name as processed_by_user',
                 'departments.name as execution_department'
             )
             ->get();
 
-        $events->transform(function ($event, $i) use ($events) {
+        $allDepartmentSlas = \App\Models\DepartmentDocumentSla::get()
+            ->groupBy('department_id')
+            ->map(fn($items) => $items->keyBy('document_type_id'));
+
+        $allDocumentTypes = \App\Models\DocumentType::get()->keyBy('id');
+
+        $targetDocTypeId = $document->document_type_id;
+
+        $events->transform(function ($event, $i) use ($events, $allDepartmentSlas, $allDocumentTypes, $targetDocTypeId) {
             $event->formatted_date = Carbon::parse($event->created_at)->format('M d, Y h:i A');
+            $event->is_sla_breached = false;
+
             if (isset($events[$i + 1])) {
-                $event->processing_time = Carbon::parse($events[$i + 1]->created_at)
-                    ->diffForHumans(Carbon::parse($event->created_at), \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2);
+                $currentEventTime = Carbon::parse($event->created_at);
+                $nextEventTime = Carbon::parse($events[$i + 1]->created_at);
+
+                $elapsedMinutes = $currentEventTime->diffInMinutes($nextEventTime);
+
+                $event->processing_time = $nextEventTime->diffForHumans($currentEventTime, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2);
+
+                $deptId = $event->department_id;
+                $allowedMinutes = 1440;
+
+                if (isset($allDepartmentSlas[$deptId][$targetDocTypeId])) {
+                    $allowedMinutes = $allDepartmentSlas[$deptId][$targetDocTypeId]->processing_time_minutes;
+                } elseif (isset($allDocumentTypes[$targetDocTypeId]) && !is_null($allDocumentTypes[$targetDocTypeId]->default_processing_time)) {
+                    $allowedMinutes = $allDocumentTypes[$targetDocTypeId]->default_processing_time;
+                }
+
+                if ($elapsedMinutes > $allowedMinutes) {
+                    $event->is_sla_breached = true;
+                }
             } else {
                 $event->processing_time = null;
             }
+
             return $event;
         });
 
         $events = $events->reverse();
 
-        return view('document-details', compact('document', 'routes', 'events'));
+        $departments = DB::table('departments')->orderBy('name')->get();
+
+        $isImmutable = DB::table('document_routing_policies')
+            ->where('document_type_id', $document->document_type_id)
+            ->value('is_immutable') ?? false;
+
+        return view('document-details', compact('document', 'routes', 'events', 'departments', 'isImmutable'));
     }
 
     public function receiveDocument(Request $request)
@@ -836,9 +933,9 @@ class DocumentController extends Controller
     public function reportIssue(Request $request)
     {
         $validated = $request->validate([
-            'document_number' => ['required', 'string'],
-            'description'     => ['required', 'string', 'max:2000'],
-            'department'      => ['nullable', 'string', 'max:255'],
+            'document_number'        => ['required', 'string'],
+            'description'            => ['required', 'string', 'max:2000'],
+            'assigned_department_id' => ['nullable', 'integer', 'exists:departments,id'],
         ]);
 
         $document = DB::table('documents')
@@ -858,18 +955,10 @@ class DocumentController extends Controller
         }
 
         DB::transaction(function () use ($document, $validated, $request) {
-            $departmentId = null;
-            if (!empty($validated['department'])) {
-                $dept = DB::table('departments')
-                    ->where('name', $validated['department'])
-                    ->first();
-                $departmentId = $dept?->id;
-            }
-
             DB::table('document_issues')->insert([
                 'document_id'            => $document->id,
                 'reported_by_user_id'    => auth()->id(),
-                'assigned_department_id' => $departmentId,
+                'assigned_department_id' => $validated['assigned_department_id'] ?? null,
                 'description'            => $validated['description'],
                 'priority'               => 'medium',
                 'status'                 => 'open',
@@ -926,5 +1015,62 @@ class DocumentController extends Controller
 
             return sprintf('DTS-%s-%04d', $year, $nextVal);
         });
+    }
+
+    public function updateRoutingPath(Request $request, $document_number)
+    {
+        $document = DB::table('documents')->where('document_number', $document_number)->first();
+        if (!$document) {
+            return redirect()->back()->with('error', 'Document not found.');
+        }
+
+        $isImmutable = DB::table('document_routing_policies')
+            ->where('document_type_id', $document->document_type_id)
+            ->value('is_immutable') ?? false;
+
+        if (auth()->user()->department_id != $document->sender_department_id || $isImmutable) {
+            return redirect()->back()->with('error', 'Unauthorized modification request.');
+        }
+
+        $routes = json_decode($request->input('edit_routes'), true);
+        if (!is_array($routes) || count($routes) < 1) {
+            return redirect()->back()->with('error', 'At least one routing destination department is required.');
+        }
+
+        $user = auth()->user();
+
+        DB::transaction(function () use ($document, $routes, $user) {
+            DB::table('document_routes')->where('document_id', $document->id)->delete();
+
+            foreach ($routes as $index => $step) {
+                $targetDepartmentId = (int) $step['department_id'];
+                $orderSequence = (int) $step['route_order'];
+                $initialStepStatus = $orderSequence === 1 ? 'current' : 'pending';
+
+                if ($targetDepartmentId) {
+                    DB::table('document_routes')->insert([
+                        'document_id'   => $document->id,
+                        'department_id' => $targetDepartmentId,
+                        'route_order'   => $orderSequence,
+                        'status'        => $initialStepStatus,
+                        'created_at'    => Carbon::now('Asia/Manila'),
+                        'updated_at'    => Carbon::now('Asia/Manila'),
+                    ]);
+
+                    DB::table('document_events')->insert([
+                        'document_id'   => $document->id,
+                        'user_id'       => $user->id,
+                        'department_id' => $user->department_id,
+                        'event_type'    => 'route_defined',
+                        'event_label'   => 'Route step ' . $orderSequence . ' updated',
+                        'new_status'    => $document->status,
+                        'note'          => 'Step ' . $orderSequence . ' re-routed to department ID ' . $targetDepartmentId,
+                        'created_at'    => Carbon::now('Asia/Manila'),
+                    ]);
+                }
+            }
+        });
+
+        return redirect()->back()->with('success', 'Document routing path updated successfully.');
     }
 }
