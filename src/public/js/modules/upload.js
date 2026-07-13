@@ -111,10 +111,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <span class="badge bg-primary index-counter-badge me-2">0</span>
                                     <span class="text-dark font-medium font-mono">${escapeHtml(step.department_name || 'Department')}</span>
                                 </div>
-                                <div class="btn-group shadow-3xs" role="group">
-                                    <button type="button" class="btn btn-white btn-xs move-up-btn" title="Move Up"><i class="bi bi-arrow-up"></i></button>
-                                    <button type="button" class="btn btn-white btn-xs move-down-btn" title="Move Down"><i class="bi bi-arrow-down"></i></button>
-                                    <button type="button" class="btn btn-danger btn-xs remove-step-btn" title="Remove"><i class="bi bi-trash"></i></button>
+                                <div class="d-flex gap-1" role="group">
+                                    <button type="button" class="btn btn-white btn-sm move-up-btn" title="Move Up"><i class="bi bi-arrow-up"></i></button>
+                                    <button type="button" class="btn btn-white btn-sm move-down-btn" title="Move Down"><i class="bi bi-arrow-down"></i></button>
+                                    <button type="button" class="btn btn-danger btn-sm remove-step-btn" title="Remove"><i class="bi bi-trash"></i></button>
                                 </div>
                             `;
                             routeListContainer.appendChild(li);
@@ -179,10 +179,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="badge bg-primary index-counter-badge me-2">0</span>
                     <span class="text-dark font-medium font-mono">${escapeHtml(option.text)}</span>
                 </div>
-                <div class="btn-group shadow-3xs" role="group">
-                    <button type="button" class="btn btn-white btn-xs move-up-btn" title="Move Up"><i class="bi bi-arrow-up"></i></button>
-                    <button type="button" class="btn btn-white btn-xs move-down-btn" title="Move Down"><i class="bi bi-arrow-down"></i></button>
-                    <button type="button" class="btn btn-danger btn-xs remove-step-btn" title="Remove"><i class="bi bi-trash"></i></button>
+                <div class="d-flex gap-1" role="group">
+                    <button type="button" class="btn btn-white btn-sm move-up-btn" title="Move Up"><i class="bi bi-arrow-up"></i></button>
+                    <button type="button" class="btn btn-white btn-sm move-down-btn" title="Move Down"><i class="bi bi-arrow-down"></i></button>
+                    <button type="button" class="btn btn-danger btn-sm remove-step-btn" title="Remove"><i class="bi bi-trash"></i></button>
                 </div>
             `;
             routeListContainer.appendChild(li);
@@ -276,10 +276,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="badge bg-primary index-counter-badge me-2">${route.route_order}</span>
                         <span class="text-dark font-medium font-mono">${escapeHtml(route.department_name || 'Department Ref')}</span>
                     </div>
-                    <div class="btn-group shadow-3xs" role="group">
-                        <button type="button" class="btn btn-white btn-xs move-up-btn"><i class="bi bi-arrow-up"></i></button>
-                        <button type="button" class="btn btn-white btn-xs move-down-btn"><i class="bi bi-arrow-down"></i></button>
-                        <button type="button" class="btn btn-danger btn-xs remove-step-btn"><i class="bi bi-trash"></i></button>
+                    <div class="d-flex gap-1" role="group">
+                        <button type="button" class="btn btn-white btn-sm move-up-btn"><i class="bi bi-arrow-up"></i></button>
+                        <button type="button" class="btn btn-white btn-sm move-down-btn"><i class="bi bi-arrow-down"></i></button>
+                        <button type="button" class="btn btn-danger btn-sm remove-step-btn"><i class="bi bi-trash"></i></button>
                     </div>
                 `;
                 routeListContainer.appendChild(li);

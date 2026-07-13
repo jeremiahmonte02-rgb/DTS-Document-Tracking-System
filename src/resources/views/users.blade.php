@@ -1,68 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>User Management - Document Tracking System</title>
+@extends('layouts.app')
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
-</head>
-<body>
-    @include('partials.sidebar-nav')
+@section('title', 'User Management - Document Tracking System')
 
-    <div class="main-content">
-        <nav class="top-navbar d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <button class="btn btn-link d-md-none" id="sidebarToggle">
-                    <i class="bi bi-list fs-4"></i>
-                </button>
-                <h5 class="mb-0">User Management</h5>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <div class="position-relative">
-                    <button class="btn btn-link position-relative">
-                        <i class="bi bi-bell fs-5"></i>
-                        <span class="notification-badge">3</span>
-                    </button>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-link dropdown-toggle d-flex align-items-center gap-2"
-                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle fs-5"></i>
-                        <span class="d-none d-md-inline">{{ auth()->user()->name }}</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li class="px-3 py-2">
-                            <h6 class="profile-name mb-1">{{ auth()->user()->name }}</h6>
-                            <p class="profile-department small text-muted mb-1">{{ auth()->user()->department->name ?? 'No Department Assigned' }}</p>
-                            <span class="profile-role-badge badge bg-primary">{{ auth()->user()->role->name ?? 'Standard User' }}</span>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Profile</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <form action="{{ route('logout') }}" method="POST" class="d-inline">
-                                @csrf
-                                <button type="submit" class="dropdown-item">
-                                    <i class="bi bi-box-arrow-right"></i> Logout
-                                </button>
-                            </form>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
+@section('pageTitle', 'User Management')
 
-        <div class="container-fluid p-4" data-fetch-url="{{ route('api.users.data') }}"
-             data-stats-url="{{ route('api.users.stats') }}"
-             data-store-url="{{ route('api.users.store') }}"
-             data-toggle-url="{{ route('api.users.toggle-status', '__ID__') }}"
-             data-update-url="{{ route('api.users.update', '__ID__') }}">
-
+@section('content')
             <div class="card mb-4">
                 <div class="card-body">
                     <div class="row g-3 align-items-end">
@@ -170,7 +112,12 @@
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card"
+                 data-fetch-url="{{ route('api.users.data') }}"
+                 data-stats-url="{{ route('api.users.stats') }}"
+                 data-store-url="{{ route('api.users.store') }}"
+                 data-toggle-url="{{ route('api.users.toggle-status', '__ID__') }}"
+                 data-update-url="{{ route('api.users.update', '__ID__') }}">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="bi bi-people"></i> System Users
@@ -239,9 +186,8 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
+    <!-- Add User Modal -->
     <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -299,6 +245,7 @@
         </div>
     </div>
 
+    <!-- Edit User Modal -->
     <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -354,11 +301,8 @@
             </div>
         </div>
     </div>
+@endsection
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    @include('partials.auth-context')
-    <script src="{{ asset('js/main.js') }}"></script>
+@section('scripts')
     <script src="{{ asset('js/modules/users.js') }}?v={{ filemtime(public_path('js/modules/users.js')) }}"></script>
-</body>
-</html>
+@endsection

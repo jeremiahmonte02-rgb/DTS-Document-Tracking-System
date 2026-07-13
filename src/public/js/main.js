@@ -5,6 +5,19 @@
 document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     highlightActiveNav();
+    setupSidebarCloseOnOutsideClick();
+    setupSidebarCloseOnNavClick();
+    restoreSidebarState();
+    setupSidebarCollapse();
+
+    // Mobile hamburger button
+    const mobileToggle = document.getElementById('mobileMenuToggle');
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) sidebar.classList.toggle('show');
+        });
+    }
 
     // Global navigation interceptor to mitigate multi-click latency drops
     document.addEventListener('click', function(e) {
@@ -24,12 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Setup event listeners
 function setupEventListeners() {
-    // Mobile sidebar toggle
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', toggleSidebar);
-    }
-
     // Search functionality
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
@@ -43,12 +50,82 @@ function setupEventListeners() {
     });
 }
 
-// Toggle sidebar on mobile
-function toggleSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-        sidebar.classList.toggle('show');
+// Close sidebar when clicking outside on mobile
+function setupSidebarCloseOnOutsideClick() {
+    document.addEventListener('click', function(e) {
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('sidebarCollapseBtn');
+        const mobileToggleBtn = document.getElementById('mobileMenuToggle');
+
+        if (sidebar && sidebar.classList.contains('show')) {
+            const isOutsideSidebar = !sidebar.contains(e.target);
+            const isOutsideToggleBtn = toggleBtn ? !toggleBtn.contains(e.target) : true;
+            const isOutsideMobileBtn = mobileToggleBtn ? !mobileToggleBtn.contains(e.target) : true;
+
+            if (isOutsideSidebar && isOutsideToggleBtn && isOutsideMobileBtn) {
+                sidebar.classList.remove('show');
+            }
+        }
+    });
+}
+
+// Close sidebar when nav link clicked on mobile
+function setupSidebarCloseOnNavClick() {
+    const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar && window.innerWidth < 768) {
+                sidebar.classList.remove('show');
+            }
+        });
+    });
+}
+
+// Restore sidebar collapsed state from localStorage
+function restoreSidebarState() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+
+    // Only apply collapse on desktop
+    if (window.innerWidth >= 768) {
+        const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+        if (isCollapsed) {
+            sidebar.classList.add('collapsed');
+        }
     }
+}
+
+// Setup sidebar collapse toggle (single button for mobile + desktop)
+function setupSidebarCollapse() {
+    const collapseBtn = document.getElementById('sidebarCollapseBtn');
+    if (!collapseBtn) return;
+
+    collapseBtn.addEventListener('click', function() {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+
+        if (window.innerWidth < 768) {
+            // Mobile: slide in/out
+            sidebar.classList.toggle('show');
+        } else {
+            // Desktop: expand/collapse
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+        }
+    });
+
+    // Handle window resize — clean up mobile state
+    window.addEventListener('resize', function() {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+
+        if (window.innerWidth < 768) {
+            sidebar.classList.remove('collapsed');
+        } else {
+            sidebar.classList.remove('show');
+        }
+    });
 }
 
 // Highlight active navigation item
@@ -138,8 +215,9 @@ function showToast(message, type = 'info') {
 
     const toastHtml = `
         <div id="${toastId}" class="toast ${bgClass} text-white" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-body">
-                ${message}
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>
     `;

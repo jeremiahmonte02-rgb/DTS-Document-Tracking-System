@@ -1,78 +1,17 @@
+@extends('layouts.app')
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Document Tracking System</title>
-    
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
-</head>
-<body>
-    @include('partials.sidebar-nav')
+@section('title', 'Dashboard - Document Tracking System')
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top Navigation -->
-        <nav class="top-navbar d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <button class="btn btn-link d-md-none" id="sidebarToggle">
-                    <i class="bi bi-list fs-4"></i>
-                </button>
-                <h5 class="mb-0">Dashboard</h5>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <div class="position-relative">
-                    <button class="btn btn-link position-relative">
-                        <i class="bi bi-bell fs-5"></i>
-                        <span class="notification-badge">{{ $unreadNotificationsCount }}</span>
-                    </button>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-link dropdown-toggle d-flex align-items-center gap-2" 
-                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle fs-5"></i>
-                        <span class="d-none d-md-inline">{{ auth()->user()->name }}</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li class="px-3 py-2">
-                            <h6 class="profile-name mb-1">{{ auth()->user()->name }}</h6>
-                            <p class="profile-department small text-muted mb-1">{{ auth()->user()->department->name ?? 'No Department Assigned' }}</p>
-                            <span class="profile-role-badge badge bg-primary">{{ auth()->user()->role->name ?? 'Standard User' }}</span>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Profile</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <form action="{{ route('logout') }}" method="POST" class="d-inline">
-                                @csrf
-                                <button type="submit" class="dropdown-item">
-                                    <i class="bi bi-box-arrow-right"></i> Logout
-                                </button>
-                            </form>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
+@section('pageTitle', 'Dashboard')
 
-        <!-- Dashboard Content -->
-        <div class="container-fluid p-4">
+@section('content')
             @if(session('success'))
-            <div class="alert alert-success d-flex align-items-center alert-dismissible fade show shadow-sm mb-4" role="alert" style="background-color: #d1e7dd; border-color: #badbcc; color: #0f5132; padding: 1rem 1.25rem; border-radius: 0.375rem; position: relative;">
+            <div class="alert alert-success d-flex align-items-center alert-dismissible fade show shadow-sm mb-4 pe-5" role="alert" style="background-color: #d1e7dd; border-color: #badbcc; color: #0f5132; padding: 1rem 1.25rem; border-radius: 0.375rem; position: relative;">
                 <i class="bi bi-check-circle-fill me-2 fs-5"></i>
                 <div>
                     <strong>Success!</strong> {{ session('success') }}
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="position: absolute; right: 1.25rem; top: 1rem; background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #0f5132;"></button>
+                <button type="button" class="btn-close position-absolute" data-bs-dismiss="alert" aria-label="Close" style="right: 0.5rem; top: 50%; transform: translateY(-50%); padding: 1.25rem; min-width: 44px; min-height: 44px; background: none; border: none; cursor: pointer; color: #0f5132; filter: invert(20%) sepia(50%) saturate(500%) hue-rotate(100deg);"></button>
             </div>
             @endif
             <!-- Statistics Cards -->
@@ -81,7 +20,7 @@
                     <div class="card stat-card primary">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
+                                <div style="min-width: 0;">
                                     <h6 class="text-muted mb-2">Total Documents</h6>
                                     <h2 class="mb-0 tabular-nums">{{ $totalDocuments }}</h2>
                                 </div>
@@ -97,7 +36,7 @@
                     <div class="card stat-card warning">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
+                                <div style="min-width: 0;">
                                     <h6 class="text-muted mb-2">Pending Transfer</h6>
                                     <h2 class="mb-0 tabular-nums">{{ $pendingDocuments }}</h2>
                                 </div>
@@ -113,7 +52,7 @@
                     <div class="card stat-card success">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
+                                <div style="min-width: 0;">
                                     <h6 class="text-muted mb-2">Received Today</h6>
                                     <h2 class="mb-0 tabular-nums">{{ $receivedToday }}</h2>
                                 </div>
@@ -129,7 +68,7 @@
                     <div class="card stat-card info">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
+                                <div style="min-width: 0;">
                                     <h6 class="text-muted mb-2">In Transit</h6>
                                     <h2 class="mb-0 tabular-nums">{{ $inTransitDocuments }}</h2>
                                 </div>
@@ -145,7 +84,7 @@
                     <div class="card stat-card dark">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
+                                <div style="min-width: 0;">
                                     <h6 class="text-muted mb-2">Avg Dwell Time</h6>
                                     <h2 class="mb-0 tabular-nums">{{ $avgDwellHours }} <small class="fs-6 text-muted">hrs</small></h2>
                                 </div>
@@ -161,7 +100,7 @@
                     <div class="card stat-card {{ $overdueCount > 0 ? 'danger' : 'success' }}">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
+                                <div style="min-width: 0;">
                                     <h6 class="text-muted mb-2">Overdue</h6>
                                     <h2 class="mb-0 tabular-nums">{{ $overdueCount }}</h2>
                                 </div>
@@ -177,7 +116,7 @@
                     <div class="card stat-card primary">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
+                                <div style="min-width: 0;">
                                     <h6 class="text-muted mb-2">Avg Completion</h6>
                                     <h2 class="mb-0 tabular-nums">{{ $avgCompletionHours }} <small class="fs-6 text-muted">hrs</small></h2>
                                 </div>
@@ -228,7 +167,7 @@
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div style="height: 300px;">
+                            <div class="chart-wrapper">
                                 <canvas id="statusChart" data-metrics='@json($statusMetrics ?? [])'></canvas>
                             </div>
                         </div>
@@ -241,7 +180,7 @@
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div style="height: 300px;">
+                            <div class="chart-wrapper">
                                 <canvas id="departmentChart" data-metrics='@json($departmentDistribution ?? [])'></canvas>
                             </div>
                         </div>
@@ -287,35 +226,27 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- QR Code Modal -->
-    <div id="qrModal" class="modal-backdrop-custom d-none" style="position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 1050; display: flex; align-items: center; justify-content: center;">
-        <div class="modal-card bg-white p-4 rounded shadow-lg text-center" style="width: 350px;">
-            <h5 class="mb-2 fw-bold">Document Tracking Label</h5>
-            <p id="qrDocNumber" class="text-primary font-monospace fw-bold mb-3"></p>
-            <div id="qrCodeContainer" class="d-flex justify-content-center p-2 bg-light mb-3"></div>
-            <div class="d-flex gap-2 justify-content-center">
-                <button id="downloadQrBtn" class="btn btn-sm btn-success"><i class="bi bi-download"></i> Download</button>
-                <button class="btn btn-sm btn-light" onclick="closeQrModal()">Close</button>
+            <!-- QR Code Modal -->
+            <div id="qrModal" class="modal-backdrop-custom d-none qr-modal-backdrop">
+                <div class="modal-card bg-white p-4 rounded shadow-lg text-center qr-modal-card">
+                    <h5 class="mb-2 fw-bold">Document Tracking Label</h5>
+                    <p id="qrDocNumber" class="text-primary font-monospace fw-bold mb-3"></p>
+                    <div id="qrCodeContainer" class="d-flex justify-content-center p-2 bg-light mb-3"></div>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button id="downloadQrBtn" class="btn btn-sm btn-success"><i class="bi bi-download"></i> Download</button>
+                        <button class="btn btn-light" onclick="closeQrModal()">Close</button>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
+@endsection
 
-    <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
+@section('scripts')
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <!-- QRCode.js -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    
-    <!-- Auth Context -->
-    @include('partials.auth-context')
-    
-    <script src="{{ asset('js/main.js') }}"></script>
+
     <script src="{{ asset('js/modules/dashboard.js') }}"></script>
-</body>
-</html>
+@endsection

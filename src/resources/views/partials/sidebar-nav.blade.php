@@ -1,7 +1,15 @@
-<nav class="sidebar">
+<nav class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <h4><i class="bi bi-file-earmark-text"></i> DTS</h4>
-        <small class="text-white-50">Document Tracking</small>
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="sidebar-brand">
+                <i class="bi bi-file-earmark-text"></i>
+                <span class="sidebar-brand-text">DTS</span>
+            </div>
+            <button class="btn btn-link sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle sidebar">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+        </div>
+        <small class="text-white-50 sidebar-subtitle">Document Tracking</small>
     </div>
     <ul class="sidebar-nav nav flex-column">
         @if(auth()->user()->isAuditor())

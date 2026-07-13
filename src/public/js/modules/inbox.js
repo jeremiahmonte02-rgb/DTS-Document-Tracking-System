@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <tr class="clickable-row" data-document-number="${escapeHtml(doc.document_number)}" style="cursor: pointer;">
                     <td><strong class="text-primary">${escapeHtml(doc.document_number)}</strong></td>
                     <td>${escapeHtml(doc.title)}</td>
-                    <td><span class="badge bg-light text-dark border">${escapeHtml(doc.type_name)}</span></td>
+                    <td><span class="badge bg-light text-dark border">${escapeHtml(doc.document_type_name)}</span></td>
                     <td>${escapeHtml(doc.sender_name)}</td>
                     <td><span class="text-muted">${escapeHtml(doc.current_department)}</span></td>
                     <td>${formattedDate}</td>
