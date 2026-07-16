@@ -349,7 +349,8 @@ body {
 
 .table-responsive {
     border-radius: 10px;
-    overflow: hidden;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Forms */
@@ -839,7 +840,7 @@ body {
     border: 1px solid var(--whisper);
     border-radius: 2rem;
     box-shadow: var(--shadow);
-    overflow: hidden;
+    overflow: visible;
 }
 
 .table-container .table {
@@ -1984,4 +1985,14 @@ body {
     width: 180px;
     height: 180px;
     image-rendering: crisp-edges;
+}
+
+/* ============================================================
+   Mobile: Release fixed column widths so tables can overflow
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .table-container .table.table-fixed,
+    table.table-fixed {
+        table-layout: auto !important;
+    }
 }

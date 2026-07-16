@@ -144,11 +144,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 borderClass = 'border-success';
                 statusBadgeClass = 'bg-light-success text-success';
                 actionSlot = `
-                    <div class="alert alert-info d-flex align-items-center m-0 mb-3 py-2 px-3 text-xs border border-info-subtle rounded">
-                        <i class="bi bi-info-circle-fill me-2 text-info"></i> This document requires routing approval. Your department may not be authorized to receive it directly.
+                    <div class="alert alert-info d-flex align-items-center w-100 m-0 mb-2 py-2 px-3 text-xs border border-info-subtle rounded">
+                        <i class="bi bi-info-circle-fill me-2 text-info flex-shrink-0"></i>
+                        <span>This document requires routing approval. Your department may not be authorized to receive it directly.</span>
                     </div>
-                    <button type="button" class="btn btn-warning btn-sm px-3 shadow-3xs text-dark font-semibold" id="actionAttemptReceiptBtn">
-                        <i class="bi bi-shield-x me-1"></i> Attempt Receipt
+                    <button type="button" class="btn btn-warning btn-sm px-3 w-100 w-md-auto text-dark font-semibold d-inline-flex align-items-center justify-content-center gap-1" id="actionAttemptReceiptBtn">
+                        <i class="bi bi-shield-x"></i> Attempt Receipt
                     </button>
                 `;
             }
@@ -170,10 +171,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="col-sm-6"><strong>Current Status:</strong> <span class="badge ${statusBadgeClass} text-xs font-semibold px-2 py-0.5">${escapeHtml(doc.status)}</span></div>
                             <div class="col-11 border-top pt-2 mt-2"><strong>Description:</strong> <p class="text-muted text-xs mb-0 mt-1">${escapeHtml(doc.description || 'No descriptive context log attached.')}</p></div>
                         </div>
-                        <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top">
                             ${actionSlot}
-                            <button type="button" class="btn btn-outline-primary btn-sm px-3" id="actionViewFullDetailsBtn">
-                                <i class="bi bi-eye me-1"></i> View Full Details
+                            <button type="button" class="btn btn-outline-primary btn-sm px-3 w-100 w-md-auto d-inline-flex align-items-center justify-content-center gap-1" id="actionViewFullDetailsBtn">
+                                <i class="bi bi-eye"></i> View Full Details
                             </button>
                         </div>
                     </div>

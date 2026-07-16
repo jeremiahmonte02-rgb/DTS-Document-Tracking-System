@@ -137,12 +137,15 @@
                     '<td><span class="badge bg-info">' + (user.role ? escapeHtml(user.role.name) : '--') + '</span></td>' +
                     '<td><span class="badge ' + badgeClass + '">' + statusLabel + '</span></td>' +
                     '<td>' +
-                        '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit-user" data-user-id="' + user.id + '" title="Edit user">' +
-                            '<i class="bi bi-pencil"></i>' +
-                        '</button>' +
-                        '<button class="btn btn-sm btn-outline-warning" data-action="toggle-user" data-user-id="' + user.id + '" title="' + toggleLabel + '">' +
-                            '<i class="bi ' + toggleIcon + '"></i> ' + toggleLabel +
-                        '</button>' +
+                        '<div class="d-flex align-items-center flex-nowrap gap-1">' +
+                            '<button class="btn btn-sm btn-outline-primary" data-action="edit-user" data-user-id="' + user.id + '" title="Edit user">' +
+                                '<i class="bi bi-pencil"></i>' +
+                            '</button>' +
+                            '<button class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1" data-action="toggle-user" data-user-id="' + user.id + '" title="' + toggleLabel + '">' +
+                                '<i class="bi ' + toggleIcon + '"></i>' +
+                                '<span class="d-none d-md-inline">' + toggleLabel + '</span>' +
+                            '</button>' +
+                        '</div>' +
                     '</td>' +
                     '</tr>';
             }).join('');
