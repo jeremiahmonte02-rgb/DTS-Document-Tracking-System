@@ -200,6 +200,12 @@
                             <h6 class="card-title text-muted text-uppercase text-xs fw-bold tracking-wider m-0">
                                 <i class="bi bi-diagram-3 me-1"></i> Scheduled Routing Path
                             </h6>
+                            <!-- REMOVE AFTER DEBUGGING: Production Condition Diagnostic Line -->
+                            <div class="position-absolute text-xxs text-danger fw-bold bg-light px-2 py-0.5 rounded border" style="top: -12px; left: 15px; z-index: 10;">
+                                User Dept: {{ auth()->user()->department_id ?? 'NULL' }} |
+                                Doc Sender Dept: {{ $document->sender_department_id ?? 'NULL' }} |
+                                Immutable Flag: {{ $isImmutable ? 'TRUE' : 'FALSE' }}
+                            </div>
                             @if(auth()->user()->department_id == $document->sender_department_id && !$isImmutable)
                             <button type="button" id="editRoutingPathBtn" class="btn btn-light btn-sm p-0 flex-shrink-0 d-inline-flex align-items-center justify-content-center border" style="width: 32px; height: 32px;" title="Edit Routing Path">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil text-dark" viewBox="0 0 16 16">
