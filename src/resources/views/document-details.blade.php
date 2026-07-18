@@ -201,8 +201,10 @@
                                 <i class="bi bi-diagram-3 me-1"></i> Scheduled Routing Path
                             </h6>
                             @if(auth()->user()->department_id == $document->sender_department_id && !$isImmutable)
-                            <button type="button" id="editRoutingPathBtn" class="btn btn-outline-secondary btn-sm" title="Edit Routing Path">
-                                <i class="bi bi-pencil"></i>
+                            <button type="button" id="editRoutingPathBtn" class="btn btn-light btn-sm p-0 flex-shrink-0 d-inline-flex align-items-center justify-content-center border" style="width: 32px; height: 32px;" title="Edit Routing Path">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil text-dark" viewBox="0 0 16 16">
+                                    <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 1.586L10.5 1.914 1.354 11.063 2.646 12.354zm-1.2 1.2L9.207 3.5 1.5 11.207V13.5h2.293zm1.5-1.5H1.5v2.293h2.293zm-1.5-1.5H1.5v2.293h2.293z"/>
+                                </svg>
                             </button>
                             @endif
                         </div>
