@@ -6,8 +6,21 @@
 
 @section('pageTitle', 'Document Details')
 
+<style>
+    @media print {
+        body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .print-page-break {
+            page-break-before: always !important;
+            break-before: page !important;
+        }
+    }
+</style>
+
 @section('content')
-            <div class="mb-3">
+            <div class="mb-3 no-print d-print-none">
                 <a href="javascript:history.back()" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Back
                 </a>
@@ -126,11 +139,11 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card-footer bg-white">
+                        <div class="card-footer bg-white no-print d-print-none">
                             @php
                                 $lastStep = collect($routes)->sortBy('route_order')->last();
                                 $isFinalDepartment = $lastStep && auth()->user() && $lastStep->department_id === auth()->user()->department_id;
-                                $isLastStepReceived = $lastStep && in_array(strtolower($lastStep->status), ['received', 'completed']);
+                                $isLastStepCustody = $lastStep && strtolower($lastStep->status) === 'current';
                                 $isDocumentCompleted = isset($document->status) && strtolower($document->status) === 'completed';
                             @endphp
                             <div class="d-flex flex-column flex-md-row gap-2 w-100">
@@ -143,7 +156,7 @@
                                 <button class="btn btn-info w-100 w-md-auto" onclick="shareDocument()">
                                     <i class="bi bi-share"></i> Share
                                 </button>
-                                @if($isFinalDepartment && $isLastStepReceived && !$isDocumentCompleted)
+                                @if($isFinalDepartment && $isLastStepCustody && !$isDocumentCompleted)
                                 <button class="btn btn-dark w-100 w-md-auto" id="markAsCompleteBtn" onclick="markDocumentAsComplete('{{ $document->document_number }}')">
                                     <i class="bi bi-check-all"></i> Mark as Complete
                                 </button>
@@ -153,7 +166,7 @@
                     </div>
 
                     <!-- Audit Trail -->
-                    <div class="card">
+                    <div class="card mb-4 print-page-break">
                         <div class="card-header bg-white">
                             <h5 class="mb-0">
                                 <i class="bi bi-clock-history"></i> Audit Trail & Document History
@@ -172,7 +185,7 @@
 
                 <!-- QR Code and Quick Actions -->
                 <div class="col-lg-4">
-                    <div class="card mb-4">
+                    <div class="card mb-4 print-page-break">
                         <div class="card-header bg-white">
                             <h6 class="mb-0">
                                 <i class="bi bi-qr-code"></i> QR Code
@@ -189,7 +202,7 @@
                                     {{ $document->document_number }}
                                 </div>
                             </div>
-                            <button type="button" id="detailsPrintQrBtn" class="btn btn-primary btn-sm w-100">
+                            <button type="button" id="detailsPrintQrBtn" class="btn btn-primary btn-sm w-100 no-print d-print-none">
                                 <i class="bi bi-printer"></i> Print QR Code
                             </button>
                         </div>
@@ -211,11 +224,16 @@
                         <div class="card-body pt-1">
                             <div class="d-flex flex-column gap-2">
                                 @php $currentReceiverDepartmentId = 'null'; @endphp
+                                @php $userIsNext = false; @endphp
                                 @foreach($routes as $route)
                                     @php
                                         $isCurrent = strtolower($route->status) === 'current';
+                                        $isNext = strtolower($route->status) === 'next';
                                         if ($isCurrent) {
                                             $currentReceiverDepartmentId = $route->department_id;
+                                        }
+                                        if ($isNext && auth()->user() && (int) $route->department_id === (int) auth()->user()->department_id) {
+                                            $userIsNext = true;
                                         }
 
                                         $badgeStyle = 'bg-secondary text-white';
@@ -227,6 +245,9 @@
                                         } elseif (in_array(strtolower($route->status), ['received', 'completed'])) {
                                             $badgeStyle = 'bg-success text-white';
                                             $rowModifier = 'border-success-subtle';
+                                        } elseif ($isNext) {
+                                            $badgeStyle = 'bg-info text-white';
+                                            $rowModifier = 'border-info-subtle';
                                         }
                                     @endphp
 
@@ -246,7 +267,7 @@
                         </div>
                     </div>
 
-                    <div class="card mb-4">
+                    <div class="card mb-4 no-print d-print-none">
                         <div class="card-header bg-white">
                             <h6 class="mb-0">
                                 <i class="bi bi-lightning"></i> Quick Actions
@@ -254,9 +275,11 @@
                         </div>
                         <div class="card-body">
                             <div class="d-grid gap-2">
+                                @if($userIsNext)
                                 <button type="button" id="markAsReceivedBtn" class="btn btn-outline-primary btn-sm">
                                     <i class="bi bi-check-circle"></i> Mark as Received
                                 </button>
+                                @endif
                                 <button type="button" id="requestAccessBtn" class="btn btn-outline-warning btn-sm">
                                     <i class="bi bi-pencil"></i> Request Access
                                 </button>
@@ -656,12 +679,110 @@
                 modal.hide();
                 form.reset();
                 showToast(data.message || 'Issue reported successfully!', 'success');
+                refreshDocumentState(docId);
             })
-            .catch(() => {
+            .catch(err => {
                 hideSpinner();
                 modal.hide();
                 form.reset();
-                showToast('Issue reported successfully!', 'success');
+                showToast(err.message || 'Failed to submit issue report.', 'danger');
+            });
+        }
+
+        function refreshDocumentState(docNumber) {
+            var lookupUrl = '/scan/lookup?document_number=' + encodeURIComponent(docNumber);
+
+            fetch(lookupUrl, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) return;
+
+                if (data.events && typeof window.renderTimeline === 'function') {
+                    window.renderTimeline('auditTrail', data.events, { reverseOrder: true });
+                }
+
+                if (data.routes) {
+                    var routeStepDivs = [];
+                    document.querySelectorAll('.card').forEach(function (card) {
+                        if (card.textContent.indexOf('Scheduled Routing Path') !== -1) {
+                            routeStepDivs = card.querySelectorAll('[data-dept-id]');
+                        }
+                    });
+
+                    routeStepDivs.forEach(function (div) {
+                        var deptId = div.getAttribute('data-dept-id');
+                        var route = data.routes.find(function (r) { return String(r.department_id) === String(deptId); });
+                        if (!route) return;
+
+                        var badge = div.querySelector('.badge:last-child');
+                        if (badge) {
+                            badge.textContent = route.status.toUpperCase();
+
+                            badge.classList.remove('bg-secondary', 'text-white', 'bg-warning', 'text-dark', 'fw-bold', 'bg-success', 'bg-info');
+                            if (route.status === 'current') {
+                                badge.classList.add('bg-warning', 'text-dark', 'fw-bold');
+                            } else if (route.status === 'received' || route.status === 'completed') {
+                                badge.classList.add('bg-success', 'text-white');
+                            } else if (route.status === 'next') {
+                                badge.classList.add('bg-info', 'text-white');
+                            } else {
+                                badge.classList.add('bg-secondary', 'text-white');
+                            }
+                        }
+
+                        var numberCircle = div.querySelector('span.badge.rounded-circle');
+                        if (numberCircle) {
+                            numberCircle.classList.remove('bg-secondary', 'text-white', 'bg-warning', 'text-dark', 'fw-bold', 'bg-success', 'bg-info');
+                            if (route.status === 'current') {
+                                numberCircle.classList.add('bg-warning', 'text-dark', 'fw-bold');
+                            } else if (route.status === 'received' || route.status === 'completed') {
+                                numberCircle.classList.add('bg-success', 'text-white');
+                            } else if (route.status === 'next') {
+                                numberCircle.classList.add('bg-info', 'text-white');
+                            } else {
+                                numberCircle.classList.add('bg-secondary', 'text-white');
+                            }
+                        }
+
+                        div.classList.remove('border-warning', 'bg-warning-subtle', 'bg-opacity-10', 'border-success-subtle', 'border-info-subtle', 'border-light-subtle', 'bg-white');
+                        if (route.status === 'current') {
+                            div.classList.add('border-warning', 'bg-warning-subtle', 'bg-opacity-10');
+                        } else if (route.status === 'received' || route.status === 'completed') {
+                            div.classList.add('border-success-subtle');
+                        } else if (route.status === 'next') {
+                            div.classList.add('border-info-subtle');
+                        } else {
+                            div.classList.add('border-light-subtle', 'bg-white');
+                        }
+                    });
+                }
+
+                var docStatusBadge = document.querySelector('#docStatus .badge');
+                if (docStatusBadge && data.document) {
+                    var newStatus = data.document.status || '';
+                    docStatusBadge.textContent = newStatus.toUpperCase();
+                    docStatusBadge.classList.remove('bg-success', 'bg-info', 'text-white', 'bg-warning', 'text-dark', 'bg-danger', 'bg-secondary');
+                    if (newStatus === 'received' || newStatus === 'completed') {
+                        docStatusBadge.classList.add('bg-success', 'text-white');
+                    } else if (newStatus === 'in_transit') {
+                        docStatusBadge.classList.add('bg-info', 'text-white');
+                    } else if (newStatus === 'pending_transfer') {
+                        docStatusBadge.classList.add('bg-warning', 'text-dark');
+                    } else if (newStatus === 'rejected') {
+                        docStatusBadge.classList.add('bg-danger', 'text-white');
+                    } else {
+                        docStatusBadge.classList.add('bg-secondary', 'text-white');
+                    }
+                }
+            })
+            .catch(function (err) {
+                console.error('[refreshDocumentState] Failed to refresh:', err);
             });
         }
 

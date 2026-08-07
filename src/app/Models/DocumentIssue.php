@@ -14,6 +14,7 @@ class DocumentIssue extends Model
         'reported_by_user_id',
         'assigned_department_id',
         'description',
+        'type',
         'priority',
         'status',
         'resolved_by_user_id',

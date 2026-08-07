@@ -106,7 +106,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const hasUserDeptProcessed = routes.some(function(route) {
             return String(route.department_id) === userDepartmentId && route.status === 'received';
         });
-        const isAuthorizedDepartment = routes.some(function(route) {
+        const isNextInLine = routes.some(function(route) {
+            return String(route.department_id) === userDepartmentId && route.status === 'next';
+        });
+        const hasCustody = routes.some(function(route) {
             return String(route.department_id) === userDepartmentId && route.status === 'current';
         });
 
@@ -126,14 +129,25 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="bi bi-info-circle-fill me-2 text-warning"></i> This sequence tracking step is completed. Ready for downstream routing transfers.
                     </div>
                 `;
-            } else if (isAuthorizedDepartment) {
+            } else if (hasCustody) {
+                headerClass = 'bg-info text-white';
+                headerIcon = 'bi-arrow-right-circle-fill';
+                headerTitle = 'Custody Held';
+                borderClass = 'border-info';
+                statusBadgeClass = 'bg-light-info text-info';
+                actionSlot = `
+                    <div class="alert alert-info d-flex align-items-center m-0 py-1 px-2 text-xs w-100 border border-info-subtle rounded">
+                        <i class="bi bi-info-circle-fill me-2 text-info"></i> Your department currently holds custody of this document. No further action required at this time.
+                    </div>
+                `;
+            } else if (isNextInLine) {
                 headerClass = 'bg-success text-white';
                 headerIcon = 'bi-check-circle-fill';
                 headerTitle = 'Document Found';
                 borderClass = 'border-success';
                 statusBadgeClass = 'bg-light-success text-success';
                 actionSlot = `
-                    <button type="button" class="btn btn-success btn-sm px-3 shadow-3xs" id="actionConfirmReceiptBtn">
+                    <button type="button" class="btn btn-success btn-sm px-3 d-inline-flex align-items-center justify-content-center gap-1 shadow-3xs" id="actionConfirmReceiptBtn">
                         <i class="bi bi-check-circle me-1"></i> Confirm Receipt
                     </button>
                 `;
@@ -171,9 +185,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="col-sm-6"><strong>Current Status:</strong> <span class="badge ${statusBadgeClass} text-xs font-semibold px-2 py-0.5">${escapeHtml(doc.status)}</span></div>
                             <div class="col-11 border-top pt-2 mt-2"><strong>Description:</strong> <p class="text-muted text-xs mb-0 mt-1">${escapeHtml(doc.description || 'No descriptive context log attached.')}</p></div>
                         </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top">
+                        <div class="d-grid d-md-flex align-items-center gap-2 mt-3 pt-2 border-top">
                             ${actionSlot}
-                            <button type="button" class="btn btn-outline-primary btn-sm px-3 w-100 w-md-auto d-inline-flex align-items-center justify-content-center gap-1" id="actionViewFullDetailsBtn">
+                            <button type="button" class="btn btn-outline-primary btn-sm px-3 d-inline-flex align-items-center justify-content-center gap-1" id="actionViewFullDetailsBtn">
                                 <i class="bi bi-eye"></i> View Full Details
                             </button>
                         </div>
@@ -229,6 +243,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else if (route.status === 'received' || route.status === 'completed') {
                         badgeStyle = 'bg-success text-white';
                         rowModifier = 'border-success';
+                    } else if (route.status === 'next') {
+                        badgeStyle = 'bg-info text-white';
+                        rowModifier = 'border-info';
                     }
 
                     stepRow.className = `d-flex align-items-center justify-content-between p-2 mb-2 rounded border shadow-3xs bg-white ${rowModifier}`;

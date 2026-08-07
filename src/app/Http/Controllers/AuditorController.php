@@ -9,21 +9,225 @@ use App\Models\DocumentRoutingPolicy;
 use App\Models\DocumentType;
 use App\Models\DepartmentDocumentSla;
 use App\Models\DocumentIssue;
+use App\Enums\ActivityCode;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AuditorController extends Controller
 {
     /**
-     * Render the welcome dashboard view.
+     * Render the analytical audit dashboard with global metrics.
      */
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         if (!auth()->user() || !auth()->user()->isAuditor()) {
             abort(403, 'Unauthorized access to the Audit Portal.');
         }
 
-        return view('audit.dashboard');
+        $now = \Carbon\Carbon::now('Asia/Manila');
+
+        // Month filtering — auditors can always browse historical months
+        try {
+            $monthParam = $request->filled('month')
+                ? $request->input('month')
+                : now()->format('Y-m');
+            $startOfMonth = \Carbon\Carbon::parse($monthParam . '-01', 'Asia/Manila')->startOfMonth();
+        } catch (\Exception $e) {
+            $startOfMonth = now('Asia/Manila')->startOfMonth();
+        }
+        $endOfMonth = $startOfMonth->copy()->endOfMonth()->endOfDay();
+
+        // 1. Global KPI cards — scoped to selected month
+        $totalDocuments = DB::table('documents')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->count();
+        $pendingDocuments = DB::table('documents')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->where('status', 'pending_transfer')
+            ->count();
+        $inTransitDocuments = DB::table('documents')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->where('status', 'in_transit')
+            ->count();
+        $completedDocuments = DB::table('documents')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->whereIn('status', ['received', 'completed'])
+            ->count();
+        $rejectedDocuments = DB::table('documents')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->where('status', 'rejected')
+            ->count();
+
+        // 2. SLA-overdue count — live operational state, intentionally UNscoped by month
+        $activeRoutes = \App\Models\DocumentRoute::join('documents', 'document_routes.document_id', '=', 'documents.id')
+            ->select('document_routes.*', 'documents.document_type_id')
+            ->where('document_routes.status', 'current')
+            ->whereNotIn('documents.status', ['completed', 'cancelled', 'rejected'])
+            ->whereBetween('document_routes.created_at', [$startOfMonth, $endOfMonth])
+            ->get();
+
+        $departmentSlas = \App\Models\DepartmentDocumentSla::get()
+            ->groupBy('department_id')
+            ->map(fn($items) => $items->keyBy('document_type_id'));
+
+        $documentTypes = \App\Models\DocumentType::get()->keyBy('id');
+
+        $policies = \App\Models\DocumentRoutingPolicy::whereIn('document_type_id', $activeRoutes->pluck('document_type_id')->unique())
+            ->get()->keyBy('document_type_id');
+
+        $overdueCount = 0;
+        foreach ($activeRoutes as $route) {
+            $predefinedRoute = isset($policies[$route->document_type_id]) ? $policies[$route->document_type_id]->predefined_route : null;
+            $allowedMinutes = \App\Services\SlaResolver::resolve($route->department_id, $route->document_type_id, $route->route_order ?? null, $predefinedRoute);
+            $deadline = \Carbon\Carbon::parse($route->updated_at, 'Asia/Manila')->copy()->addMinutes($allowedMinutes);
+            if ($now->greaterThan($deadline)) {
+                $overdueCount++;
+            }
+        }
+
+        // 3. Status distribution — scoped to selected month
+        $statusMetrics = DB::table('documents')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // 4. Department workload — scoped to selected month via withCount callback
+        $departmentDistribution = Department::query()
+            ->where('is_active', true)
+            ->withCount(['currentDocuments as count' => function ($q) use ($startOfMonth, $endOfMonth) {
+                $q->whereBetween('documents.created_at', [$startOfMonth, $endOfMonth]);
+            }])
+            ->orderBy('name')
+            ->get()
+            ->pluck('count', 'name')
+            ->toArray();
+
+        // 5. Issue analytics — scoped to selected month
+        $totalIssues = DocumentIssue::whereBetween('created_at', [$startOfMonth, $endOfMonth])->count();
+        $openIssues = DocumentIssue::whereBetween('created_at', [$startOfMonth, $endOfMonth])->where('status', 'open')->count();
+        $resolvedIssues = DocumentIssue::whereBetween('created_at', [$startOfMonth, $endOfMonth])->where('status', 'resolved')->count();
+
+        // SLA bottleneck distribution — overdue steps grouped by department (scoped to selected month)
+        $departmentsMap = \App\Models\Department::pluck('name', 'id');
+
+        $bottleneckRoutes = \App\Models\DocumentRoute::join('documents', 'document_routes.document_id', '=', 'documents.id')
+            ->select('document_routes.*', 'documents.document_type_id')
+            ->whereIn('document_routes.status', ['current', 'received'])
+            ->whereNotIn('documents.status', ['cancelled', 'rejected', 'completed'])
+            ->whereBetween('document_routes.created_at', [$startOfMonth, $endOfMonth])
+            ->get();
+
+        $routePolicies = \App\Models\DocumentRoutingPolicy::whereIn('document_type_id', $bottleneckRoutes->pluck('document_type_id')->unique())
+            ->get()->keyBy('document_type_id');
+
+        $slaBottlenecksByDept = [];
+
+        foreach ($bottleneckRoutes as $route) {
+            $predefinedRoute = isset($routePolicies[$route->document_type_id]) ? $routePolicies[$route->document_type_id]->predefined_route : null;
+            $allowedMinutes = \App\Services\SlaResolver::resolve($route->department_id, $route->document_type_id, $route->route_order ?? null, $predefinedRoute);
+
+            $referenceTime = ($route->status === 'received' && $route->received_at)
+                ? \Carbon\Carbon::parse($route->received_at, 'Asia/Manila')
+                : \Carbon\Carbon::parse($route->updated_at, 'Asia/Manila');
+
+            $elapsed = abs($now->diffInMinutes($referenceTime));
+
+            if ($elapsed > $allowedMinutes) {
+                $deptName = $departmentsMap[$route->department_id] ?? 'Unknown';
+                $slaBottlenecksByDept[$deptName] = ($slaBottlenecksByDept[$deptName] ?? 0) + 1;
+            }
+        }
+
+        arsort($slaBottlenecksByDept); // Sort highest bottlenecks first
+
+        // Top departments by reported issues — scoped to selected month
+        $issuesByDepartment = DocumentIssue::join('departments', 'document_issues.assigned_department_id', '=', 'departments.id')
+            ->whereBetween('document_issues.created_at', [$startOfMonth, $endOfMonth])
+            ->select('departments.name', DB::raw('count(*) as count'))
+            ->groupBy('departments.name')
+            ->orderByDesc('count')
+            ->limit(8)
+            ->pluck('count', 'name')
+            ->toArray();
+
+        // 6. Average dwell time — scoped to selected month
+        // Redefined: The average time a document spends in the "current" status (from receipt to release)
+        // We calculate this by looking at steps that transitioned FROM 'current' TO 'received' (or terminal status)
+        // Since we don't have a 'released_at' timestamp on the route row, we use the timestamp
+        // of the *subsequent* step's received_at, or the document's completed_at/rejected_at.
+        // For simplicity and accuracy without complex joins, we will calculate the average time
+        // between a document's uploaded_at and completed_at, DIVIDED by the number of completed route steps.
+
+        $completedDocumentsData = DB::table('documents')
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
+            ->whereNotNull('uploaded_at')
+            ->whereBetween('completed_at', [$startOfMonth, $endOfMonth])
+            ->get();
+
+        $totalDwellHours = 0;
+        $totalCompletedSteps = 0;
+
+        foreach ($completedDocumentsData as $doc) {
+            $lifecycleHours = \Carbon\Carbon::parse($doc->uploaded_at)->diffInHours(\Carbon\Carbon::parse($doc->completed_at));
+
+            // How many steps did this document go through?
+            $stepCount = DB::table('document_routes')
+                ->where('document_id', $doc->id)
+                ->whereNotNull('received_at') // Count steps that were actually processed
+                ->count();
+
+            if ($stepCount > 0) {
+                // If a document took 100 hours to complete across 4 steps, the average dwell per department is 25 hours.
+                $totalDwellHours += ($lifecycleHours / $stepCount);
+                $totalCompletedSteps++;
+            }
+        }
+
+        $avgDwellHours = $totalCompletedSteps > 0 ? round($totalDwellHours / $totalCompletedSteps, 1) : 0;
+
+        // 7. Average completion time — scoped by completed_at within selected month
+        $avgCompletionHours = DB::table('documents')
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
+            ->whereNotNull('uploaded_at')
+            ->whereBetween('completed_at', [$startOfMonth, $endOfMonth])
+            ->select(DB::raw('AVG(TIMESTAMPDIFF(HOUR, uploaded_at, completed_at)) as avg_hours'))
+            ->value('avg_hours');
+        $avgCompletionHours = $avgCompletionHours ? round((float) $avgCompletionHours, 1) : 0;
+
+        // 8. Recent activity feed — scoped to selected month
+        $activityFeed = DB::table('document_events')
+            ->join('documents', 'document_events.document_id', '=', 'documents.id')
+            ->join('users', 'document_events.user_id', '=', 'users.id')
+            ->leftJoin('departments', 'document_events.department_id', '=', 'departments.id')
+            ->where('document_events.event_type', '!=', 'route_defined')
+            ->whereBetween('document_events.created_at', [$startOfMonth, $endOfMonth])
+            ->select(
+                'document_events.event_type',
+                'document_events.note',
+                'document_events.created_at',
+                'documents.title',
+                'documents.document_number',
+                'users.name as user_name',
+                'departments.name as department_name'
+            )
+            ->latest('document_events.created_at')
+            ->take(12)
+            ->get();
+
+        return view('audit.dashboard', compact(
+            'totalDocuments', 'pendingDocuments', 'inTransitDocuments',
+            'completedDocuments', 'rejectedDocuments', 'overdueCount',
+            'statusMetrics', 'departmentDistribution',
+            'totalIssues', 'openIssues', 'resolvedIssues',
+            'slaBottlenecksByDept', 'issuesByDepartment',
+            'avgDwellHours', 'avgCompletionHours', 'activityFeed',
+            'startOfMonth'
+        ));
     }
 
     /**
@@ -50,11 +254,61 @@ class AuditorController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        // Pre-calculate overdue document IDs across ALL route steps (current + received)
+        $now = \Carbon\Carbon::now('Asia/Manila');
+        $currentMonth = now()->month;
+        $currentYear = now()->year;
+
+        $allRoutes = \App\Models\DocumentRoute::join('documents', 'document_routes.document_id', '=', 'documents.id')
+            ->select('document_routes.*', 'documents.document_type_id', 'documents.created_at as document_created_at')
+            ->whereIn('document_routes.status', ['current', 'received'])
+            ->whereNotIn('documents.status', ['cancelled', 'rejected'])
+            ->get();
+
+        $policies = \App\Models\DocumentRoutingPolicy::whereIn('document_type_id', $allRoutes->pluck('document_type_id')->unique())
+            ->get()->keyBy('document_type_id');
+
+        $overdueDocumentIds = [];
+
+        foreach ($allRoutes as $route) {
+            $predefinedRoute = isset($policies[$route->document_type_id]) ? $policies[$route->document_type_id]->predefined_route : null;
+            $allowedMinutes = \App\Services\SlaResolver::resolve($route->department_id, $route->document_type_id, $route->route_order ?? null, $predefinedRoute);
+
+            if ($route->status === 'received') {
+                $referenceTime = $route->received_at ? \Carbon\Carbon::parse($route->received_at, 'Asia/Manila') : \Carbon\Carbon::parse($route->updated_at, 'Asia/Manila');
+                $elapsed = abs($now->diffInMinutes($referenceTime));
+            } else {
+                $elapsed = abs($now->diffInMinutes(\Carbon\Carbon::parse($route->updated_at, 'Asia/Manila')));
+            }
+
+            \Log::info('Overdue Debug', [
+                'doc_id'     => $route->document_id,
+                'status'     => $route->status,
+                'route_order'=> $route->route_order,
+                'elapsed'    => $elapsed,
+                'allowed'    => $allowedMinutes,
+                'is_overdue' => $elapsed > $allowedMinutes,
+            ]);
+
+            if ($elapsed > $allowedMinutes) {
+                $overdueDocumentIds[] = $route->document_id;
+            }
+        }
+
+        $overdueDocumentIds = array_unique($overdueDocumentIds);
+
+        $monthlyOverdueCount = DB::table('documents')
+            ->whereIn('id', $overdueDocumentIds)
+            ->whereMonth('created_at', $currentMonth)
+            ->whereYear('created_at', $currentYear)
+            ->count();
+
         $query = DB::table('documents')
             ->join('document_types', 'documents.document_type_id', '=', 'document_types.id')
             ->join('departments as sender_dept', 'documents.sender_department_id', '=', 'sender_dept.id')
             ->leftJoin('departments as current_dept', 'documents.current_department_id', '=', 'current_dept.id')
             ->select([
+                'documents.id',
                 'documents.document_number',
                 'documents.title',
                 'documents.status',
@@ -65,7 +319,7 @@ class AuditorController extends Controller
             ]);
 
         // Reusable filter application used for both row data and counts
-        $applyFilters = function ($q) use ($request) {
+        $applyFilters = function ($q) use ($request, $overdueDocumentIds) {
             if ($request->filled('search')) {
                 $search = $request->search;
                 $q->where(function ($sq) use ($search) {
@@ -82,21 +336,31 @@ class AuditorController extends Controller
             if ($request->filled('status')) {
                 $q->where('documents.status', str_replace(' ', '_', strtolower($request->status)));
             }
+            if ($request->filled('overdue') && $request->overdue == '1') {
+                $q->whereIn('documents.id', $overdueDocumentIds);
+            }
         };
 
         $applyFilters($query);
 
         $documents = $query->orderBy('documents.created_at', 'desc')->get();
 
+        // Inject is_overdue flag into each document row
+        $documents->transform(function ($doc) use ($overdueDocumentIds) {
+            $doc->is_overdue = in_array($doc->id, $overdueDocumentIds);
+            return $doc;
+        });
+
         // Aggregated counts scoped to the same filter context
         $countQuery = DB::table('documents');
         $applyFilters($countQuery);
 
         $counts = [
-            'total'       => (clone $countQuery)->count(),
-            'pending'     => (clone $countQuery)->where('status', 'pending_transfer')->count(),
-            'in_transit'  => (clone $countQuery)->where('status', 'in_transit')->count(),
-            'completed'   => (clone $countQuery)->whereIn('status', ['received', 'completed'])->count(),
+            'total'          => (clone $countQuery)->count(),
+            'pending'        => (clone $countQuery)->where('status', 'pending_transfer')->count(),
+            'in_transit'     => (clone $countQuery)->where('status', 'in_transit')->count(),
+            'completed'      => (clone $countQuery)->whereIn('status', ['received', 'completed'])->count(),
+            'monthly_overdue' => $monthlyOverdueCount,
         ];
 
         return response()->json([
@@ -191,6 +455,8 @@ class AuditorController extends Controller
             'is_active' => true,
         ]);
 
+        ActivityLogger::log(ActivityCode::DEPT_CREATED, "Created department {$department->name}", $department);
+
         return response()->json([
             'status' => 'success',
             'message' => "Department {$department->name} created successfully.",
@@ -221,6 +487,8 @@ class AuditorController extends Controller
             'description' => $validated['description'] ?? $department->description,
         ]);
 
+        ActivityLogger::log(ActivityCode::DEPT_UPDATED, "Updated department {$department->name}", $department);
+
         return response()->json([
             'status' => 'success',
             'message' => "Department {$department->name} updated successfully.",
@@ -242,6 +510,8 @@ class AuditorController extends Controller
         $department->save();
 
         $status = $department->is_active ? 'activated' : 'deactivated';
+
+        ActivityLogger::log(ActivityCode::DEPT_TOGGLED, "Toggled status for department {$department->name}", $department);
 
         return response()->json([
             'status' => 'success',
@@ -302,19 +572,17 @@ class AuditorController extends Controller
             ->get()
             ->keyBy('document_type_id');
 
+        $policies = \App\Models\DocumentRoutingPolicy::whereIn('document_type_id', $currentDocuments->pluck('document_type_id')->unique())
+            ->get()->keyBy('document_type_id');
+
         $dynamicOverdueCount = 0;
         $now = \Carbon\Carbon::now();
 
         foreach ($currentDocuments as $document) {
-            if (isset($departmentSlas[$document->document_type_id])) {
-                $allowedMinutes = $departmentSlas[$document->document_type_id]->processing_time_minutes;
-            } elseif ($document->documentType && !is_null($document->documentType->default_processing_time)) {
-                $allowedMinutes = $document->documentType->default_processing_time;
-            } else {
-                $allowedMinutes = 1440;
-            }
+            $predefinedRoute = isset($policies[$document->document_type_id]) ? $policies[$document->document_type_id]->predefined_route : null;
+            $allowedMinutes = \App\Services\SlaResolver::resolve($document->current_department_id, $document->document_type_id, null, $predefinedRoute);
 
-            $deadline = $document->created_at->addMinutes($allowedMinutes);
+            $deadline = $document->updated_at->copy()->addMinutes($allowedMinutes);
 
             if ($now->greaterThan($deadline)) {
                 $dynamicOverdueCount++;
@@ -453,6 +721,9 @@ class AuditorController extends Controller
             }
         });
 
+        $department = Department::find($id);
+        ActivityLogger::log(ActivityCode::DEPT_SLA_UPDATED, "Updated SLA configuration for department {$department->name}", $department);
+
         return redirect()->back()->with('success', 'Department processing time SLAs updated successfully.');
     }
 
@@ -495,13 +766,34 @@ class AuditorController extends Controller
 
         $routeArray = $validated['predefined_route'] ? json_decode($validated['predefined_route'], true) : null;
 
-        DocumentRoutingPolicy::updateOrCreate(
+        if ($routeArray) {
+            foreach ($routeArray as $index => $step) {
+                if (isset($step['sla_minutes']) && (!is_numeric($step['sla_minutes']) || $step['sla_minutes'] < 1)) {
+                    return redirect()->back()->withErrors(['predefined_route' => "Step " . ($index + 1) . " SLA must be a positive number."]);
+                }
+            }
+
+            if ($request->filled('total_lifecycle_sla')) {
+                $totalSlaLimit = (int) $request->input('total_lifecycle_sla');
+                $currentSum = 0;
+                foreach ($routeArray as $step) {
+                    $currentSum += (int) ($step['sla_minutes'] ?? 0);
+                }
+                if ($currentSum > $totalSlaLimit) {
+                    return redirect()->back()->withErrors(['predefined_route' => "The sum of individual step SLAs ($currentSum mins) cannot exceed the Total Lifecycle SLA ($totalSlaLimit mins)."]);
+                }
+            }
+        }
+
+        $policy = DocumentRoutingPolicy::updateOrCreate(
             ['document_type_id' => $validated['document_type_id']],
             [
                 'is_immutable'     => $validated['is_immutable'],
                 'predefined_route' => $routeArray,
             ]
         );
+
+        ActivityLogger::log(ActivityCode::POLICY_UPDATED, "Updated document routing policy", $policy);
 
         return redirect()->back()->with('success', 'Routing policy updated successfully.');
     }

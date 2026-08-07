@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Enums\ActivityCode;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -52,6 +54,8 @@ class UserController extends Controller
         $user->status = $user->status === 'active' ? 'inactive' : 'active';
         $user->save();
 
+        ActivityLogger::log(ActivityCode::USER_TOGGLED, "Toggled account status for {$user->name}", $user);
+
         return response()->json([
             'success' => true,
             'message' => 'User status updated successfully.',
@@ -80,7 +84,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'department_id' => 'required|exists:departments,id',
-            'role_id' => 'required|exists:roles,id',
+            'role_id' => 'required|exists:roles,id|not_in:3',
             'password' => 'required|string|min:8',
         ]);
 
@@ -92,6 +96,8 @@ class UserController extends Controller
             'password' => Hash::make($validated['password']),
             'status' => 'active',
         ]);
+
+        ActivityLogger::log(ActivityCode::USER_CREATED, "Created user account for {$user->name}", $user);
 
         return response()->json([
             'success' => true,
@@ -105,7 +111,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'role_id' => 'required|exists:roles,id',
+            'role_id' => 'required|exists:roles,id|not_in:3',
             'department_id' => 'required|exists:departments,id',
         ]);
 
@@ -116,6 +122,8 @@ class UserController extends Controller
             $user->password = Hash::make($request->password);
             $user->save();
         }
+
+        ActivityLogger::log(ActivityCode::USER_UPDATED, "Updated user profile for {$user->name}", $user);
 
         return response()->json([
             'success' => true,

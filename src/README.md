@@ -289,6 +289,8 @@ This project is open-sourced software licensed under the [MIT license](https://o
 - Notification count always visible even the count says zero or no inbox notification - Must only be visible when notification is 1 or more.
 - add a loading spinner for all data fetch actions/buttons
 - scan screen receipt reflects the wrong document type
+- print QR print modal prints text and - MUST create proper document for printing 
+- Document-details screen MARKED as RECEIVED button does not work
 
 
 - automate the senders deparment id on upload

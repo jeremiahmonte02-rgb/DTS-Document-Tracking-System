@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuditorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Api\DocumentTypePolicyController;
 
 // Public Guest Routes
@@ -36,6 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/documents/{document_number}/cancel', [App\Http\Controllers\DocumentController::class, 'cancelDocument'])->name('documents.cancel');
     Route::post('/documents/{document_number}/update-routing', [App\Http\Controllers\DocumentController::class, 'updateRoutingPath'])->name('documents.update-routing');
     Route::post('/api/issues', [App\Http\Controllers\DocumentController::class, 'reportIssue'])->name('api.issues.report');
+    Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log');
     Route::get('/api/document-types/{id}/policy', [DocumentTypePolicyController::class, 'show'])->name('api.document-types.policy');
 });
 

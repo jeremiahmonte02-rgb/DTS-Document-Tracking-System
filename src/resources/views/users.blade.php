@@ -221,7 +221,9 @@
                             <select class="form-select" id="input-role" name="role_id" required>
                                 <option value="">Select role</option>
                                 @foreach($roles as $role)
+                                @if($role->id != 3)
                                 <option value="{{ $role->id }}">{{ $role->name }}</option>
+                                @endif
                                 @endforeach
                             </select>
                         </div>
@@ -280,7 +282,9 @@
                             <select class="form-select" id="edit-role" name="role_id" required>
                                 <option value="">Select role</option>
                                 @foreach($roles as $role)
+                                @if($role->id != 3)
                                 <option value="{{ $role->id }}">{{ $role->name }}</option>
+                                @endif
                                 @endforeach
                             </select>
                         </div>

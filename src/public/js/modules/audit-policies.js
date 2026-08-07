@@ -7,6 +7,113 @@ document.addEventListener('DOMContentLoaded', function () {
     const routePlaceholder = document.getElementById('routePlaceholder');
     const routeContainer = document.getElementById('routeListContainer');
     const routeHiddenInput = document.getElementById('policyPredefinedRoute');
+    const totalHiddenSla = document.getElementById('total_lifecycle_sla');
+    const lifecycleTimeValue = document.getElementById('lifecycle_time_value');
+    const lifecycleTimeUnit = document.getElementById('lifecycle_time_unit');
+    const savePolicyBtn = document.querySelector('#policyForm button[type="submit"]');
+
+    window.updateHiddenTotalSla = function () {
+        var value = parseInt(lifecycleTimeValue.value);
+        var multiplier = parseInt(lifecycleTimeUnit.value);
+        if (isNaN(value) || value < 1 || isNaN(multiplier)) {
+            totalHiddenSla.value = '';
+            return;
+        }
+        totalHiddenSla.value = Math.floor(value * multiplier);
+    };
+
+    window.validateSlaTotals = function () {
+        var errorMsg = document.getElementById('slaTotalError');
+        if (!totalHiddenSla || !savePolicyBtn) return;
+
+        var total = parseInt(totalHiddenSla.value);
+        if (isNaN(total) || total < 1) {
+            if (errorMsg) errorMsg.textContent = '';
+            savePolicyBtn.disabled = false;
+            return;
+        }
+
+        var sum = 0;
+        var slaInputs = routeList.querySelectorAll('.route-sla-input');
+        slaInputs.forEach(function (input) {
+            var val = parseInt(input.value);
+            if (!isNaN(val) && val > 0) sum += val;
+        });
+
+        if (sum > total) {
+            if (!errorMsg) {
+                errorMsg = document.createElement('div');
+                errorMsg.id = 'slaTotalError';
+                errorMsg.className = 'text-danger small mt-1';
+                lifecycleTimeValue.closest('.mb-4').appendChild(errorMsg);
+            }
+            errorMsg.textContent = 'Error: Total step SLA (' + sum + ' mins) exceeds lifecycle SLA (' + total + ' mins).';
+            savePolicyBtn.disabled = true;
+        } else {
+            if (errorMsg) errorMsg.textContent = '';
+            savePolicyBtn.disabled = false;
+        }
+    };
+
+    window.autoBalanceLastStep = function (changedInput) {
+        var items = routeList.querySelectorAll('li');
+        var count = items.length;
+        if (count < 2) return;
+
+        var lastLi = items[count - 1];
+        if (changedInput === lastLi.querySelector('.route-sla-input')) return;
+
+        var total = parseInt(totalHiddenSla.value);
+        if (isNaN(total) || total < 1) return;
+
+        var precedingSum = 0;
+        for (var i = 0; i < count - 1; i++) {
+            var val = parseInt(items[i].querySelector('.route-sla-input').value);
+            if (!isNaN(val) && val > 0) precedingSum += val;
+        }
+
+        var remaining = total - precedingSum;
+        var lastInput = lastLi.querySelector('.route-sla-input');
+        if (remaining >= 1) {
+            lastInput.value = remaining;
+        } else {
+            lastInput.value = '';
+        }
+        synchronizeRouteInput();
+        validateSlaTotals();
+    };
+
+    function distributeAndValidate() {
+        updateHiddenTotalSla();
+        var total = parseInt(totalHiddenSla.value);
+        var items = routeList.querySelectorAll('li');
+        var stepCount = items.length;
+        if (isNaN(total) || total < 1 || stepCount === 0) {
+            synchronizeRouteInput();
+            validateSlaTotals();
+            return;
+        }
+
+        var base = Math.floor(total / stepCount);
+        var remainder = total - (base * stepCount);
+
+        items.forEach(function (li, index) {
+            var slaInput = li.querySelector('.route-sla-input');
+            if (slaInput) {
+                var val = base + (index === stepCount - 1 ? remainder : 0);
+                slaInput.value = val;
+            }
+        });
+        synchronizeRouteInput();
+        validateSlaTotals();
+    }
+
+    if (lifecycleTimeValue) {
+        lifecycleTimeValue.addEventListener('input', distributeAndValidate);
+    }
+    if (lifecycleTimeUnit) {
+        lifecycleTimeUnit.addEventListener('change', distributeAndValidate);
+    }
 
     window.selectPolicyType = function (row) {
         document.querySelectorAll('#policyTableBody tr').forEach(function (tr) {
@@ -52,11 +159,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function resolveDeptName(deptId) {
+        var opt = document.querySelector('#deptPool option[value="' + deptId + '"]');
+        return opt ? opt.getAttribute('data-name') : 'Department #' + deptId;
+    }
+
     function renderRoute(routeArray) {
         routeList.innerHTML = '';
         if (routeArray && routeArray.length > 0) {
             routeArray.forEach(function (step, index) {
-                addRouteItem(step.department_id, step.department_name || 'Department #' + step.department_id, step.route_order || (index + 1));
+                addRouteItem(step.department_id, step.department_name || resolveDeptName(step.department_id), step.route_order || (index + 1), step.sla_minutes);
             });
             routePlaceholder.classList.add('d-none');
             routeList.classList.remove('d-none');
@@ -84,16 +196,15 @@ document.addEventListener('DOMContentLoaded', function () {
         synchronizeRouteInput();
     };
 
-    function addRouteItem(deptId, deptName, order) {
+    function addRouteItem(deptId, deptName, order, slaMinutes) {
         var li = document.createElement('li');
         li.className = 'route-item';
         li.setAttribute('data-dept-id', deptId);
         li.innerHTML =
-            '<div class="d-flex align-items-center gap-2">' +
-                '<span class="route-order-badge">' + order + '</span>' +
-                '<span class="fw-medium">' + escapeHtml(deptName) + '</span>' +
-            '</div>' +
-            '<div class="d-flex gap-1">' +
+            '<span class="route-order-badge">' + order + '</span>' +
+            '<span class="fw-medium flex-grow-1 text-truncate">' + escapeHtml(deptName) + '</span>' +
+            '<div class="d-flex align-items-center gap-2 ms-3 flex-shrink-0">' +
+                '<input type="number" class="route-sla-input form-control form-control-sm" min="1" style="width: 80px;" placeholder="SLA" value="' + (slaMinutes || '') + '" oninput="autoBalanceLastStep(this); validateSlaTotals(); synchronizeRouteInput();">' +
                 '<button type="button" class="btn-outline-move" onclick="moveRouteItem(this, -1)" title="Move Up"><i class="bi bi-chevron-up"></i></button>' +
                 '<button type="button" class="btn-outline-move" onclick="moveRouteItem(this, 1)" title="Move Down"><i class="bi bi-chevron-down"></i></button>' +
                 '<button type="button" class="btn-outline-remove" onclick="removeRouteItem(this)" title="Remove"><i class="bi bi-trash3"></i></button>' +
@@ -145,9 +256,12 @@ document.addEventListener('DOMContentLoaded', function () {
         var items = routeList.querySelectorAll('li');
         var data = [];
         items.forEach(function (li, index) {
+            var slaInput = li.querySelector('.route-sla-input');
+            var slaVal = slaInput ? parseInt(slaInput.value) : null;
             data.push({
                 department_id: parseInt(li.getAttribute('data-dept-id')),
-                route_order: index + 1
+                route_order: index + 1,
+                sla_minutes: isNaN(slaVal) || slaVal < 1 ? null : slaVal
             });
         });
         routeHiddenInput.value = data.length > 0 ? JSON.stringify(data) : '';
@@ -157,6 +271,12 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('policyForm').reset();
         document.getElementById('policyIsImmutable').value = '0';
         document.getElementById('policyPredefinedRoute').value = '';
+        document.getElementById('total_lifecycle_sla').value = '';
+        if (lifecycleTimeValue) lifecycleTimeValue.value = '';
+        if (lifecycleTimeUnit) lifecycleTimeUnit.selectedIndex = 0;
+        var errorMsg = document.getElementById('slaTotalError');
+        if (errorMsg) errorMsg.textContent = '';
+        if (savePolicyBtn) savePolicyBtn.disabled = false;
         document.getElementById('editorPlaceholder').style.display = 'block';
         document.getElementById('editorContent').style.display = 'none';
         document.querySelectorAll('#policyTableBody tr').forEach(function (tr) {

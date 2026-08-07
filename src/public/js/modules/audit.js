@@ -13,6 +13,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const clearBtn = document.querySelector('[data-action="clear-filters"]');
     const refreshBtn = document.getElementById('refreshTableBtn');
     const countBadge = document.getElementById('documentCount');
+    const overdueBanner = document.getElementById('overdue-banner');
+    const overdueText = document.getElementById('overdue-text');
+    const btnToggleOverdue = document.getElementById('btn-toggle-overdue');
+
+    let isOverdueFilterActive = false;
 
     function escapeHtml(str) {
         if (!str) return '';
@@ -83,16 +88,19 @@ document.addEventListener('DOMContentLoaded', function () {
             var label = labelMap[status] || status.replace(/_/g, ' ');
             var badgeClass = statusMap[status] || 'status-pending';
             var formattedDate = formatDate(doc.date_created);
+            var isOverdue = doc.is_overdue === true;
+            var rowClass = isOverdue ? 'table-danger bg-danger-subtle' : '';
+            var overdueBadge = isOverdue ? '<span class="badge bg-danger ms-1">OVERDUE</span>' : '';
 
             html += ''
-                + '<tr style="cursor: pointer;" data-document-number="' + escapeHtml(doc.document_number) + '">'
+                + '<tr style="cursor: pointer;" class="' + rowClass + '" data-document-number="' + escapeHtml(doc.document_number) + '">'
                 + '<td><span class="doc-number">' + escapeHtml(doc.document_number) + '</span></td>'
                 + '<td class="cell-title"><span class="doc-title-cell" title="' + escapeHtml(doc.title) + '">' + escapeHtml(doc.title) + '</span></td>'
                 + '<td class="meta-cell">' + escapeHtml(doc.document_type_name) + '</td>'
                 + '<td class="meta-cell">' + escapeHtml(doc.origin_department) + '</td>'
                 + '<td class="meta-cell">' + escapeHtml(doc.current_department || 'N/A') + '</td>'
                 + '<td class="meta-cell">' + formattedDate + '</td>'
-                + '<td><span class="audit-badge ' + badgeClass + '">' + escapeHtml(label) + '</span></td>'
+                + '<td><span class="audit-badge ' + badgeClass + '">' + escapeHtml(label) + '</span>' + overdueBadge + '</td>'
                 + '</tr>';
         }
 
@@ -105,6 +113,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeFilter && typeFilter.value) queryParams.set('type', typeFilter.value);
         if (statusFilter && statusFilter.value) queryParams.set('status', statusFilter.value);
         if (dateFilter && dateFilter.value) queryParams.set('date', dateFilter.value);
+        if (isOverdueFilterActive) queryParams.set('overdue', '1');
 
         fetch(fetchUrl + '?' + queryParams.toString(), {
             method: 'GET',
@@ -121,6 +130,18 @@ document.addEventListener('DOMContentLoaded', function () {
             if (payload.status === 'success') {
                 renderTableRows(payload.data);
                 updateMetrics(payload.counts);
+
+                var overdueCount = (payload.counts && payload.counts.monthly_overdue) || 0;
+                if (overdueBanner && overdueText) {
+                    if (overdueCount > 0) {
+                        overdueBanner.classList.remove('d-none');
+                        overdueBanner.classList.add('d-flex');
+                        overdueText.textContent = '\u26A0\uFE0F ' + overdueCount + ' document' + (overdueCount !== 1 ? 's are' : ' is') + ' currently overdue across active steps.';
+                    } else {
+                        overdueBanner.classList.remove('d-flex');
+                        overdueBanner.classList.add('d-none');
+                    }
+                }
             }
         })
         .catch(function (err) {
@@ -163,6 +184,16 @@ document.addEventListener('DOMContentLoaded', function () {
             if (typeFilter) typeFilter.value = '';
             if (statusFilter) statusFilter.value = '';
             if (dateFilter) dateFilter.value = '';
+            isOverdueFilterActive = false;
+            if (btnToggleOverdue) btnToggleOverdue.textContent = 'Filter to Overdue';
+            fetchAuditorRecords();
+        });
+    }
+
+    if (btnToggleOverdue) {
+        btnToggleOverdue.addEventListener('click', function () {
+            isOverdueFilterActive = !isOverdueFilterActive;
+            btnToggleOverdue.textContent = isOverdueFilterActive ? 'Show All Documents' : 'Filter to Overdue';
             fetchAuditorRecords();
         });
     }

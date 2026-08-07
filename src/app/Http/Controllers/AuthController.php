@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use App\Enums\ActivityCode;
+use App\Services\ActivityLogger;
 
 class AuthController extends Controller
 {
@@ -45,6 +47,8 @@ class AuthController extends Controller
             // 4. Securely regenerate the session identifier string
             $request->session()->regenerate();
 
+            ActivityLogger::log(ActivityCode::AUTH_LOGIN, "User authenticated into session");
+
             // 5. Role-aware landing page routing
             if ($user->isAuditor()) {
                 return redirect()->route('audit.dashboard');
@@ -65,6 +69,8 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        ActivityLogger::log(ActivityCode::AUTH_LOGOUT, "User logged out");
+
         Auth::logout();
 
         // Flush application tracking keys and recreate token seeds

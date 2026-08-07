@@ -4,6 +4,19 @@
 
 @section('pageTitle', 'Dashboard')
 
+<style>
+    @media print {
+        body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .card {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+    }
+</style>
+
 @section('content')
             @if(session('success'))
             <div class="alert alert-success d-flex align-items-center alert-dismissible fade show shadow-sm mb-4 pe-5" role="alert" style="background-color: #d1e7dd; border-color: #badbcc; color: #0f5132; padding: 1rem 1.25rem; border-radius: 0.375rem; position: relative;">
@@ -14,6 +27,35 @@
                 <button type="button" class="btn-close position-absolute" data-bs-dismiss="alert" aria-label="Close" style="right: 0.5rem; top: 50%; transform: translateY(-50%); padding: 1.25rem; min-width: 44px; min-height: 44px; background: none; border: none; cursor: pointer; color: #0f5132; filter: invert(20%) sepia(50%) saturate(500%) hue-rotate(100deg);"></button>
             </div>
             @endif
+
+            @if(auth()->user()->hasPermission('users.manage'))
+            <!-- Month Selector — Admin Only -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <small class="text-muted">Analytics for <strong>{{ $startOfMonth->format('F Y') }}</strong></small>
+                </div>
+                <form method="GET" action="{{ request()->url() }}" class="d-flex align-items-center gap-2 no-print d-print-none">
+                    <label for="monthPicker" class="text-muted small mb-0">Month:</label>
+                    <input
+                        type="month"
+                        id="monthPicker"
+                        name="month"
+                        class="form-control form-control-sm"
+                        style="width: 160px;"
+                        value="{{ $startOfMonth->format('Y-m') }}"
+                        max="{{ now()->format('Y-m') }}"
+                        onchange="this.form.submit()"
+                    >
+                    <button type="button" class="btn btn-sm btn-success ms-2" onclick="window.print()"><i class="bi bi-printer"></i> Export</button>
+                    @if($startOfMonth->format('Y-m') !== now()->format('Y-m'))
+                        <a href="{{ request()->url() }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-arrow-counterclockwise"></i> Current
+                        </a>
+                    @endif
+                </form>
+            </div>
+            @endif
+
             <!-- Statistics Cards -->
             <div class="row g-4 mb-4">
                 <div class="col-md-6 col-lg-3">
@@ -53,8 +95,8 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
-                                    <h6 class="text-muted mb-2">Received Today</h6>
-                                    <h2 class="mb-0 tabular-nums">{{ $receivedToday }}</h2>
+                                    <h6 class="text-muted mb-2">Received in Month</h6>
+                                    <h2 class="mb-0 tabular-nums">{{ $receivedInMonth }}</h2>
                                 </div>
                                 <div class="stat-icon">
                                     <i class="bi bi-check-circle"></i>
@@ -130,7 +172,7 @@
             </div>
 
             <!-- Quick Actions -->
-            <div class="row g-4 mb-4">
+            <div class="row g-4 mb-4 no-print d-print-none">
                 <div class="col-md-12">
                     <div class="card">
                         <div class="card-body">
@@ -188,7 +230,7 @@
                 </div>
 
                 <!-- Activity Feed -->
-                <div class="col-lg-4">
+                <div class="col-lg-4 no-print d-print-none">
                     <div class="card">
                         <div class="card-header bg-white">
                             <h5 class="mb-0">

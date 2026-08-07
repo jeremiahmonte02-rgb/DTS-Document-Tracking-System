@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Document;
+use App\Models\DocumentRoute;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Enums\ActivityCode;
+use App\Services\ActivityLogger;
 use Exception;
 
 class DocumentController extends Controller
@@ -21,6 +24,7 @@ class DocumentController extends Controller
         'rejection'  => 'Document rejected at routing checkpoint',
         'cancellation' => 'Document workflow cancelled',
         'issue'      => 'Issue reported on document',
+        'route_returned' => 'Document returned to department',
     ];
 
     public function create()
@@ -89,7 +93,8 @@ class DocumentController extends Controller
                     ]);
                 }
             }
-        }
+
+            }
 
         $this->authorize('create', Document::class);
 
@@ -168,7 +173,7 @@ class DocumentController extends Controller
             foreach ($routeSteps as $index => $step) {
                 $targetDepartmentId = (int) $step['department_id'];
                 $orderSequence = (int) $step['route_order'];
-                $initialStepStatus = ($orderSequence === 1) ? 'current' : 'pending';
+                $initialStepStatus = ($orderSequence === 1) ? 'next' : 'pending';
 
                 if ($targetDepartmentId) {
                     DB::table('document_routes')->insert([
@@ -193,6 +198,8 @@ class DocumentController extends Controller
                 }
             }
         });
+
+        ActivityLogger::log(ActivityCode::DOC_CREATED, "Uploaded document {$documentNumber}");
 
         return response()->json([
             'success'         => true,
@@ -261,10 +268,12 @@ class DocumentController extends Controller
             ->orderBy('created_at', 'asc')
             ->select(
                 'document_events.event_label',
+                'document_events.event_type',
                 'document_events.note',
                 'document_events.new_status',
                 'document_events.created_at',
                 'document_events.department_id',
+                'document_events.route_order',
                 'users.name as processed_by_user',
                 'departments.name as execution_department'
             )
@@ -283,7 +292,22 @@ class DocumentController extends Controller
 
         $targetDocTypeId = $document->document_type_id;
 
+        $policy = \App\Models\DocumentRoutingPolicy::where('document_type_id', $document->document_type_id)->first();
+        $predefinedRoute = $policy->predefined_route ?? null;
+
+        $custodyTypes = ['receipt', 'completion', 'rejection', 'cancellation', 'route_returned'];
+
+        $lastCustodyIndex = null;
+        for ($i = count($events) - 1; $i >= 0; $i--) {
+            if (in_array($events[$i]->event_type, $custodyTypes)) {
+                $lastCustodyIndex = $i;
+                break;
+            }
+        }
+
         foreach ($events as $i => $event) {
+            $isInformational = !in_array($event->event_type, $custodyTypes);
+
             if (isset($events[$i + 1])) {
                 $currentEventTime = Carbon::parse($event->created_at);
                 $nextEventTime = Carbon::parse($events[$i + 1]->created_at);
@@ -292,21 +316,17 @@ class DocumentController extends Controller
 
                 $event->processing_time = $nextEventTime->diffForHumans($currentEventTime, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2);
 
-                $deptId = $event->department_id;
-                $allowedMinutes = 1440;
+                if (!$isInformational) {
+                    $deptId = $event->department_id;
+                    $allowedMinutes = \App\Services\SlaResolver::resolve($deptId, $targetDocTypeId, $event->route_order ?? null, $predefinedRoute);
 
-                if (isset($allDepartmentSlas[$deptId][$targetDocTypeId])) {
-                    $allowedMinutes = $allDepartmentSlas[$deptId][$targetDocTypeId]->processing_time_minutes;
-                } elseif (isset($allDocumentTypes[$targetDocTypeId]) && !is_null($allDocumentTypes[$targetDocTypeId]->default_processing_time)) {
-                    $allowedMinutes = $allDocumentTypes[$targetDocTypeId]->default_processing_time;
-                }
-
-                if ($elapsedMinutes > $allowedMinutes) {
-                    $event->is_sla_breached = true;
+                    if ($elapsedMinutes > $allowedMinutes) {
+                        $event->is_sla_breached = true;
+                    }
                 }
             } else {
                 $documentStatus = $document->status;
-                if (!in_array($documentStatus, ['completed', 'cancelled', 'rejected'])) {
+                if (!in_array($documentStatus, ['completed', 'cancelled', 'rejected']) && !$isInformational) {
                     $now = Carbon::now('Asia/Manila');
                     $currentEventTime = Carbon::parse($event->created_at);
 
@@ -315,13 +335,7 @@ class DocumentController extends Controller
                     $event->processing_time = $now->diffForHumans($currentEventTime, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2) . ' (Active Step)';
 
                     $deptId = $event->department_id;
-                    $allowedMinutes = 1440;
-
-                    if (isset($allDepartmentSlas[$deptId][$targetDocTypeId])) {
-                        $allowedMinutes = $allDepartmentSlas[$deptId][$targetDocTypeId]->processing_time_minutes;
-                    } elseif (isset($allDocumentTypes[$targetDocTypeId]) && !is_null($allDocumentTypes[$targetDocTypeId]->default_processing_time)) {
-                        $allowedMinutes = $allDocumentTypes[$targetDocTypeId]->default_processing_time;
-                    }
+                    $allowedMinutes = \App\Services\SlaResolver::resolve($deptId, $targetDocTypeId, $event->route_order ?? null, $predefinedRoute);
 
                     if ($elapsedMinutes > $allowedMinutes) {
                         $event->is_sla_breached = true;
@@ -329,6 +343,21 @@ class DocumentController extends Controller
                 } else {
                     $event->processing_time = null;
                 }
+            }
+        }
+
+        if (!in_array($document->status, ['completed', 'cancelled', 'rejected']) && $lastCustodyIndex !== null) {
+            $activeEvent = $events[$lastCustodyIndex];
+            $now = Carbon::now('Asia/Manila');
+            $activeEventTime = Carbon::parse($activeEvent->created_at);
+
+            $activeEvent->processing_time = $now->diffForHumans($activeEventTime, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2) . ' (Active Step)';
+
+            $deptId = $activeEvent->department_id;
+            $allowedMinutes = \App\Services\SlaResolver::resolve($deptId, $targetDocTypeId, $activeEvent->route_order ?? null, $predefinedRoute);
+
+            if ($activeEventTime->diffInMinutes($now) > $allowedMinutes) {
+                $activeEvent->is_sla_breached = true;
             }
         }
 
@@ -396,10 +425,12 @@ class DocumentController extends Controller
             ->orderBy('created_at', 'asc')
             ->select(
                 'document_events.event_label',
+                'document_events.event_type',
                 'document_events.note',
                 'document_events.new_status',
                 'document_events.created_at',
                 'document_events.department_id',
+                'document_events.route_order',
                 'users.name as processed_by_user',
                 'departments.name as execution_department'
             )
@@ -413,9 +444,24 @@ class DocumentController extends Controller
 
         $targetDocTypeId = $document->document_type_id;
 
-        $events->transform(function ($event, $i) use ($events, $allDepartmentSlas, $allDocumentTypes, $targetDocTypeId) {
+        $policy = \App\Models\DocumentRoutingPolicy::where('document_type_id', $document->document_type_id)->first();
+        $predefinedRoute = $policy->predefined_route ?? null;
+
+        $custodyTypes = ['receipt', 'completion', 'rejection', 'cancellation', 'route_returned'];
+
+        $lastCustodyIndex = null;
+        for ($i = count($events) - 1; $i >= 0; $i--) {
+            if (in_array($events[$i]->event_type, $custodyTypes)) {
+                $lastCustodyIndex = $i;
+                break;
+            }
+        }
+
+        $events->transform(function ($event, $i) use ($events, $targetDocTypeId, $custodyTypes, $document, $predefinedRoute) {
             $event->formatted_date = Carbon::parse($event->created_at)->format('M d, Y h:i A');
             $event->is_sla_breached = false;
+
+            $isInformational = !in_array($event->event_type, $custodyTypes);
 
             if (isset($events[$i + 1])) {
                 $currentEventTime = Carbon::parse($event->created_at);
@@ -425,24 +471,52 @@ class DocumentController extends Controller
 
                 $event->processing_time = $nextEventTime->diffForHumans($currentEventTime, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2);
 
-                $deptId = $event->department_id;
-                $allowedMinutes = 1440;
+                if (!$isInformational) {
+                    $deptId = $event->department_id;
+                    $allowedMinutes = \App\Services\SlaResolver::resolve($deptId, $targetDocTypeId, $event->route_order ?? null, $predefinedRoute);
 
-                if (isset($allDepartmentSlas[$deptId][$targetDocTypeId])) {
-                    $allowedMinutes = $allDepartmentSlas[$deptId][$targetDocTypeId]->processing_time_minutes;
-                } elseif (isset($allDocumentTypes[$targetDocTypeId]) && !is_null($allDocumentTypes[$targetDocTypeId]->default_processing_time)) {
-                    $allowedMinutes = $allDocumentTypes[$targetDocTypeId]->default_processing_time;
-                }
-
-                if ($elapsedMinutes > $allowedMinutes) {
-                    $event->is_sla_breached = true;
+                    if ($elapsedMinutes > $allowedMinutes) {
+                        $event->is_sla_breached = true;
+                    }
                 }
             } else {
-                $event->processing_time = null;
+                $documentStatus = $document->status;
+                if (!in_array($documentStatus, ['completed', 'cancelled', 'rejected']) && !$isInformational) {
+                    $now = Carbon::now('Asia/Manila');
+                    $currentEventTime = Carbon::parse($event->created_at);
+
+                    $elapsedMinutes = $currentEventTime->diffInMinutes($now);
+
+                    $event->processing_time = $now->diffForHumans($currentEventTime, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2) . ' (Active Step)';
+
+                    $deptId = $event->department_id;
+                    $allowedMinutes = \App\Services\SlaResolver::resolve($deptId, $targetDocTypeId, $event->route_order ?? null, $predefinedRoute);
+
+                    if ($elapsedMinutes > $allowedMinutes) {
+                        $event->is_sla_breached = true;
+                    }
+                } else {
+                    $event->processing_time = null;
+                }
             }
 
             return $event;
         });
+
+        if (!in_array($document->status, ['completed', 'cancelled', 'rejected']) && $lastCustodyIndex !== null) {
+            $activeEvent = $events[$lastCustodyIndex];
+            $now = Carbon::now('Asia/Manila');
+            $activeEventTime = Carbon::parse($activeEvent->created_at);
+
+            $activeEvent->processing_time = $now->diffForHumans($activeEventTime, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2) . ' (Active Step)';
+
+            $deptId = $activeEvent->department_id;
+            $allowedMinutes = \App\Services\SlaResolver::resolve($deptId, $targetDocTypeId, $activeEvent->route_order ?? null, $predefinedRoute);
+
+            if ($activeEventTime->diffInMinutes($now) > $allowedMinutes) {
+                $activeEvent->is_sla_breached = true;
+            }
+        }
 
         $events = $events->reverse();
 
@@ -472,6 +546,7 @@ class DocumentController extends Controller
             $result = DB::transaction(function () use ($docNumber, $note, $user) {
                 $document = DB::table('documents')
                     ->where('document_number', $docNumber)
+                    ->lockForUpdate()
                     ->first();
 
                 if (!$document) {
@@ -483,78 +558,93 @@ class DocumentController extends Controller
                     $this->authorize('receive', $documentModel);
                 }
 
-                $currentRouteStep = DB::table('document_routes')
+                $allRoutes = DB::table('document_routes')
                     ->where('document_id', $document->id)
-                    ->where('status', 'current')
-                    ->first();
+                    ->orderBy('route_order', 'asc')
+                    ->get();
 
-                if (!$currentRouteStep) {
-                    throw new Exception('No active routing checkpoint currently assigned to this document.', 422);
+                if ($allRoutes->isEmpty()) {
+                    throw new Exception('No routing path defined for this document.', 422);
                 }
 
-                if ((int) $currentRouteStep->department_id !== (int) $user->department_id) {
-                    throw new Exception('Access Denied: Your assigned department does not match the active route destination.', 403);
+                // Step 1: Transition any existing 'current' step to 'received'
+                $existingCurrent = $allRoutes->firstWhere('status', 'current');
+                if ($existingCurrent) {
+                    DB::table('document_routes')
+                        ->where('id', $existingCurrent->id)
+                        ->update([
+                            'status'     => 'received',
+                            'updated_at' => Carbon::now('Asia/Manila'),
+                        ]);
                 }
 
+                // Step 2: Find scanning user's department step — must be 'next'
+                $receiverStep = $allRoutes->first(function ($route) use ($user) {
+                    return $route->status === 'next' && (int) $route->department_id === (int) $user->department_id;
+                });
+
+                if (!$receiverStep) {
+                    throw new Exception('Access Denied: Your department is not the active next-in-line recipient for this document.', 403);
+                }
+
+                // Step 3: Transition receiver's step from 'next' to 'current' (active custody)
                 DB::table('document_routes')
-                    ->where('id', $currentRouteStep->id)
+                    ->where('id', $receiverStep->id)
                     ->update([
-                        'status'              => 'received',
+                        'status'              => 'current',
                         'received_at'         => Carbon::now('Asia/Manila'),
                         'received_by_user_id' => $user->id,
                         'updated_at'          => Carbon::now('Asia/Manila'),
                     ]);
 
-                $nextRouteStep = DB::table('document_routes')
-                    ->where('document_id', $document->id)
-                    ->where('route_order', $currentRouteStep->route_order + 1)
-                    ->first();
+                // Step 4: Find the subsequent step and set it to 'next'
+                $subsequentStep = $allRoutes->first(function ($route) use ($receiverStep) {
+                    return (int) $route->route_order === (int) $receiverStep->route_order + 1;
+                });
 
-                $newDocumentStatus = 'in_transit';
-                $nextDepartmentId = $user->department_id;
-
-                if ($nextRouteStep) {
+                if ($subsequentStep) {
                     DB::table('document_routes')
-                        ->where('id', $nextRouteStep->id)
-                        ->update(['status' => 'current']);
-
-                    $nextDepartmentId = $nextRouteStep->department_id;
-                } else {
-                    $newDocumentStatus = 'received';
+                        ->where('id', $subsequentStep->id)
+                        ->update([
+                            'status'     => 'next',
+                            'updated_at' => Carbon::now('Asia/Manila'),
+                        ]);
                 }
 
-                $updatePayload = [
-                    'status'               => $newDocumentStatus,
-                    'current_department_id' => $nextDepartmentId,
-                    'updated_at'           => Carbon::now('Asia/Manila'),
-                ];
-
-                if ($newDocumentStatus === 'received') {
-                    $updatePayload['completed_at'] = Carbon::now('Asia/Manila');
-                }
-
+                // Step 5: Update the documents table
                 DB::table('documents')
                     ->where('id', $document->id)
-                    ->update($updatePayload);
+                    ->update([
+                        'status'               => 'in_transit',
+                        'current_department_id' => $user->department_id,
+                        'updated_at'           => Carbon::now('Asia/Manila'),
+                    ]);
 
+                // Step 6: Log audit event
                 DB::table('document_events')->insert([
                     'document_id'   => $document->id,
                     'user_id'       => $user->id,
                     'department_id' => $user->department_id,
+                    'route_order'   => $receiverStep->route_order,
                     'event_type'    => 'receipt',
                     'event_label'   => self::EVENT_LABELS['receipt'],
                     'old_status'    => $document->status,
-                    'new_status'    => $newDocumentStatus,
+                    'new_status'    => 'in_transit',
                     'note'          => $note ?: 'Document acknowledged and received.',
                     'created_at'    => Carbon::now('Asia/Manila'),
                 ]);
 
+                $hasMoreSteps = $subsequentStep && $allRoutes->where('route_order', '>', $subsequentStep->route_order)->isNotEmpty();
+
                 return [
-                    'message' => $newDocumentStatus === 'received'
-                        ? 'Document workflow path completed successfully.'
-                        : 'Document successfully received and queued for next hop routing.',
+                    'document' => $documentModel,
+                    'message'  => $hasMoreSteps
+                        ? 'Document received. Custody acquired — ready for downstream routing.'
+                        : 'Document received. This is the final routing step.',
                 ];
             });
+
+            ActivityLogger::log(ActivityCode::DOC_RECEIVED, "Received custody of document {$result['document']->document_number}", $result['document']);
 
             return response()->json([
                 'success' => true,
@@ -670,7 +760,7 @@ class DocumentController extends Controller
             ->join('departments as current_dept', 'documents.current_department_id', '=', 'current_dept.id')
             ->leftJoin('document_routes as next_route', function ($join) {
                 $join->on('next_route.document_id', '=', 'documents.id')
-                     ->whereRaw('next_route.route_order = (SELECT MIN(r2.route_order) FROM document_routes r2 WHERE r2.document_id = documents.id AND r2.status = "current" AND r2.route_order > (SELECT COALESCE(MAX(r3.route_order), 0) FROM document_routes r3 WHERE r3.document_id = documents.id AND r3.status = "received"))');
+                     ->whereRaw('next_route.route_order = (SELECT MIN(r2.route_order) FROM document_routes r2 WHERE r2.document_id = documents.id AND r2.status = "current" AND r2.route_order > (SELECT COALESCE(MAX(r3.route_order), 0) FROM document_routes r3 WHERE r3.document_id = documents.id AND r3.status = "next"))');
             })
             ->select(
                 'documents.id as doc_id',
@@ -723,7 +813,7 @@ class DocumentController extends Controller
         $user = auth()->user();
 
         try {
-            DB::transaction(function () use ($documentNumber, $user) {
+            $completedDocument = DB::transaction(function () use ($documentNumber, $user) {
                 $document = DB::table('documents')
                     ->where('document_number', $documentNumber)
                     ->lockForUpdate()
@@ -749,6 +839,19 @@ class DocumentController extends Controller
                     throw new Exception('Unauthorized. Only the final department can mark this document as complete.', 403);
                 }
 
+                if (strtolower($lastStep->status) !== 'current') {
+                    throw new Exception('The final routing step must hold active custody before the document can be marked complete.', 422);
+                }
+
+                DB::table('document_routes')
+                    ->where('id', $lastStep->id)
+                    ->update([
+                        'status'              => 'received',
+                        'received_at'         => Carbon::now('Asia/Manila'),
+                        'received_by_user_id' => $user->id,
+                        'updated_at'          => Carbon::now('Asia/Manila'),
+                    ]);
+
                 DB::table('documents')
                     ->where('id', $document->id)
                     ->update([
@@ -768,7 +871,15 @@ class DocumentController extends Controller
                     'note'          => 'Document finalized by the terminal routing department.',
                     'created_at'    => Carbon::now('Asia/Manila'),
                 ]);
+
+                return $documentModel;
             });
+
+            ActivityLogger::log(
+                ActivityCode::DOC_COMPLETED,
+                "Marked document {$completedDocument->document_number} completed",
+                $completedDocument
+            );
 
             return response()->json([
                 'success' => true,
@@ -797,7 +908,7 @@ class DocumentController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($docNumber, $reason, $user, $request) {
+            $rejectedDocument = DB::transaction(function () use ($docNumber, $reason, $user, $request) {
                 $document = DB::table('documents')
                     ->where('document_number', $docNumber)
                     ->lockForUpdate()
@@ -849,7 +960,11 @@ class DocumentController extends Controller
                     ]),
                     'created_at'    => Carbon::now('Asia/Manila'),
                 ]);
+
+                return $documentModel;
             });
+
+            ActivityLogger::log(ActivityCode::DOC_REJECTED, "Rejected transfer for document {$rejectedDocument->document_number}", $rejectedDocument);
 
             return response()->json([
                 'success' => true,
@@ -878,7 +993,7 @@ class DocumentController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($docNumber, $reason, $user, $request) {
+            $cancelledDocument = DB::transaction(function () use ($docNumber, $reason, $user, $request) {
                 $document = DB::table('documents')
                     ->where('document_number', $docNumber)
                     ->lockForUpdate()
@@ -915,7 +1030,11 @@ class DocumentController extends Controller
                     ]),
                     'created_at'    => Carbon::now('Asia/Manila'),
                 ]);
+
+                return $documentModel;
             });
+
+            ActivityLogger::log(ActivityCode::DOC_CANCELLED, "Cancelled document workflow {$cancelledDocument->document_number}", $cancelledDocument);
 
             return response()->json([
                 'success' => true,
@@ -936,6 +1055,7 @@ class DocumentController extends Controller
             'document_number'        => ['required', 'string'],
             'description'            => ['required', 'string', 'max:2000'],
             'assigned_department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'issue_type'             => ['nullable', 'string'],
         ]);
 
         $document = DB::table('documents')
@@ -954,25 +1074,91 @@ class DocumentController extends Controller
             $this->authorize('reportIssue', $documentModel);
         }
 
-        DB::transaction(function () use ($document, $validated, $request) {
+        $isReroute = false;
+        $nextDepartmentId = $document->current_department_id;
+
+        DB::transaction(function () use ($document, $documentModel, $validated, $request, &$isReroute, &$nextDepartmentId) {
+            $issueType = $validated['issue_type'] ?? null;
+            $assignedDeptId = $validated['assigned_department_id'] ?? null;
+
+            $isProcessingError = in_array($issueType, ['Processing Error', 'Document Error'], true);
+
+            if ($isProcessingError && $assignedDeptId) {
+                $targetRoute = DocumentRoute::where('document_id', $document->id)
+                    ->where('department_id', $assignedDeptId)
+                    ->orderByDesc('route_order')
+                    ->first();
+
+                if ($targetRoute) {
+                    $isReroute = true;
+
+                    // Reset all downstream steps (route_order > target) to 'pending'
+                    DocumentRoute::where('document_id', $document->id)
+                        ->where('route_order', '>', $targetRoute->route_order)
+                        ->update(['status' => 'pending']);
+
+                    // Auto-receive the target department step
+                    $targetRoute->status = 'received';
+                    $targetRoute->received_at = Carbon::now('Asia/Manila');
+                    $targetRoute->received_by_user_id = auth()->id();
+                    $targetRoute->save();
+
+                    // Find and activate the immediate next step as 'current'
+                    $nextRouteStep = DocumentRoute::where('document_id', $document->id)
+                        ->where('route_order', $targetRoute->route_order + 1)
+                        ->first();
+
+                    if ($nextRouteStep) {
+                        $nextRouteStep->status = 'current';
+                        $nextRouteStep->save();
+                        $nextDepartmentId = $nextRouteStep->department_id;
+                    } else {
+                        $nextDepartmentId = $assignedDeptId;
+                    }
+
+                    DB::table('documents')
+                        ->where('id', $document->id)
+                        ->update([
+                            'current_department_id' => $nextDepartmentId,
+                            'status'                => 'in_transit',
+                        ]);
+                }
+            }
+
             DB::table('document_issues')->insert([
                 'document_id'            => $document->id,
                 'reported_by_user_id'    => auth()->id(),
-                'assigned_department_id' => $validated['assigned_department_id'] ?? null,
+                'assigned_department_id' => $assignedDeptId,
                 'description'            => $validated['description'],
+                'type'                   => $issueType,
                 'priority'               => 'medium',
                 'status'                 => 'open',
                 'created_at'             => Carbon::now('Asia/Manila'),
                 'updated_at'             => Carbon::now('Asia/Manila'),
             ]);
 
+            $targetDeptName = null;
+            if ($isReroute && $assignedDeptId) {
+                $targetDeptName = DB::table('departments')
+                    ->where('id', $assignedDeptId)
+                    ->value('name') ?? 'Unknown';
+            }
+
+            $eventLabel = $isReroute && $targetDeptName
+                ? "Issue Reported — Document Rerouted to {$targetDeptName}"
+                : self::EVENT_LABELS['issue'];
+
+            $newStatus = $isReroute ? 'in_transit' : $document->status;
+
             DB::table('document_events')->insert([
                 'document_id'   => $document->id,
                 'user_id'       => auth()->id(),
                 'department_id' => auth()->user()->department_id,
+                'route_order'   => $targetRoute->route_order ?? null,
                 'event_type'    => 'issue',
-                'event_label'   => self::EVENT_LABELS['issue'],
-                'new_status'    => $document->status,
+                'event_label'   => $eventLabel,
+                'old_status'    => $document->status,
+                'new_status'    => $newStatus,
                 'note'          => substr($validated['description'], 0, 255),
                 'metadata'      => json_encode([
                     'ip_address' => $request->ip(),
@@ -980,11 +1166,38 @@ class DocumentController extends Controller
                 ]),
                 'created_at'    => Carbon::now('Asia/Manila'),
             ]);
+
+            if ($isReroute && $assignedDeptId) {
+                DB::table('document_events')->insert([
+                    'document_id'   => $document->id,
+                    'user_id'       => auth()->id(),
+                    'department_id' => $assignedDeptId,
+                    'route_order'   => $targetRoute->route_order ?? null,
+                    'event_type'    => 'route_returned',
+                    'event_label'   => self::EVENT_LABELS['route_returned'],
+                    'old_status'    => $document->status,
+                    'new_status'    => 'in_transit',
+                    'note'          => 'Document returned to ' . $targetDeptName . ' due to reported error.',
+                    'created_at'    => Carbon::now('Asia/Manila'),
+                ]);
+            }
+
+            return $documentModel;
         });
+
+        $message = $isReroute
+            ? 'Issue reported and document rerouted successfully.'
+            : 'Issue reported successfully.';
+
+        ActivityLogger::log(
+            ActivityCode::DOC_ISSUE_REPORTED,
+            "Reported issue on document {$documentModel->document_number}",
+            $documentModel
+        );
 
         return response()->json([
             'success' => true,
-            'message' => 'Issue reported successfully.',
+            'message' => $message,
         ]);
     }
 
@@ -1024,6 +1237,8 @@ class DocumentController extends Controller
             return redirect()->back()->with('error', 'Document not found.');
         }
 
+        $documentModel = Document::find($document->id);
+
         $isImmutable = DB::table('document_routing_policies')
             ->where('document_type_id', $document->document_type_id)
             ->value('is_immutable') ?? false;
@@ -1045,7 +1260,7 @@ class DocumentController extends Controller
             foreach ($routes as $index => $step) {
                 $targetDepartmentId = (int) $step['department_id'];
                 $orderSequence = (int) $step['route_order'];
-                $initialStepStatus = $orderSequence === 1 ? 'current' : 'pending';
+                $initialStepStatus = $orderSequence === 1 ? 'next' : 'pending';
 
                 if ($targetDepartmentId) {
                     DB::table('document_routes')->insert([
@@ -1070,6 +1285,12 @@ class DocumentController extends Controller
                 }
             }
         });
+
+        ActivityLogger::log(
+            ActivityCode::DOC_ROUTE_UPDATED,
+            "Updated routing path for document {$documentModel->document_number}",
+            $documentModel
+        );
 
         return redirect()->back()->with('success', 'Document routing path updated successfully.');
     }

@@ -52,15 +52,15 @@ class DocumentPolicy
             return false;
         }
 
-        $currentRouteStep = DocumentRoute::where('document_id', $document->id)
-            ->where('status', 'current')
+        $nextRouteStep = DocumentRoute::where('document_id', $document->id)
+            ->where('status', 'next')
             ->first();
 
-        if (!$currentRouteStep) {
+        if (!$nextRouteStep) {
             return false;
         }
 
-        return (int) $currentRouteStep->department_id === (int) $user->department_id;
+        return (int) $nextRouteStep->department_id === (int) $user->department_id;
     }
 
     public function complete(User $user, Document $document): bool

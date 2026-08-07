@@ -67,6 +67,11 @@
                 </div>
             </div>
 
+            <div id="overdue-banner" class="alert alert-danger d-none align-items-center justify-content-between py-2 px-3 mb-3" role="alert">
+                <span id="overdue-text" class="mb-0"></span>
+                <button type="button" id="btn-toggle-overdue" class="btn btn-sm btn-outline-danger fw-semibold">Filter to Overdue</button>
+            </div>
+
             <div class="filter-bar">
                 <div class="row g-2 align-items-end">
                     <div class="col-md-4">

@@ -36,6 +36,7 @@ class DocumentTypePolicyController extends Controller
             return [
                 'department_id'   => (int)$step['department_id'],
                 'department_name' => $department ? $department->name : 'Unknown Department',
+                'sla_minutes'     => $step['sla_minutes'] ?? null,
             ];
         });
 

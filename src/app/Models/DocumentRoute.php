@@ -36,6 +36,11 @@ class DocumentRoute extends Model
         return $this->belongsTo(User::class, 'received_by_user_id');
     }
 
+    public function scopeNext($query)
+    {
+        return $query->where('status', 'next');
+    }
+
     public function scopeCurrent($query)
     {
         return $query->where('status', 'current');

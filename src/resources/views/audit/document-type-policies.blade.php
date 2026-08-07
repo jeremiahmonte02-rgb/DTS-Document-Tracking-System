@@ -94,6 +94,24 @@
                                 </div>
 
                                 <div class="mb-4">
+                                    <label class="form-label">Total Lifecycle SLA</label>
+                                    <div class="row mb-2">
+                                        <div class="col-sm-6">
+                                            <input type="number" id="lifecycle_time_value" class="form-control" placeholder="e.g. 3" min="1">
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <select id="lifecycle_time_unit" class="form-select">
+                                                <option value="1">Minutes</option>
+                                                <option value="60">Hours</option>
+                                                <option value="1440">Days</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" name="total_lifecycle_sla" id="total_lifecycle_sla">
+                                    <small class="text-muted">Distributes evenly across all route steps. The remainder goes to the final step.</small>
+                                </div>
+
+                                <div class="mb-4">
                                     <label class="form-label">Default Route Path</label>
                                     <p class="placeholder-text mb-2">Select departments and build the ordered routing sequence.</p>
 
