@@ -281,15 +281,6 @@ class AuditorController extends Controller
                 $elapsed = abs($now->diffInMinutes(\Carbon\Carbon::parse($route->updated_at, 'Asia/Manila')));
             }
 
-            \Log::info('Overdue Debug', [
-                'doc_id'     => $route->document_id,
-                'status'     => $route->status,
-                'route_order'=> $route->route_order,
-                'elapsed'    => $elapsed,
-                'allowed'    => $allowedMinutes,
-                'is_overdue' => $elapsed > $allowedMinutes,
-            ]);
-
             if ($elapsed > $allowedMinutes) {
                 $overdueDocumentIds[] = $route->document_id;
             }

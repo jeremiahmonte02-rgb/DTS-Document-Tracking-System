@@ -125,7 +125,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         applyImmutableLockState(false);
                     }
                 } catch (err) {
-                    console.warn('[Upload Module] Policy fetch failed, falling back to editable route state.', err);
                     applyImmutableLockState(false);
                 }
             });
@@ -342,11 +341,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const docNumber = data.document_number;
 
-                console.log("=== UPLOAD SUCCESS TRIGGERED ===");
-                console.log("Returned document number data:", typeof docNumber !== 'undefined' ? docNumber : 'UNDEFINED');
-                console.log("modalViewDetailsBtn in DOM:", !!document.getElementById('modalViewDetailsBtn'));
-                console.log("modalPrintQrBtn in DOM:", !!document.getElementById('modalPrintQrBtn'));
-
                 const qrCanvasTarget = document.getElementById('modalQrCode');
                 if (qrCanvasTarget && typeof QRCode === 'function') {
                     qrCanvasTarget.innerHTML = '';
@@ -364,7 +358,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         const modalInstance = bootstrapContext.Modal.getOrCreateInstance(qrModalElement);
                         modalInstance.show();
                     } catch (mErr) {
-                        console.warn('Bootstrap context mismatch, initializing manual visibility toggles:', mErr);
                         qrModalElement.style.display = 'block';
                         qrModalElement.classList.add('show');
                         document.body.classList.add('modal-open');
@@ -399,8 +392,6 @@ document.addEventListener('DOMContentLoaded', function() {
 var successModalContainer = document.getElementById('qrCodeModal');
 
 if (successModalContainer) {
-    console.log("Success modal layout component found! Registering internal actions...");
-
     successModalContainer.addEventListener('click', function (e) {
         // Gracefully find the button element even if the user clicks on an internal text or icon layer
         const viewBtn = e.target.closest('#modalViewDetailsBtn');
@@ -409,7 +400,6 @@ if (successModalContainer) {
         // --- FIX BUG #3: View Details Button ---
         if (viewBtn) {
             e.preventDefault();
-            console.log("=== VIEW DETAILS BUTTON TRIGGERED ===");
 
             const docRefElement = document.querySelector('.modal-body strong, #generatedDocId');
             let docNumber = '';
@@ -428,7 +418,6 @@ if (successModalContainer) {
         // --- FIX BUG #2: Print QR Code Button ---
         if (printBtn) {
             e.preventDefault();
-            console.log("=== PRINT QR CODE BUTTON TRIGGERED ===");
 
             const qrContainer = document.querySelector('.qr-code-container') || document.querySelector('.modal-body .text-center');
             if (!qrContainer) {

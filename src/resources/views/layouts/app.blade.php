@@ -77,7 +77,10 @@
     @include('partials.auth-context')
 
     <!-- Global JS -->
-    <script src="{{ asset('js/main.js') }}"></script>
+    <script src="{{ asset('js/main.js') }}?v={{ filemtime(public_path('js/main.js')) }}"></script>
+
+    <!-- Global Formatting Utility -->
+    <script src="{{ asset('js/core/format.js') }}?v={{ filemtime(public_path('js/core/format.js')) }}"></script>
 
     @yield('scripts')
 </body>

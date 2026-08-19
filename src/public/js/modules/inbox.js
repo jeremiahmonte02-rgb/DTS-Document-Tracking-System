@@ -3,8 +3,6 @@
  * Handles asynchronous data table pipelines, server-side pagination, and filter queries
  */
 
-console.log("[inbox.js] Module loaded, registering DOMContentLoaded handler.");
-
 document.addEventListener('DOMContentLoaded', function () {
     const tableWrapper = document.getElementById('inbox-table-wrapper');
     if (!tableWrapper) return;
@@ -48,7 +46,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const statusEl = document.querySelector('[data-filter="status"]') || document.getElementById('status-filter') || document.querySelector('select[name="status"]');
         if (statusEl) {
             statusEl.addEventListener('change', function(e) {
-                console.log("Status filter change detected! New value:", e.target.value);
                 currentFilters.status = this.value;
                 currentFilters.page = 1;
                 fetchInboxRecords();
@@ -60,7 +57,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const typeEl = document.querySelector('[data-filter="type"]') || document.getElementById('type-filter') || document.querySelector('select[name="type"]');
         if (typeEl) {
             typeEl.addEventListener('change', function(e) {
-                console.log("Type filter change detected! New value:", e.target.value);
                 currentFilters.type = this.value;
                 currentFilters.page = 1;
                 fetchInboxRecords();
@@ -72,7 +68,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const dateInput = document.querySelector('[data-filter="date"]') || document.getElementById('date-filter') || document.querySelector('input[type="date"]');
         if (dateInput) {
             dateInput.addEventListener('change', function(e) {
-                console.log("Date input change detected! New value:", e.target.value);
                 currentFilters.date = this.value;
                 currentFilters.page = 1;
                 fetchInboxRecords();
@@ -118,8 +113,6 @@ document.addEventListener('DOMContentLoaded', function () {
             date: dateInput ? dateInput.value : ''
         }).toString();
 
-        console.log("Params built:", { search: searchInput ? searchInput.value : '', type: typeEl ? typeEl.value : '', status: statusEl ? statusEl.value : '', date: dateInput ? dateInput.value : '' });
-        
         fetch(`${fetchUrl}?${queryParams}`, {
             method: 'GET',
             headers: {

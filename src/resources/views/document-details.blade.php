@@ -542,7 +542,6 @@
 
         function appendStepToModalRouteList(id, name) {
             const routeListContainer = document.getElementById('edit-routeList');
-            console.log("[Edit Route] appendStepToModalRouteList invoked with ID:", id, "Name:", name, "| Container found:", !!routeListContainer);
             if (!routeListContainer) return;
 
             const existing = routeListContainer.querySelector(`li[data-dept-id="${id}"]`);
@@ -566,13 +565,11 @@
                 </div>
             `;
             routeListContainer.appendChild(li);
-            console.log("[Edit Route] Step appended. Route list child count:", routeListContainer.children.length);
         }
 
         // --- Document Action Functions ---
 
         function markDocumentAsComplete(documentNumber) {
-            console.log("Starting finalization for:", documentNumber);
             if (!confirm('Are you sure you want to officially mark this document as complete? This will finalize its routing record.')) return;
 
             const token = "{{ csrf_token() }}";
@@ -586,13 +583,10 @@
                 }
             })
             .then(response => {
-                console.log("Server HTTP Status:", response.status);
                 return response.json();
             })
             .then(data => {
-                console.log("Server JSON Response:", data);
                 if (data.success) {
-                    console.log("Success! Reloading viewport context...");
                     window.location.reload();
                 } else {
                     alert("Backend Error: " + (data.message || 'An error occurred.'));
@@ -860,14 +854,7 @@
 
                     const activeReceiverDepartmentId = '{{ $currentReceiverDepartmentId }}'.trim();
 
-                    console.log("Validating route sequence tracking alignment...", {
-                        userDept: userDepartmentId,
-                        activeReceiverDept: activeReceiverDepartmentId
-                    });
-
                     if (!userDepartmentId || !activeReceiverDepartmentId || userDepartmentId !== activeReceiverDepartmentId) {
-                        console.warn("ACCESS DENIED: User's department does not match the active scheduled destination step.");
-
                         const accessModalElement = document.getElementById('routedDocumentErrorModal');
                         if (accessModalElement && typeof bootstrap !== 'undefined') {
                             const modalInstance = bootstrap.Modal.getOrCreateInstance(accessModalElement);
@@ -877,8 +864,6 @@
                         }
                         return;
                     }
-
-                    console.log("ACCESS GRANTED: User is authorized to transition this tracking file step.");
 
                     markAsReceivedBtn.disabled = true;
                     const originalBtnContent = markAsReceivedBtn.innerHTML;
@@ -905,7 +890,6 @@
                         return data;
                     })
                     .then(data => {
-                        console.log("State machine successfully updated document tracking layer:", data);
                         window.location.reload();
                     })
                     .catch(error => {
@@ -943,11 +927,9 @@
 
                     const sidebarCard = document.querySelector('.card.mb-4.shadow-3xs');
                     const activeSteps = sidebarCard ? sidebarCard.querySelectorAll('[data-dept-id]') : document.querySelectorAll('[data-dept-id]');
-                    console.log("[Edit Route] Found route steps count:", activeSteps.length);
                     activeSteps.forEach(function(step, index) {
                         const id = step.getAttribute('data-dept-id');
                         const name = step.getAttribute('data-dept-name');
-                        console.log("[Edit Route] Step " + index + ": id=" + id + ", name=" + name);
                         if (id && name) {
                             appendStepToModalRouteList(id, name);
                         }

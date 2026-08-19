@@ -1,8 +1,6 @@
 (function () {
     'use strict';
 
-    console.log("[users.js] Module loaded, registering DOMContentLoaded handler.");
-
     document.addEventListener('DOMContentLoaded', function () {
         const container = document.querySelector('[data-fetch-url]');
         if (!container) return;
@@ -92,8 +90,6 @@
             if (currentFilters.department_id) params.set('department_id', currentFilters.department_id);
             if (currentFilters.role_id) params.set('role_id', currentFilters.role_id);
             if (currentFilters.status) params.set('status', currentFilters.status);
-
-            console.log("[users.js] Fetching with params:", params.toString());
 
             fetch(fetchUrl + '?' + params.toString(), {
                 method: 'GET',
@@ -229,7 +225,6 @@
             .then(function (response) { return response.json(); })
             .then(function (result) {
                 if (result.success) {
-                    console.log("[users.js] Toggle result:", result.message);
                     fetchUsers();
                     fetchStats();
                 }
@@ -417,7 +412,6 @@
         }
 
         function handleExport() {
-            console.log("[users.js] Export triggered — no backend endpoint configured yet.");
         }
 
         function getCsrfToken() {

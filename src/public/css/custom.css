@@ -1996,3 +1996,132 @@ body {
         table-layout: auto !important;
     }
 }
+
+/* Month Selector Mobile Responsiveness */
+/* Desktop toolbar — title left, actions right: caption clustered left, form
+   controls pushed to the container's right edge; no card fill, no border */
+.dashboard-filter-bar {
+    display: flex;
+    justify-content: space-between; /* title left, actions right */
+    align-items: center;
+    width: 100%;
+    gap: 2rem; /* controlled breathing room between caption and controls */
+    padding-bottom: 0.5rem; /* minimal clearance, no enclosure */
+    margin-bottom: 1.5rem;
+}
+
+/* §3/§2: caption reads as steel metadata; month value carries ink display emphasis */
+.dashboard-filter-bar > div:first-child {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.5rem;
+    font-size: 0.9375rem; /* §7: body floor 14px */
+    color: var(--steel);
+    white-space: nowrap;
+}
+
+.dashboard-filter-bar > div:first-child strong {
+    color: var(--ink);
+    font-family: var(--font-display); /* §3: Satoshi display family */
+    font-weight: 700;
+    letter-spacing: -0.025em; /* §3: track-tight */
+}
+
+.dashboard-filter-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* §4: standard control gap */
+}
+
+/* §6: low-key Export button — default stays quiet and flat; interactive states
+   (hover on desktop, active/focus-visible for touchscreens) read as soft red */
+.dashboard-filter-form button {
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.dashboard-filter-form button:hover,
+.dashboard-filter-form button:active,
+.dashboard-filter-form button:focus-visible {
+    background-color: #fee2e2; /* soft rose tint — light red fill */
+    color: var(--danger-color) !important; /* §2: strong red text/icon contrast */
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06); /* subtle lift — extra definition */
+}
+
+@media (max-width: 767.98px) {
+    .dashboard-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.5rem; /* §7: mobile-first collapse rhythm */
+    }
+
+    /* §3: metadata caption — steel secondary, weight-driven strong */
+    .dashboard-filter-bar > div:first-child {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.25rem 0.5rem;
+        font-size: 0.9375rem; /* §7: never below 14px */
+        color: var(--steel);
+    }
+
+    .dashboard-filter-bar > div:first-child strong {
+        color: var(--ink);
+        font-family: var(--font-display); /* §3: Satoshi display */
+        font-weight: 700;
+        letter-spacing: -0.025em; /* §3: track-tight */
+    }
+
+    /* §4: compact surface container — whisper border, diffused shadow */
+    .dashboard-filter-form {
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 0.75rem;
+        padding: 1rem; /* §7: 1rem mobile padding */
+        background: var(--surface); /* §2: Pure Surface fill */
+        border: 1px solid var(--whisper); /* §4: 1px semi-transparent border */
+        border-radius: 1.25rem; /* generous radius scaled for a compact control */
+        box-shadow: var(--shadow); /* §4: diffused shadow only — never harsh */
+    }
+
+    /* §4: label above input with standard 0.5rem gap */
+    .dashboard-filter-form label {
+        display: block;
+        width: 100%;
+        margin-bottom: 0.5rem !important; /* overrides Bootstrap mb-0 utility */
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--steel); /* §2: Steel Secondary metadata */
+    }
+
+    /* §4/§7: field treatment — canvas fill, whisper border, 44px touch target */
+    .dashboard-filter-form .form-control-sm {
+        flex: 1 1 100%;
+        width: 100% !important;
+        min-height: 44px; /* §7: minimum tap target */
+        padding: 0.625rem 0.875rem;
+        font-size: 1rem; /* §7: never below 14px */
+        color: var(--ink);
+        background-color: var(--canvas); /* §2: Canvas White fill */
+        border: 1px solid var(--whisper);
+        border-radius: 0.75rem;
+    }
+
+    /* §4: focus ring in accent color, 2px offset */
+    .dashboard-filter-form .form-control-sm:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18);
+    }
+
+    /* §4/§7: flat buttons, full-width, tactile active state */
+    .dashboard-filter-form .btn {
+        flex: 1 1 100%; /* §7: buttons full-width on mobile */
+        min-height: 44px; /* §7: tap target */
+        border-radius: 0.75rem;
+        box-shadow: none; /* §4: flat surface, no outer glow */
+    }
+
+    .dashboard-filter-form .btn:active {
+        transform: scale(0.98); /* §4: tactile push */
+    }
+}

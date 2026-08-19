@@ -158,11 +158,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 borderClass = 'border-success';
                 statusBadgeClass = 'bg-light-success text-success';
                 actionSlot = `
-                    <div class="alert alert-info d-flex align-items-center w-100 m-0 mb-2 py-2 px-3 text-xs border border-info-subtle rounded">
+                    <div class="alert alert-info d-flex align-items-center flex-grow-1 m-0 mb-2 py-2 px-3 text-xs border border-info-subtle rounded">
                         <i class="bi bi-info-circle-fill me-2 text-info flex-shrink-0"></i>
                         <span>This document requires routing approval. Your department may not be authorized to receive it directly.</span>
                     </div>
-                    <button type="button" class="btn btn-warning btn-sm px-3 w-100 w-md-auto text-dark font-semibold d-inline-flex align-items-center justify-content-center gap-1" id="actionAttemptReceiptBtn">
+                    <button type="button" class="btn btn-warning btn-sm px-3 text-dark font-semibold d-inline-flex align-items-center justify-content-center gap-1" id="actionAttemptReceiptBtn">
                         <i class="bi bi-shield-x"></i> Attempt Receipt
                     </button>
                 `;

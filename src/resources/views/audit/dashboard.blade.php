@@ -19,23 +19,22 @@
 
 @section('content')
             <!-- Month Selector -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="dashboard-filter-bar">
                 <div>
                     <small class="text-muted">Analytics for <strong>{{ $startOfMonth->format('F Y') }}</strong></small>
                 </div>
-                <form method="GET" action="{{ request()->url() }}" class="d-flex align-items-center gap-2 no-print d-print-none">
+                <form method="GET" action="{{ request()->url() }}" class="dashboard-filter-form no-print d-print-none">
                     <label for="monthPicker" class="text-muted small mb-0">Month:</label>
                     <input
                         type="month"
                         id="monthPicker"
                         name="month"
                         class="form-control form-control-sm"
-                        style="width: 160px;"
                         value="{{ $startOfMonth->format('Y-m') }}"
                         max="{{ now()->format('Y-m') }}"
                         onchange="this.form.submit()"
                     >
-                    <button type="button" class="btn btn-sm btn-success ms-2" onclick="window.print()"><i class="bi bi-printer"></i> Export</button>
+                    <button type="button" class="btn btn-sm btn-light text-secondary border-0" onclick="window.print()"><i class="bi bi-printer"></i> Export</button>
                     @if($startOfMonth->format('Y-m') !== now()->format('Y-m'))
                         <a href="{{ request()->url() }}" class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-arrow-counterclockwise"></i> Current
@@ -132,7 +131,7 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
                                     <h6 class="text-muted mb-2">Avg Dwell Time</h6>
-                                    <h2 class="mb-0 tabular-nums">{{ $avgDwellHours }} <small class="fs-6 text-muted">hrs</small></h2>
+                                    <h2 class="mb-0 tabular-nums js-format-time" data-hours="{{ $avgDwellHours }}">{{ $avgDwellHours }} <small class="fs-6 text-muted">hrs</small></h2>
                                 </div>
                                 <div class="stat-icon">
                                     <i class="bi bi-clock-history"></i>
@@ -148,7 +147,7 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
                                     <h6 class="text-muted mb-2">Avg Completion</h6>
-                                    <h2 class="mb-0 tabular-nums">{{ $avgCompletionHours }} <small class="fs-6 text-muted">hrs</small></h2>
+                                    <h2 class="mb-0 tabular-nums js-format-time" data-hours="{{ $avgCompletionHours }}">{{ $avgCompletionHours }} <small class="fs-6 text-muted">hrs</small></h2>
                                 </div>
                                 <div class="stat-icon">
                                     <i class="bi bi-check2-all"></i>
@@ -319,5 +318,5 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-    <script src="{{ asset('js/modules/audit-dashboard.js') }}"></script>
+    <script src="{{ asset('js/modules/audit-dashboard.js') }}?v={{ filemtime(public_path('js/modules/audit-dashboard.js')) }}"></script>
 @endsection

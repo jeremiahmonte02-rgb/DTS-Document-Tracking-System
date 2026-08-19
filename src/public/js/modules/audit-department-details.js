@@ -107,19 +107,9 @@
 
             var dwellEl = document.getElementById('metric-avg-dwell');
             if (dwellEl) {
-                if (counts.avg_dwell_hours !== null && counts.avg_dwell_hours !== undefined) {
-                    var h = Math.round(counts.avg_dwell_hours);
-                    if (h < 1) {
-                        dwellEl.textContent = '< 1 hour';
-                    } else if (h < 24) {
-                        dwellEl.textContent = h + ' hours';
-                    } else {
-                        var d = Math.floor(h / 24);
-                        dwellEl.textContent = d + ' day' + (d !== 1 ? 's' : '');
-                    }
-                } else {
-                    dwellEl.textContent = '--';
-                }
+                dwellEl.textContent = (counts.avg_dwell_hours !== null && counts.avg_dwell_hours !== undefined)
+                    ? window.FormatUtils.formatHoursToDays(counts.avg_dwell_hours)
+                    : '--';
             }
         }
 

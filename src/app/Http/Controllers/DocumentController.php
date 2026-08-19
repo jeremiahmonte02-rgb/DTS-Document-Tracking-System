@@ -27,6 +27,11 @@ class DocumentController extends Controller
         'route_returned' => 'Document returned to department',
     ];
 
+    /**
+     * Render the document upload form for the authenticated sender's department.
+     *
+     * @return \Illuminate\View\View
+     */
     public function create()
     {
         $this->authorize('create', Document::class);
@@ -62,6 +67,17 @@ class DocumentController extends Controller
         return view('upload', compact('documentTypes', 'departments', 'existingDocuments'));
     }
 
+    /**
+     * Register a new tracking document together with its initial routing sequence.
+     *
+     * Validates the submission, enforces immutable routing policies when configured,
+     * persists the document, its file, route steps and lifecycle events inside a single
+     * transaction, then issues a new tracking number to the sender.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     * @throws \Illuminate\Validation\ValidationException When the submitted route sequence violates the enforced routing policy.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -208,11 +224,22 @@ class DocumentController extends Controller
         ]);
     }
 
+    /**
+     * Render the QR scanner view used to acknowledge receipt of routed documents.
+     *
+     * @return \Illuminate\View\View
+     */
     public function showScanPage()
     {
         return view('scan');
     }
 
+    /**
+     * Resolve the full tracking trail (routes, events and SLA status) of a document by number.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function lookupDocument(Request $request)
     {
         $docNumber = $request->query('document_number');
@@ -369,6 +396,12 @@ class DocumentController extends Controller
         ]);
     }
 
+    /**
+     * Render the document lifecycle detail page with per-step SLA breach analysis.
+     *
+     * @param string $document_number The tracking number of the document to inspect.
+     * @return \Illuminate\View\View
+     */
     public function showDocumentDetails($document_number)
     {
         $documentModel = Document::where('document_number', $document_number)->first();
@@ -529,6 +562,16 @@ class DocumentController extends Controller
         return view('document-details', compact('document', 'routes', 'events', 'departments', 'isImmutable'));
     }
 
+    /**
+     * Acknowledge custody of a routed document at the receiving department.
+     *
+     * Transitions the active 'current' step to 'received', promotes the next-in-line
+     * step to 'current', records a receipt lifecycle event and advances the document
+     * status to 'in_transit' within a single transaction.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function receiveDocument(Request $request)
     {
         $docNumber = $request->input('document_number');
@@ -658,12 +701,23 @@ class DocumentController extends Controller
         }
     }
 
+    /**
+     * Render the department inbox listing documents currently in its custody.
+     *
+     * @return \Illuminate\View\View
+     */
     public function inbox()
     {
         $documentTypes = \DB::table('document_types')->where('is_active', 1)->select('id', 'name')->get();
         return view('inbox', compact('documentTypes'));
     }
 
+    /**
+     * Return paginated inbox records scoped to the authenticated department's custody.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getInboxData(Request $request)
     {
         $user = auth()->user();
@@ -736,12 +790,23 @@ class DocumentController extends Controller
         return response()->json($paginatedData);
     }
 
+    /**
+     * Render the department outbox listing documents it originated or has transferred.
+     *
+     * @return \Illuminate\View\View
+     */
     public function outbox()
     {
         $documentTypes = \DB::table('document_types')->where('is_active', 1)->select('id', 'name')->get();
         return view('outbox', compact('documentTypes'));
     }
 
+    /**
+     * Return paginated outbox records for documents sent by the authenticated department.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getOutboxData(Request $request)
     {
         $user = auth()->user();
@@ -808,6 +873,16 @@ class DocumentController extends Controller
         return response()->json($paginatedData);
     }
 
+    /**
+     * Finalize a document after the terminal routing department completes its step.
+     *
+     * Verifies that the authenticated department holds active custody of the final
+     * step, then marks the document 'completed' and stamps the completion timestamp.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param string $documentNumber The tracking number of the document to complete.
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function completeDocument(Request $request, $documentNumber)
     {
         $user = auth()->user();
@@ -894,6 +969,15 @@ class DocumentController extends Controller
         }
     }
 
+    /**
+     * Reject a document at routing checkpoints and return it to the originating department.
+     *
+     * Marks the active route step as 'rejected' with the given reason and records a
+     * rejection lifecycle event for the audit trail.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function rejectDocument(Request $request)
     {
         $docNumber = $request->input('document_number');
@@ -979,6 +1063,12 @@ class DocumentController extends Controller
         }
     }
 
+    /**
+     * Cancel the entire workflow of a document, preserving its lifecycle audit trail.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function cancelDocument(Request $request)
     {
         $docNumber = $request->input('document_number');
@@ -1049,6 +1139,15 @@ class DocumentController extends Controller
         }
     }
 
+    /**
+     * Record a reported issue and optionally reroute the document to the assigned department.
+     *
+     * For processing or document errors with an assigned department, downstream steps are
+     * reset, the target step is auto-received and the immediate next step is activated.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function reportIssue(Request $request)
     {
         $validated = $request->validate([
@@ -1230,6 +1329,16 @@ class DocumentController extends Controller
         });
     }
 
+    /**
+     * Replace the routing sequence of a document owned by the authenticated department.
+     *
+     * Rebuilds the route steps and re-emits 'route_defined' events for the audit trail,
+     * unless the document type enforces an immutable routing policy.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param string $document_number The tracking number of the document to update.
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function updateRoutingPath(Request $request, $document_number)
     {
         $document = DB::table('documents')->where('document_number', $document_number)->first();
