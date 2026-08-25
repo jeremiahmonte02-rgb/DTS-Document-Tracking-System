@@ -213,6 +213,14 @@ class DocumentController extends Controller
                     ]);
                 }
             }
+
+            \App\Models\Notification::broadcastToDepartment(
+                (int) $user->department_id,
+                'uploaded',
+                'Document Uploaded',
+                "Tracking ticket {$documentNumber} \"" . $validated['title'] . '" was registered and is awaiting transfer.',
+                $documentId
+            );
         });
 
         ActivityLogger::log(ActivityCode::DOC_CREATED, "Uploaded document {$documentNumber}");
@@ -678,6 +686,14 @@ class DocumentController extends Controller
                 ]);
 
                 $hasMoreSteps = $subsequentStep && $allRoutes->where('route_order', '>', $subsequentStep->route_order)->isNotEmpty();
+
+                \App\Models\Notification::broadcastToDepartment(
+                    (int) $user->department_id,
+                    'received',
+                    'Document Received',
+                    "Document {$document->document_number} was received by {$user->department->name} and is now in custody.",
+                    $document->id
+                );
 
                 return [
                     'document' => $documentModel,

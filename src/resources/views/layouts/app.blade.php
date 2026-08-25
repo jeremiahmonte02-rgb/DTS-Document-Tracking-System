@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Document Tracking System')</title>
 
     <!-- Bootstrap 5 CSS -->
@@ -29,11 +30,31 @@
                 <h5 class="mb-0">@yield('pageTitle', 'Dashboard')</h5>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <div class="position-relative">
-                    <button class="btn btn-link position-relative">
+                <div class="dropdown">
+                    <button class="btn btn-link position-relative dropdown-toggle" type="button"
+                            id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false"
+                            aria-label="Notifications">
                         <i class="bi bi-bell fs-5"></i>
-                        <span class="notification-badge">0</span>
+                        <span id="notificationBadge" class="notification-badge {{ ($unreadNotificationsCount ?? 0) > 0 ? '' : 'd-none' }}">{{ $unreadNotificationsCount ?? 0 }}</span>
                     </button>
+                    <ul class="dropdown-menu dropdown-menu-end notification-menu shadow" aria-labelledby="notificationBell">
+                        @forelse($recentNotifications ?? [] as $notification)
+                            <li>
+                                <a class="dropdown-item notification-item"
+                                   href="{{ $notification->document ? route('document-details.show', $notification->document->document_number) : '#' }}"
+                                   data-notification-id="{{ $notification->id }}">
+                                    <div class="notification-title fw-semibold">{{ $notification->title }}</div>
+                                    <div class="notification-message small text-muted text-truncate">{{ \Illuminate\Support\Str::limit($notification->message, 90) }}</div>
+                                    <div class="notification-time small text-muted mt-1">{{ $notification->created_at?->diffForHumans() }}</div>
+                                </a>
+                            </li>
+                            @if (!$loop->last)
+                                <li><hr class="dropdown-divider"></li>
+                            @endif
+                        @empty
+                            <li><span class="dropdown-item-text text-muted text-center py-3">No new notifications</span></li>
+                        @endforelse
+                    </ul>
                 </div>
                 <div class="dropdown">
                     <button class="btn btn-link dropdown-toggle d-flex align-items-center gap-2"

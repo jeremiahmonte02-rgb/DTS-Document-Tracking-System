@@ -155,16 +155,11 @@ class DashboardController extends Controller
             ->value('avg_hours');
         $avgCompletionHours = $avgCompletionHours ? round((float) $avgCompletionHours, 1) : 0;
 
-        // 8. Unread notifications count from the notifications table
-        $unreadNotificationsCount = DB::table('notifications')
-            ->where('user_id', $user->id)
-            ->whereNull('read_at')
-            ->count();
-
+        // Unread notification count is injected globally by NotificationServiceProvider
         return view('dashboard', compact(
             'totalDocuments', 'pendingDocuments', 'inTransitDocuments', 'receivedInMonth',
             'statusMetrics', 'departmentDistribution', 'activityFeed',
-            'avgDwellHours', 'overdueCount', 'avgCompletionHours', 'unreadNotificationsCount',
+            'avgDwellHours', 'overdueCount', 'avgCompletionHours',
             'startOfMonth'
         ));
     }

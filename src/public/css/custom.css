@@ -2125,3 +2125,20 @@ body {
         transform: scale(0.98); /* §4: tactile push */
     }
 }
+
+/* Notification Dropdown */
+.notification-menu {
+    width: 340px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 0.25rem 0;
+}
+
+.notification-item {
+    white-space: normal;
+    padding: 0.75rem 1rem;
+}
+
+.notification-item:hover {
+    background-color: var(--bg-light, #f8f9fa);
+}

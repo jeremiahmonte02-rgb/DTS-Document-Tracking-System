@@ -4,6 +4,7 @@
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
+    setupNotificationMarkRead();
     highlightActiveNav();
     setupSidebarCloseOnOutsideClick();
     setupSidebarCloseOnNavClick();
@@ -34,6 +35,52 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Resolve the CSRF token from the layout meta tag (fallback: hidden form input)
+function csrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) return meta.getAttribute('content');
+
+    const input = document.querySelector('input[name="_token"]');
+    return input ? input.value : '';
+}
+
+// Mark a notification as read in the background, decrement the bell badge,
+// then navigate the user to the referenced document.
+function setupNotificationMarkRead() {
+    document.querySelectorAll('.notification-item[data-notification-id]').forEach(function(item) {
+        item.addEventListener('click', function(event) {
+            event.preventDefault();
+
+            const notificationId = item.getAttribute('data-notification-id');
+            const targetUrl = item.getAttribute('href');
+
+            if (notificationId) {
+                fetch('/notifications/' + encodeURIComponent(notificationId) + '/read', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken(),
+                        'Accept': 'application/json'
+                    }
+                }).catch(function() {
+                    // Best-effort: navigation continues even if marking fails
+                });
+
+                const badge = document.getElementById('notificationBadge');
+                if (badge) {
+                    const current = parseInt(badge.textContent || '0', 10);
+                    const next = Math.max(0, current - 1);
+                    badge.textContent = next;
+                    badge.classList.toggle('d-none', next <= 0);
+                }
+            }
+
+            if (targetUrl && targetUrl !== '#' && targetUrl !== window.location.href) {
+                window.location.href = targetUrl;
+            }
+        });
+    });
+}
 
 // Setup event listeners
 function setupEventListeners() {
