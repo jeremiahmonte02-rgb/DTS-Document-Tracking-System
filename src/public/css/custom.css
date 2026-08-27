@@ -543,6 +543,48 @@ body {
     font-weight: 600;
 }
 
+.announcements-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.announcement-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    background-color: rgba(13, 110, 253, 0.05);
+    border: 1px solid rgba(13, 110, 253, 0.18);
+    border-left: 6px solid var(--primary-color, #0d6efd);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.announcement-banner .announcement-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background-color: var(--primary-color, #0d6efd);
+    color: #fff;
+    font-size: 1.25rem;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+}
+
+.announcement-banner .announcement-content {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.announcement-banner .btn-close {
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+}
+
 /* Activity Feed */
 .activity-feed {
     max-height: 400px;

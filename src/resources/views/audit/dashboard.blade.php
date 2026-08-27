@@ -18,6 +18,7 @@
 </style>
 
 @section('content')
+
             <!-- Month Selector -->
             <div class="dashboard-filter-bar">
                 <div>
@@ -203,6 +204,8 @@
                     </div>
                 </div>
             </div>
+
+            @include('partials.announcement-banner')
 
             <!-- Charts Row 1: Status Distribution + Department Workload -->
             <div class="row g-4 mb-4">

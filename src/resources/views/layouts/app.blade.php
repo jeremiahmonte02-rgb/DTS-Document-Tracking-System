@@ -35,7 +35,7 @@
                             id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false"
                             aria-label="Notifications">
                         <i class="bi bi-bell fs-5"></i>
-                        <span id="notificationBadge" class="notification-badge {{ ($unreadNotificationsCount ?? 0) > 0 ? '' : 'd-none' }}">{{ $unreadNotificationsCount ?? 0 }}</span>
+                        <span id="notificationBadge" class="notification-badge {{ (($unreadNotificationsCount ?? 0) + ($unreadAnnouncementsCount ?? 0)) > 0 ? '' : 'd-none' }}">{{ ($unreadNotificationsCount ?? 0) + ($unreadAnnouncementsCount ?? 0) }}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end notification-menu shadow" aria-labelledby="notificationBell">
                         @forelse($recentNotifications ?? [] as $notification)
@@ -52,10 +52,24 @@
                             @if (!$loop->last)
                                 <li><hr class="dropdown-divider"></li>
                             @endif
-                        @empty
-                            <li><span class="dropdown-item-text text-muted text-center py-3">No new notifications</span></li>
-                        @endforelse
-                    </ul>
+                            @empty
+                                <li><span class="dropdown-item-text text-muted text-center py-3">No new notifications</span></li>
+                            @endforelse
+                            @if(($unreadAnnouncements ?? collect())->isNotEmpty())
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">Announcements</h6></li>
+                                @foreach($unreadAnnouncements as $announcement)
+                                    <li>
+                                        <a class="dropdown-item notification-item announcement-item"
+                                           href="#" data-announcement-id="{{ $announcement->id }}" data-no-spinner="true">
+                                            <div class="notification-title fw-semibold">{{ $announcement->title }}</div>
+                                            <div class="notification-message small text-muted text-truncate">{{ \Illuminate\Support\Str::limit($announcement->message, 90) }}</div>
+                                            <div class="notification-time small text-muted mt-1">{{ $announcement->created_at?->diffForHumans() }}</div>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            @endif
+                        </ul>
                 </div>
                 <div class="dropdown">
                     <button class="btn btn-link dropdown-toggle d-flex align-items-center gap-2"

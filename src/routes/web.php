@@ -39,6 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/issues', [App\Http\Controllers\DocumentController::class, 'reportIssue'])->name('api.issues.report');
     Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log');
     Route::post('/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/announcements/{id}/read', [App\Http\Controllers\AnnouncementController::class, 'markAsRead'])->name('announcements.mark-read');
     Route::get('/api/document-types/{id}/policy', [DocumentTypePolicyController::class, 'show'])->name('api.document-types.policy');
 });
 

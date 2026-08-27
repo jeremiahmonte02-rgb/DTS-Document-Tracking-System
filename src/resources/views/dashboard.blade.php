@@ -18,6 +18,7 @@
 </style>
 
 @section('content')
+
             @if(session('success'))
             <div class="alert alert-success d-flex align-items-center alert-dismissible fade show shadow-sm mb-4 pe-5" role="alert" style="background-color: #d1e7dd; border-color: #badbcc; color: #0f5132; padding: 1rem 1.25rem; border-radius: 0.375rem; position: relative;">
                 <i class="bi bi-check-circle-fill me-2 fs-5"></i>
@@ -196,6 +197,8 @@
                     </div>
                 </div>
             </div>
+
+            @include('partials.announcement-banner')
 
             <!-- Charts and Activity Feed -->
             <div class="row g-4">

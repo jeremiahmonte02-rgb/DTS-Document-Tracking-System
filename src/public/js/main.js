@@ -5,6 +5,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     setupNotificationMarkRead();
+    setupAnnouncementMarkRead();
     highlightActiveNav();
     setupSidebarCloseOnOutsideClick();
     setupSidebarCloseOnNavClick();
@@ -99,6 +100,63 @@ function setupNotificationMarkRead() {
                 if (typeof hideSpinner === 'function') {
                     hideSpinner();
                 }
+            }
+        });
+    });
+}
+
+// Mark an announcement as read/dismissed for the current user. Handles both
+// the bell dropdown items and the dashboard banner close buttons. The badge
+// count is decremented and the banner element is removed from the DOM.
+function setupAnnouncementMarkRead() {
+    document.querySelectorAll('[data-announcement-id]').forEach(function(el) {
+        el.addEventListener('click', function(event) {
+            const announcementId = el.getAttribute('data-announcement-id');
+            if (!announcementId) return;
+
+            if (el.classList.contains('btn-close') || el.classList.contains('announcement-item')) {
+                event.preventDefault();
+                if (el.classList.contains('btn-close')) {
+                    event.stopPropagation();
+                }
+            }
+
+            fetch('/announcements/' + encodeURIComponent(announcementId) + '/read', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken(),
+                    'Accept': 'application/json'
+                }
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Announcement mark-as-read failed with status ' + response.status);
+                }
+                return response.json();
+            })
+            .catch(function(error) {
+                console.warn('Announcement mark-as-read failed:', error);
+            })
+            .finally(function() {
+                if (typeof hideSpinner === 'function') {
+                    hideSpinner();
+                }
+            });
+
+            const badge = document.getElementById('notificationBadge');
+            if (badge) {
+                const current = parseInt(badge.textContent || '0', 10);
+                const next = Math.max(0, current - 1);
+                badge.textContent = next;
+                badge.classList.toggle('d-none', next <= 0);
+            }
+
+            const banner = el.closest('.announcement-banner');
+            if (banner) {
+                banner.remove();
+            } else if (el.classList.contains('announcement-item')) {
+                const li = el.closest('li');
+                if (li) li.remove();
             }
         });
     });

@@ -11,6 +11,7 @@ use App\Models\DepartmentDocumentSla;
 use App\Models\DocumentIssue;
 use App\Enums\ActivityCode;
 use App\Services\ActivityLogger;
+use App\Services\AnnouncementBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -439,14 +440,25 @@ class AuditorController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        $department = Department::create([
-            'name' => $validated['name'],
-            'code' => strtoupper($validated['code']),
-            'description' => $validated['description'] ?? null,
-            'is_active' => true,
-        ]);
+        $department = DB::transaction(function () use ($validated) {
+            $department = Department::create([
+                'name' => $validated['name'],
+                'code' => strtoupper($validated['code']),
+                'description' => $validated['description'] ?? null,
+                'is_active' => true,
+            ]);
 
-        ActivityLogger::log(ActivityCode::DEPT_CREATED, "Created department {$department->name}", $department);
+            AnnouncementBuilder::create(
+                'department_created',
+                'New department created',
+                'Auditor ' . auth()->user()->name . ' created the ' . $validated['name'] . ' department.',
+                $department
+            );
+
+            ActivityLogger::log(ActivityCode::DEPT_CREATED, "Created department {$department->name}", $department);
+
+            return $department;
+        });
 
         return response()->json([
             'status' => 'success',
@@ -472,13 +484,32 @@ class AuditorController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        $department->update([
-            'name' => $validated['name'],
-            'code' => strtoupper($validated['code']),
-            'description' => $validated['description'] ?? $department->description,
-        ]);
+        $department = DB::transaction(function () use ($validated, $department) {
+            $before = $department->only(['name', 'code', 'description']);
 
-        ActivityLogger::log(ActivityCode::DEPT_UPDATED, "Updated department {$department->name}", $department);
+            $department->update([
+                'name' => $validated['name'],
+                'code' => strtoupper($validated['code']),
+                'description' => $validated['description'] ?? $department->description,
+            ]);
+
+            $after = $department->only(['name', 'code', 'description']);
+            $diff = AnnouncementBuilder::diffToSentence($before, $after);
+            $message = $diff !== ''
+                ? 'Auditor ' . auth()->user()->name . ' updated the ' . $department->name . ' department: ' . $diff . '.'
+                : 'Auditor ' . auth()->user()->name . ' updated the ' . $department->name . ' department.';
+
+            AnnouncementBuilder::create(
+                'department_updated',
+                'Department updated',
+                $message,
+                $department
+            );
+
+            ActivityLogger::log(ActivityCode::DEPT_UPDATED, "Updated department {$department->name}", $department);
+
+            return $department;
+        });
 
         return response()->json([
             'status' => 'success',
@@ -496,13 +527,27 @@ class AuditorController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $department = Department::findOrFail($id);
-        $department->is_active = !$department->is_active;
-        $department->save();
+        $department = DB::transaction(function () use ($id) {
+            $department = Department::findOrFail($id);
+            $wasActive = $department->is_active;
+            $department->is_active = !$department->is_active;
+            $department->save();
+
+            $status = $wasActive ? 'deactivated' : 'activated';
+
+            AnnouncementBuilder::create(
+                'department_toggled',
+                'Department status changed',
+                'Auditor ' . auth()->user()->name . ' ' . $status . ' the ' . $department->name . ' department.',
+                $department
+            );
+
+            ActivityLogger::log(ActivityCode::DEPT_TOGGLED, "Toggled status for department {$department->name}", $department);
+
+            return $department;
+        });
 
         $status = $department->is_active ? 'activated' : 'deactivated';
-
-        ActivityLogger::log(ActivityCode::DEPT_TOGGLED, "Toggled status for department {$department->name}", $department);
 
         return response()->json([
             'status' => 'success',
@@ -710,10 +755,18 @@ class AuditorController extends Controller
                     ]
                 );
             }
-        });
 
-        $department = Department::find($id);
-        ActivityLogger::log(ActivityCode::DEPT_SLA_UPDATED, "Updated SLA configuration for department {$department->name}", $department);
+            $department = Department::find($id);
+
+            AnnouncementBuilder::create(
+                'department_slas_updated',
+                'Processing-time SLAs updated',
+                'Auditor ' . auth()->user()->name . ' updated processing-time SLAs for the ' . $department->name . ' department.',
+                $department
+            );
+
+            ActivityLogger::log(ActivityCode::DEPT_SLA_UPDATED, "Updated SLA configuration for department {$department->name}", $department);
+        });
 
         return redirect()->back()->with('success', 'Department processing time SLAs updated successfully.');
     }
@@ -776,15 +829,46 @@ class AuditorController extends Controller
             }
         }
 
-        $policy = DocumentRoutingPolicy::updateOrCreate(
-            ['document_type_id' => $validated['document_type_id']],
-            [
-                'is_immutable'     => $validated['is_immutable'],
-                'predefined_route' => $routeArray,
-            ]
-        );
+        $policy = DB::transaction(function () use ($validated, $routeArray) {
+            $existingPolicy = DocumentRoutingPolicy::where('document_type_id', $validated['document_type_id'])->first();
 
-        ActivityLogger::log(ActivityCode::POLICY_UPDATED, "Updated document routing policy", $policy);
+            $policy = DocumentRoutingPolicy::updateOrCreate(
+                ['document_type_id' => $validated['document_type_id']],
+                [
+                    'is_immutable'     => $validated['is_immutable'],
+                    'predefined_route' => $routeArray,
+                ]
+            );
+
+            $documentTypeName = \App\Models\DocumentType::find($validated['document_type_id'])?->name ?? 'unknown';
+
+            if ($existingPolicy === null) {
+                $message = 'Auditor ' . auth()->user()->name . ' created a routing policy for ' . $documentTypeName . ' documents.';
+            } else {
+                $beforeValues = [
+                    'is_immutable'     => $existingPolicy->is_immutable,
+                    'predefined_route' => $existingPolicy->predefined_route,
+                ];
+                $afterValues = [
+                    'is_immutable'     => (bool) $validated['is_immutable'],
+                    'predefined_route' => $routeArray,
+                ];
+                $diff = AnnouncementBuilder::diffToSentence($beforeValues, $afterValues);
+                $message = 'Auditor ' . auth()->user()->name . ' updated the routing policy for ' . $documentTypeName . ' documents'
+                    . ($diff !== '' ? ': ' . $diff . '.' : ': reviewed and re-saved.');
+            }
+
+            AnnouncementBuilder::create(
+                'policy_updated',
+                'Routing policy updated',
+                $message,
+                $policy
+            );
+
+            ActivityLogger::log(ActivityCode::POLICY_UPDATED, "Updated document routing policy", $policy);
+
+            return $policy;
+        });
 
         return redirect()->back()->with('success', 'Routing policy updated successfully.');
     }

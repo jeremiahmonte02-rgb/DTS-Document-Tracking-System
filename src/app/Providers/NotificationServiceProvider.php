@@ -23,11 +23,14 @@ class NotificationServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        View::composer(['partials.sidebar-nav', 'layouts.app'], function (ViewContract $view) {
+        View::composer(['partials.sidebar-nav', 'layouts.app', 'partials.announcement-banner'], function (ViewContract $view) {
             $user = auth()->user();
 
             $unreadNotificationsCount = 0;
             $recentNotifications = collect();
+            $unreadAnnouncementsCount = 0;
+            $unreadAnnouncements = collect();
+            $activeAnnouncements = collect();
 
             if ($user) {
                 $unreadNotificationsCount = DB::table('notifications')
@@ -42,10 +45,35 @@ class NotificationServiceProvider extends ServiceProvider
                     ->orderByDesc('created_at')
                     ->limit(5)
                     ->get();
+
+                $unreadAnnouncements = \App\Models\Announcement::query()
+                    ->orderByDesc('created_at')
+                    ->limit(10)
+                    ->get();
+
+                if ($unreadAnnouncements->isNotEmpty()) {
+                    $readIds = DB::table('announcement_reads')
+                        ->where('user_id', $user->id)
+                        ->whereIn('announcement_id', $unreadAnnouncements->pluck('id')->all())
+                        ->pluck('announcement_id')
+                        ->all();
+
+                    $unreadAnnouncements->each(function ($announcement) use ($readIds) {
+                        $announcement->is_read = in_array($announcement->id, $readIds, true);
+                    });
+
+                    $unreadAnnouncements = $unreadAnnouncements->where('is_read', false)->values();
+                }
+
+                $unreadAnnouncementsCount = $unreadAnnouncements->count();
+                $activeAnnouncements = $unreadAnnouncements->take(3);
             }
 
             $view->with('unreadNotificationsCount', $unreadNotificationsCount);
             $view->with('recentNotifications', $recentNotifications);
+            $view->with('unreadAnnouncementsCount', $unreadAnnouncementsCount);
+            $view->with('unreadAnnouncements', $unreadAnnouncements);
+            $view->with('activeAnnouncements', $activeAnnouncements);
         });
     }
 }
