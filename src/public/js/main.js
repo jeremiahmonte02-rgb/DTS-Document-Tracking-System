@@ -56,16 +56,6 @@ function setupNotificationMarkRead() {
             const targetUrl = item.getAttribute('href');
 
             if (notificationId) {
-                fetch('/notifications/' + encodeURIComponent(notificationId) + '/read', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken(),
-                        'Accept': 'application/json'
-                    }
-                }).catch(function() {
-                    // Best-effort: navigation continues even if marking fails
-                });
-
                 const badge = document.getElementById('notificationBadge');
                 if (badge) {
                     const current = parseInt(badge.textContent || '0', 10);
@@ -73,10 +63,42 @@ function setupNotificationMarkRead() {
                     badge.textContent = next;
                     badge.classList.toggle('d-none', next <= 0);
                 }
+
+                fetch('/notifications/' + encodeURIComponent(notificationId) + '/read', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken(),
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Notification mark-as-read failed with status ' + response.status);
+                    }
+                    return response.json();
+                })
+                .catch(function(error) {
+                    // Best-effort: navigation continues even if marking fails.
+                    // Swallow network/CSRF/5xx errors so the user is not blocked.
+                    console.warn('Notification mark-as-read failed:', error);
+                })
+                .finally(function() {
+                    // Fail-safe: never leave a spinner stuck if the request
+                    // failed or navigation was skipped.
+                    if (typeof hideSpinner === 'function') {
+                        hideSpinner();
+                    }
+                });
             }
 
             if (targetUrl && targetUrl !== '#' && targetUrl !== window.location.href) {
                 window.location.href = targetUrl;
+            } else if (targetUrl === window.location.href) {
+                // Already on the destination; browser skips navigation, so the
+                // spinner must be cleared explicitly to avoid a frozen UI.
+                if (typeof hideSpinner === 'function') {
+                    hideSpinner();
+                }
             }
         });
     });

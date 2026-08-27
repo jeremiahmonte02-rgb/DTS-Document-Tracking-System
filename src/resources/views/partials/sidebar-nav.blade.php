@@ -34,7 +34,7 @@
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('audit.policies') }}">
                     <i class="bi bi-diagram-3"></i>
-                    <span>Routing Policies</span>
+                    <span>Routing Settings</span>
                 </a>
             </li>
             <li class="nav-item">

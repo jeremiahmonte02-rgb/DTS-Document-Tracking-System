@@ -95,7 +95,7 @@
                                 </div>
                                 <div class="col-md-8">
                                     <span id="docStatus"><span class="badge text-uppercase px-3 py-1 
-                                        {{ $document->status === 'received' ? 'bg-success' : ($document->status === 'in_transit' ? 'bg-info text-white' : ($document->status === 'pending_transfer' ? 'bg-warning text-dark' : ($document->status === 'rejected' ? 'bg-danger' : ($document->status === 'completed' ? 'bg-success text-white' : 'bg-secondary text-white')))) }}">{{ $document->status }}</span></span>
+                                        {{ $document->status === 'returned_for_correction' ? 'bg-warning text-dark' : ($document->status === 'received' ? 'bg-success' : ($document->status === 'in_transit' ? 'bg-info text-white' : ($document->status === 'pending_transfer' ? 'bg-warning text-dark' : ($document->status === 'rejected' ? 'bg-danger' : ($document->status === 'completed' ? 'bg-success text-white' : 'bg-secondary text-white'))))) }}">{{ $document->status === 'returned_for_correction' ? 'Returned for Correction' : $document->status }}</span></span>
                                 </div>
                             </div>
                             <div class="row mb-3">
@@ -366,7 +366,7 @@
                             <label for="issueDept" class="form-label">
                                 <i class="bi bi-building"></i> Responsible Department
                             </label>
-                            <select class="form-select" id="issueDept">
+                            <select class="form-select" id="issueDept" required>
                                 <option value="">-- Select Department --</option>
                                 @foreach($routes->unique('department_id') as $route)
                                     <option value="{{ $route->department_id }}">{{ $route->department_name }}</option>
@@ -669,17 +669,27 @@
             })
             .then(response => response.json().catch(() => ({})))
             .then(data => {
+                if (!data.success && !data.message) {
+                    // Fallback for generic 500s that don't return a JSON success/message schema
+                    hideSpinner();
+                    showToast('A server error occurred. Failed to report issue.', 'danger');
+                    return;
+                }
+                if (data.success === false) {
+                    hideSpinner();
+                    showToast(data.message || 'Failed to report issue.', 'danger');
+                    return;
+                }
+                // Success path
                 hideSpinner();
                 modal.hide();
                 form.reset();
                 showToast(data.message || 'Issue reported successfully!', 'success');
                 refreshDocumentState(docId);
             })
-            .catch(err => {
+            .catch(error => {
                 hideSpinner();
-                modal.hide();
-                form.reset();
-                showToast(err.message || 'Failed to submit issue report.', 'danger');
+                showToast('A network or server error occurred.', 'danger');
             });
         }
 
@@ -760,7 +770,7 @@
                 var docStatusBadge = document.querySelector('#docStatus .badge');
                 if (docStatusBadge && data.document) {
                     var newStatus = data.document.status || '';
-                    docStatusBadge.textContent = newStatus.toUpperCase();
+                    docStatusBadge.textContent = newStatus === 'returned_for_correction' ? 'Returned for Correction' : newStatus.toUpperCase();
                     docStatusBadge.classList.remove('bg-success', 'bg-info', 'text-white', 'bg-warning', 'text-dark', 'bg-danger', 'bg-secondary');
                     if (newStatus === 'received' || newStatus === 'completed') {
                         docStatusBadge.classList.add('bg-success', 'text-white');
@@ -770,6 +780,8 @@
                         docStatusBadge.classList.add('bg-warning', 'text-dark');
                     } else if (newStatus === 'rejected') {
                         docStatusBadge.classList.add('bg-danger', 'text-white');
+                    } else if (newStatus === 'returned_for_correction') {
+                        docStatusBadge.classList.add('bg-warning', 'text-dark');
                     } else {
                         docStatusBadge.classList.add('bg-secondary', 'text-white');
                     }

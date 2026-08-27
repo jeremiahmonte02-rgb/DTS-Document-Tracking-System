@@ -190,7 +190,7 @@
                                     <i class="bi bi-building"></i> Department Management
                                 </a>
                                 <a href="{{ route('audit.policies') }}" class="btn btn-warning">
-                                    <i class="bi bi-diagram-3"></i> Routing Policies
+                                    <i class="bi bi-diagram-3"></i> Routing Settings
                                 </a>
                                 <a href="{{ route('audit.issues') }}" class="btn btn-danger">
                                     <i class="bi bi-flag"></i> Issue Tracker

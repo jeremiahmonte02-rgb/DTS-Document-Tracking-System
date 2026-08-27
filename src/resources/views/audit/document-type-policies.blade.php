@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Routing Policies - Document Tracking System')
+@section('title', 'Routing Settings - Document Tracking System')
 
 
 
-@section('pageTitle', 'Routing Policies')
+@section('pageTitle', 'Routing Settings')
 
 @section('content')
             <div class="policy-header">
-                <h1>Document Type Routing Policies</h1>
+                <h1>Document Type Routing Settings</h1>
                 <p>Configure whether each document type follows a fixed immutable path or a mutable template path across departments.</p>
             </div>
 
@@ -27,7 +27,7 @@
                             <thead>
                                 <tr>
                                     <th>Document Type</th>
-                                    <th>Policy Status</th>
+                                    <th>Settings Status</th>
                                 </tr>
                             </thead>
                             <tbody id="policyTableBody">
@@ -70,7 +70,7 @@
                     <div class="editor-card" id="policyEditor">
                         <div class="empty-state" id="editorPlaceholder">
                             <i class="bi bi-arrow-left-circle"></i>
-                            <p>Select a document type from the list to configure its routing policy.</p>
+                            <p>Select a document type from the list to configure its routing settings.</p>
                         </div>
 
                         <div id="editorContent" style="display: none;">
@@ -80,7 +80,7 @@
                                 <input type="hidden" name="is_immutable" id="policyIsImmutable" value="0">
                                 <input type="hidden" name="predefined_route" id="policyPredefinedRoute">
 
-                                <h5 id="editorTitle">Configure Policy</h5>
+                                <h5 id="editorTitle">Configure Settings</h5>
                                 <p class="editor-subtitle" id="editorSubtitle">Set the routing behavior for this document type.</p>
 
                                 <div class="mb-4">
@@ -144,8 +144,8 @@
                                 </div>
 
                                 <div class="d-flex gap-2 pt-2 border-top" style="border-color: var(--whisper) !important;">
-                                    <button type="submit" class="btn btn-accent">
-                                        <i class="bi bi-check-lg"></i> Save Policy
+                                    <button type="submit" class="btn btn-accent" id="savePolicyBtn">
+                                        <i class="bi bi-check-lg"></i> Save Settings
                                     </button>
                                     <button type="button" class="btn btn-accent-outline" onclick="resetEditor()">
                                         <i class="bi bi-arrow-counterclockwise"></i> Reset
@@ -158,6 +158,29 @@
             </div>
 
     @include('partials.access-denied-modal')
+
+    <!-- Save Policy Confirmation Modal -->
+    <div class="modal fade" id="savePolicyConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Settings Changes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="mb-3">You are about to save routing settings changes for <strong id="modalDocTypeName" class="text-primary"></strong>.</p>
+                    <div class="alert alert-secondary p-3 mb-0">
+                        <strong>Routing Mode:</strong> <span id="modalRoutingMode"></span><br>
+                        <strong>Total Steps:</strong> <span id="modalTotalSteps"></span>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning fw-bold px-4" id="confirmSavePolicyBtn">Confirm & Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')

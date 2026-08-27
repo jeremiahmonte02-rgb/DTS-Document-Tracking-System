@@ -12,6 +12,40 @@ document.addEventListener('DOMContentLoaded', function () {
     const lifecycleTimeUnit = document.getElementById('lifecycle_time_unit');
     const savePolicyBtn = document.querySelector('#policyForm button[type="submit"]');
 
+    const policyForm = document.getElementById('policyForm');
+    const confirmModalEl = document.getElementById('savePolicyConfirmModal');
+    const confirmBtn = document.getElementById('confirmSavePolicyBtn');
+
+    if (policyForm && confirmModalEl && confirmBtn) {
+        policyForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            if (typeof validateSlaTotals === 'function') validateSlaTotals();
+            if (savePolicyBtn && savePolicyBtn.disabled) return;
+
+            const nameEl = document.getElementById('editorTitle');
+            const modalName = document.getElementById('modalDocTypeName');
+            if (modalName) modalName.textContent = nameEl ? nameEl.textContent : '';
+
+            const toggle = document.getElementById('immutableToggle');
+            const modalMode = document.getElementById('modalRoutingMode');
+            if (modalMode) modalMode.textContent = (toggle && toggle.checked) ? 'Immutable (Locked)' : 'Mutable (Flexible)';
+
+            const modalSteps = document.getElementById('modalTotalSteps');
+            if (modalSteps) modalSteps.textContent = document.querySelectorAll('#routeList li').length;
+
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                new bootstrap.Modal(confirmModalEl).show();
+            } else {
+                policyForm.submit();
+            }
+        });
+
+        confirmBtn.addEventListener('click', function () {
+            policyForm.submit();
+        });
+    }
+
     window.updateHiddenTotalSla = function () {
         var value = parseInt(lifecycleTimeValue.value);
         var multiplier = parseInt(lifecycleTimeUnit.value);

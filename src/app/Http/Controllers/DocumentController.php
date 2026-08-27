@@ -90,27 +90,28 @@ class DocumentController extends Controller
 
         $policy = \App\Models\DocumentRoutingPolicy::where('document_type_id', $validated['documentType'])->first();
 
-        if ($policy && $policy->is_immutable) {
-            $submittedRoutes = json_decode($validated['routes'], true) ?? [];
-            $predefinedRoutes = $policy->predefined_route ?? [];
+        if ($policy) {
+            $predefinedIds = array_column($policy->predefined_route ?? [], 'department_id');
+            $submittedIds = array_column(json_decode($validated['routes'], true) ?? [], 'department_id');
 
-            if (count($submittedRoutes) !== count($predefinedRoutes)) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'routes' => ['The provided routing sequence length does not match the enforced policy.']
-                ]);
+            $missingDepts = array_diff($predefinedIds, $submittedIds);
+            if (!empty($missingDepts)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Routing policy violation: Pre-defined departments cannot be removed from this document route.'
+                ], 422);
             }
 
-            foreach ($predefinedRoutes as $index => $expectedStep) {
-                $submittedStep = $submittedRoutes[$index] ?? null;
-
-                if (!$submittedStep || (int)$submittedStep['department_id'] !== (int)$expectedStep['department_id']) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'routes' => ["Step " . ($index + 1) . " must be routed to the designated policy department."]
-                    ]);
+            if ($policy->is_immutable) {
+                $extraDepts = array_diff($submittedIds, $predefinedIds);
+                if (!empty($extraDepts) || count($submittedIds) !== count($predefinedIds)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Routing policy violation: Immutable routes cannot be modified.'
+                    ], 422);
                 }
             }
-
-            }
+        }
 
         $this->authorize('create', Document::class);
 
@@ -1196,46 +1197,60 @@ class DocumentController extends Controller
             $issueType = $validated['issue_type'] ?? null;
             $assignedDeptId = $validated['assigned_department_id'] ?? null;
 
-            $isProcessingError = in_array($issueType, ['Processing Error', 'Document Error'], true);
+            $isProcessingError = in_array($issueType, ['Processing Error', 'Document Error', 'Processing Delay']);
 
             if ($isProcessingError && $assignedDeptId) {
-                $targetRoute = DocumentRoute::where('document_id', $document->id)
+                $targetRoute = DB::table('document_routes')
+                    ->where('document_id', $document->id)
                     ->where('department_id', $assignedDeptId)
+                    ->first();
+
+                $currentRoute = DB::table('document_routes')
+                    ->where('document_id', $document->id)
+                    ->whereIn('status', ['current', 'received'])
                     ->orderByDesc('route_order')
                     ->first();
 
-                if ($targetRoute) {
+                if ($targetRoute && $currentRoute) {
                     $isReroute = true;
 
-                    // Reset all downstream steps (route_order > target) to 'pending'
-                    DocumentRoute::where('document_id', $document->id)
+                    // 1. Reset all steps AFTER the target step (including the reporting step) back to 'pending'
+                    DB::table('document_routes')
+                        ->where('document_id', $document->id)
                         ->where('route_order', '>', $targetRoute->route_order)
-                        ->update(['status' => 'pending']);
+                        ->update([
+                            'status' => 'pending',
+                            'received_at' => null,
+                            'received_by_user_id' => null,
+                            
+                        ]);
 
-                    // Auto-receive the target department step
-                    $targetRoute->status = 'received';
-                    $targetRoute->received_at = Carbon::now('Asia/Manila');
-                    $targetRoute->received_by_user_id = auth()->id();
-                    $targetRoute->save();
+                    // 2. Reactivate the Target Step so they can re-receive and correct the document
+                    DB::table('document_routes')
+                        ->where('document_id', $document->id)
+                        ->where('route_order', $targetRoute->route_order)
+                        ->update([
+                            'status' => 'current', // Force back to current to require a fresh receive
+                            'received_at' => null,
+                            'received_by_user_id' => null,
 
-                    // Find and activate the immediate next step as 'current'
-                    $nextRouteStep = DocumentRoute::where('document_id', $document->id)
+                        ]);
+
+                    // 2b. Promote the immediate successor step to 'next' so they can receive it next
+                    DB::table('document_routes')
+                        ->where('document_id', $document->id)
                         ->where('route_order', $targetRoute->route_order + 1)
-                        ->first();
+                        ->update([
+                            'status' => 'next',
+                            'updated_at' => now(),
+                        ]);
 
-                    if ($nextRouteStep) {
-                        $nextRouteStep->status = 'current';
-                        $nextRouteStep->save();
-                        $nextDepartmentId = $nextRouteStep->department_id;
-                    } else {
-                        $nextDepartmentId = $assignedDeptId;
-                    }
-
+                    // 3. Update the Main Document state
                     DB::table('documents')
                         ->where('id', $document->id)
                         ->update([
-                            'current_department_id' => $nextDepartmentId,
-                            'status'                => 'in_transit',
+                            'current_department_id' => $targetRoute->department_id,
+                            'status' => 'returned_for_correction'
                         ]);
                 }
             }

@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!listItem) return;
 
                 if (targetBtn.classList.contains('remove-step-btn')) {
+                    if (listItem.dataset.predefined === 'true') return;
                     const deptId = listItem.getAttribute('data-dept-id');
                     listItem.remove();
                     if (receiverDeptSelect && deptId) {
@@ -66,9 +67,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                 } else if (targetBtn.classList.contains('move-up-btn')) {
+                    if (listItem.dataset.predefined === 'true') return;
                     const previousSibling = listItem.previousElementSibling;
+                    if (previousSibling && previousSibling.dataset.predefined === 'true') return;
                     if (previousSibling) listItem.parentNode.insertBefore(listItem, previousSibling);
                 } else if (targetBtn.classList.contains('move-down-btn')) {
+                    if (listItem.dataset.predefined === 'true') return;
                     const nextSibling = listItem.nextElementSibling;
                     if (nextSibling) listItem.parentNode.insertBefore(listItem, nextSibling);
                 }
@@ -106,15 +110,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             const li = document.createElement('li');
                             li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-light shadow-2xs mb-1 rounded border';
                             li.setAttribute('data-dept-id', step.department_id);
+                            li.setAttribute('data-predefined', 'true');
                             li.innerHTML = `
                                 <div class="d-flex align-items-center">
                                     <span class="badge bg-primary index-counter-badge me-2">0</span>
                                     <span class="text-dark font-medium font-mono">${escapeHtml(step.department_name || 'Department')}</span>
-                                </div>
-                                <div class="d-flex gap-1" role="group">
-                                    <button type="button" class="btn btn-white btn-sm move-up-btn" title="Move Up"><i class="bi bi-arrow-up"></i></button>
-                                    <button type="button" class="btn btn-white btn-sm move-down-btn" title="Move Down"><i class="bi bi-arrow-down"></i></button>
-                                    <button type="button" class="btn btn-danger btn-sm remove-step-btn" title="Remove"><i class="bi bi-trash"></i></button>
                                 </div>
                             `;
                             routeListContainer.appendChild(li);
@@ -173,6 +173,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const li = document.createElement('li');
             li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-light shadow-2xs mb-1 rounded border';
             li.setAttribute('data-dept-id', option.value);
+            li.setAttribute('data-predefined', 'false');
             li.innerHTML = `
                 <div class="d-flex align-items-center">
                     <span class="badge bg-primary index-counter-badge me-2">0</span>

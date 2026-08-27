@@ -42,7 +42,8 @@
                             <li>
                                 <a class="dropdown-item notification-item"
                                    href="{{ $notification->document ? route('document-details.show', $notification->document->document_number) : '#' }}"
-                                   data-notification-id="{{ $notification->id }}">
+                                   data-notification-id="{{ $notification->id }}"
+                                   data-no-spinner="true">
                                     <div class="notification-title fw-semibold">{{ $notification->title }}</div>
                                     <div class="notification-message small text-muted text-truncate">{{ \Illuminate\Support\Str::limit($notification->message, 90) }}</div>
                                     <div class="notification-time small text-muted mt-1">{{ $notification->created_at?->diffForHumans() }}</div>
