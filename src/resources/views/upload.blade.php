@@ -1,117 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Document - Document Tracking System</title>
+@extends('layouts.app')
 
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+@section('title', 'Upload Document - Document Tracking System')
 
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
-</head>
-<body>
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="sidebar-header">
-            <h4><i class="bi bi-file-earmark-text"></i> DTS</h4>
-            <small class="text-white-50">Document Tracking</small>
-        </div>
-        <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item">
-                <a class="nav-link" href="/dashboard">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/upload">
-                    <i class="bi bi-cloud-upload"></i>
-                    <span>Upload Document</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/scan">
-                    <i class="bi bi-qr-code-scan"></i>
-                    <span>Scan QR Code</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/inbox">
-                    <i class="bi bi-inbox"></i>
-                    <span>Inbox</span>
-                    <span class="badge bg-danger ms-auto">3</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/outbox">
-                    <i class="bi bi-send"></i>
-                    <span>Outbox</span>
-                </a>
-            </li>
-            @if(auth()->user()->role_id === 1)
-            <li class="nav-item">
-                <a class="nav-link" href="/users">
-                    <i class="bi bi-people"></i>
-                    <span>User Management</span>
-                </a>
-            </li>
-            @endif
-        </ul>
-    </nav>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top Navigation -->
-        <nav class="top-navbar d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <button class="btn btn-link d-md-none" id="sidebarToggle">
-                    <i class="bi bi-list fs-4"></i>
-                </button>
-                <h5 class="mb-0">Upload Document</h5>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <div class="position-relative">
-                    <button class="btn btn-link position-relative">
-                        <i class="bi bi-bell fs-5"></i>
-                        <span class="notification-badge">3</span>
-                    </button>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-link dropdown-toggle d-flex align-items-center gap-2"
-                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle fs-5"></i>
-                        <span class="d-none d-md-inline">{{ auth()->user()->name }}</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li class="px-3 py-2">
-                            <h6 class="profile-name mb-1">{{ auth()->user()->name }}</h6>
-                            <p class="profile-department small text-muted mb-1">{{ auth()->user()->department->name ?? 'No Department Assigned' }}</p>
-                            <span class="profile-role-badge badge bg-primary">{{ auth()->user()->role->name ?? 'Standard User' }}</span>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Profile</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <form action="{{ route('logout') }}" method="POST" class="d-inline">
-                                @csrf
-                                <button type="submit" class="dropdown-item">
-                                    <i class="bi bi-box-arrow-right"></i> Logout
-                                </button>
-                            </form>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
+@section('pageTitle', 'Upload Document')
 
-        <!-- Upload Content -->
-        <div class="container-fluid p-4">
+@section('content')
             <div class="row justify-content-center">
                 <div class="col-lg-8">
                     <!-- Upload Form Card -->
@@ -146,49 +41,90 @@
                                     </div>
                                 </div>
 
-                                <div class="row">
-                                    <div class="col-lg-8">
-                                        <div class="mb-3">
-                                            <label for="department" class="form-label">Your Department *</label>
-                                            <select class="form-select" id="department" name="department" required>
-                                                <option value="">Select your department</option>
-                                                @foreach($departments as $dept)
-                                                <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
+                                <div class="w-100 my-4 route-builder-container">
+                                    <div class="row g-4 align-items-center">
 
-                                        <div class="mb-3">
-                                            <label for="receiverDepartments" class="form-label">Receiver Departments (ordered)</label>
-                                            <select class="form-select" id="receiverDepartments" multiple size="8" style="min-width:380px;">
-                                                @foreach($departments as $dept)
-                                                <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                                                @endforeach
-                                            </select>
+                                        <div class="col-md-5">
+                                            <label class="form-label text-secondary fw-semibold mb-2" style="font-size: 0.875rem;">Receiver Departments (ordered)</label>
+                                            <div class="route-builder-pool">
+                                                <div class="route-list-inner">
 
-                                            <input type="hidden" id="routesInput" name="routes">
-                                            <small class="form-text text-muted d-block mt-1">
-                                                Select departments above, then click "Add Selected" on the right to build an ordered route. The document will be received by departments in this sequence.
-                                            </small>
-                                        </div>
-                                    </div>
+                                                    <ul class="list-group list-group-flush" id="visual-dept-pool">
+                                                        @foreach($departments ?? [] as $dept)
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark transition-colors"
+                                                                data-value="{{ $dept->id ?? $dept }}" style="letter-spacing: -0.01em;">
+                                                                {{ $dept->name ?? $dept }}
+                                                            </li>
+                                                        @endforeach
 
-                                    <div class="col-lg-4">
-                                        <div class="card h-100">
-                                            <div class="card-body d-flex flex-column">
-                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                    <small class="text-muted">Route (ordered)</small>
-                                                    <div>
-                                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" id="addToRouteBtn">Add Selected</button>
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearRouteBtn">Clear</button>
+                                                        @if(empty($departments))
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Central Services">Central Services</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="College of Computing and Information Sciences">College of Computing and Information Sciences</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Customer Service">Customer Service</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Executive Office">Executive Office</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Facilities">Facilities</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Finance Department">Finance Department</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="HR Department">HR Department</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="IT Department">IT Department</li>
+                                                        @endif
+                                                    </ul>
+
+                                                    <div id="immutablePolicyNotice" class="d-none my-auto p-4 text-center d-flex flex-column align-items-center justify-content-center w-100 h-100">
+                                                        <i class="bi bi-shield-lock text-danger mb-2" style="font-size: 1.75rem;"></i>
+                                                        <h6 class="fw-bold text-dark mb-1" style="font-family: 'Satoshi', sans-serif;">Enforced Routing Policy</h6>
+                                                        <p class="text-muted small mb-0 px-2" style="font-size: 0.85rem;">
+                                                            The workflow pathway for this document type has been strictly locked by the system Auditor to ensure organizational compliance.
+                                                        </p>
                                                     </div>
-                                                </div>
-                                                <div class="flex-grow-1 overflow-auto">
-                                                    <ul class="list-group" id="routeList" style="min-height:160px; max-height:420px; overflow:auto;"></ul>
+
                                                 </div>
                                             </div>
+
+                                            <select id="receiverDepartments" name="receiver_departments[]" class="d-none" multiple>
+                                                @foreach($departments ?? [] as $dept)
+                                                    <option value="{{ $dept->id ?? $dept }}">{{ $dept->name ?? $dept }}</option>
+                                                @endforeach
+                                                @if(empty($departments))
+                                                    <option value="Central Services">Central Services</option>
+                                                    <option value="College of Computing and Information Sciences">College of Computing and Information Sciences</option>
+                                                    <option value="Customer Service">Customer Service</option>
+                                                    <option value="Executive Office">Executive Office</option>
+                                                    <option value="Facilities">Facilities</option>
+                                                    <option value="Finance Department">Finance Department</option>
+                                                    <option value="HR Department">HR Department</option>
+                                                    <option value="IT Department">IT Department</option>
+                                                @endif
+                                            </select>
                                         </div>
+
+                                        <div class="col-md-2 d-flex flex-column gap-2.5 px-1 pt-4">
+                                            <button id="addToRouteBtn" type="button" class="btn btn-custom-academic btn-sm w-100 fw-bold border-2 text-center text-nowrap py-2" style="font-size: 0.75rem; letter-spacing: 0.05em; border-radius: 8px;">
+                                                ADD SELECTED
+                                            </button>
+                                            <button id="clearRouteBtn" type="button" class="btn btn-custom-clear btn-sm w-100 fw-bold border-2 text-center text-nowrap py-2" style="font-size: 0.75rem; letter-spacing: 0.05em; border-radius: 8px;">
+                                                CLEAR
+                                            </button>
+                                        </div>
+
+                                        <div class="col-md-5">
+                                            <label class="form-label text-secondary fw-semibold mb-2" style="font-size: 0.875rem;">Route (ordered)</label>
+                                            <div class="route-builder-route">
+
+                                                <div id="route-placeholder" class="d-flex flex-column align-items-center justify-content-center text-muted opacity-50">
+                                                    <svg class="mb-2" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                                                    </svg>
+                                                    <p class="mb-0" style="font-size: 0.75rem;">Selected departments will appear here in sequence</p>
+                                                </div>
+
+                                                <ul id="routeList" class="list-group list-group-flush w-100 h-100 overflow-y-auto custom-scrollbar d-none route-list-inner"></ul>
+                                            </div>
+                                        </div>
+
                                     </div>
+
+                                    <input type="hidden" id="routesInput" name="routes">
+                                    <p class="text-muted fst-italic mt-2 mb-0" style="font-size: 0.75rem;">Select departments above, then click "Add Selected" to build the routing sequence.</p>
                                 </div>
 
                                 <div class="mb-3">
@@ -208,7 +144,7 @@
 
                                 <div class="mb-4">
                                     <label for="documentSelect" class="form-label">Load Existing Document</label>
-                                    <select class="form-select" id="documentSelect" onchange="populateFormFromDocument()">
+                                    <select class="form-select" id="documentSelect">
                                         <option value="">-- Pre-fill form from document --</option>
                                     </select>
                                     <small class="form-text text-muted">
@@ -216,17 +152,17 @@
                                     </small>
                                 </div>
 
-                                <div class="d-flex gap-2">
-                                    <button type="submit" class="btn btn-primary">
+                                <div class="d-flex flex-column flex-md-row gap-2 justify-content-md-end w-100">
+                                    <button type="submit" class="btn btn-primary w-100 w-md-auto">
                                         <i class="bi bi-cloud-upload"></i> Upload Document
                                     </button>
-                                    <button type="button" class="btn btn-info" id="viewRoutesBtn" style="display: none;" onclick="showRoutesModal()">
+                                    <button type="button" class="btn btn-info w-100 w-md-auto" id="viewRoutesBtn" style="display: none;">
                                         <i class="bi bi-diagram-3"></i> View Routes
                                     </button>
-                                    <button type="reset" class="btn btn-outline-secondary">
+                                    <button type="reset" class="btn btn-outline-secondary w-100 w-md-auto">
                                         <i class="bi bi-x-circle"></i> Clear Form
                                     </button>
-                                    <a href="/dashboard" class="btn btn-outline-danger">
+                                    <a href="/dashboard" class="btn btn-outline-danger w-100 w-md-auto">
                                         <i class="bi bi-arrow-left"></i> Cancel
                                     </a>
                                 </div>
@@ -253,8 +189,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
     <!-- Routes Modal -->
     <div class="modal fade" id="routesModal" tabindex="-1" aria-labelledby="routesModalLabel" aria-hidden="true">
@@ -270,7 +204,6 @@
                     <div class="document-routes-container">
                         <h6 class="mb-3" id="routesDocumentTitle"></h6>
                         <div id="routesDisplay" class="route-steps">
-                            <!-- Routes will be populated here -->
                         </div>
                     </div>
                 </div>
@@ -291,7 +224,7 @@
                     <h5 class="modal-title" id="qrCodeModalLabel">
                         <i class="bi bi-check-circle"></i> Document Uploaded Successfully
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" onclick="closeQrModal()" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="qr-code-container">
@@ -303,30 +236,79 @@
                         </p>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="printQRCode()">
+                <div class="modal-footer d-flex flex-wrap gap-2 w-100 justify-content-center justify-content-md-end">
+                    <button type="button" id="modalPrintQrBtn" class="btn btn-primary w-100 w-md-auto">
                         <i class="bi bi-printer"></i> Print QR Code
                     </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="viewDocument(document.getElementById('generatedDocId').textContent)">
+                    <button type="button" id="modalViewDetailsBtn" class="btn btn-outline-secondary w-100 w-md-auto">
                         <i class="bi bi-eye"></i> View Details
                     </button>
-                    <button type="button" id="doneQrBtn" class="btn btn-success" data-bs-dismiss="modal">
+                    <button type="button" id="doneQrBtn" class="btn btn-success w-100 w-md-auto" data-bs-dismiss="modal">
                         <i class="bi bi-check-circle me-1"></i> Done
                     </button>
                 </div>
             </div>
         </div>
     </div>
+@endsection
 
-    <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- QRCode.js -->
+@section('scripts')
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const listItems = document.querySelectorAll('#visual-dept-pool .list-group-item');
+        const hiddenSelect = document.getElementById('receiverDepartments');
 
-    <!-- Custom JS -->
-    @include('partials.auth-context')
+        listItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const val = this.getAttribute('data-value');
+                const correspondingOption = Array.from(hiddenSelect.options).find(opt => opt.value === val);
 
-    <script src="{{ asset('js/modules/upload.js') }}"></script>
-</body>
-</html>
+                if (correspondingOption) {
+                    correspondingOption.selected = !correspondingOption.selected;
+
+                    if (correspondingOption.selected) {
+                        this.classList.add('bg-success', 'bg-opacity-10', 'text-success', 'fw-semibold');
+                        this.style.backgroundColor = 'rgba(27, 115, 68, 0.08)';
+                        this.style.color = '#1b7344';
+                    } else {
+                        this.classList.remove('bg-success', 'bg-opacity-10', 'text-success', 'fw-semibold');
+                        this.style.backgroundColor = '';
+                        this.style.color = '';
+                    }
+
+                    hiddenSelect.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+
+        const clearButton = document.getElementById('clearRouteBtn');
+        if (clearButton) {
+            clearButton.addEventListener('click', function() {
+                listItems.forEach(item => {
+                    item.classList.remove('bg-success', 'bg-opacity-10', 'text-success', 'fw-semibold');
+                    item.style.backgroundColor = '';
+                    item.style.color = '';
+                });
+            });
+        }
+
+        const routeList = document.getElementById('routeList');
+        const placeholder = document.getElementById('route-placeholder');
+        if (routeList && placeholder) {
+            const checkVisibility = () => {
+                if (routeList.children.length > 0) {
+                    routeList.classList.remove('d-none');
+                    placeholder.classList.add('d-none');
+                } else {
+                    routeList.classList.add('d-none');
+                    placeholder.classList.remove('d-none');
+                }
+            };
+            checkVisibility();
+            new MutationObserver(checkVisibility).observe(routeList, { childList: true });
+        }
+    });
+    </script>
+    <script src="{{ asset('js/modules/upload.js') }}?v={{ filemtime(public_path('js/modules/upload.js')) }}"></script>
+@endsection

@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document tracking system — dashboard</title>
+  <meta name="description" content="Internal document routing dashboard for multi-department tracking across Manila offices.">
+  <meta property="og:title" content="DTS — dashboard">
+  <meta property="og:description" content="Document routing and status dashboard.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>D</text></svg>">
+  <link rel="preconnect" href="https://fonts.cdnfonts.com" crossorigin>
+  <link href="https://fonts.cdnfonts.com/css/cabinet-grotesk" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --font-display: 'Cabinet Grotesk', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --color-canvas: #F9FAFB;
+      --color-surface: #FFFFFF;
+      --color-ink: #18181B;
+      --color-steel: #71717A;
+      --color-muted: #94A3B8;
+      --color-accent: #3B82F6;
+      --color-accent-hover: #2563EB;
+      --color-error: #E11D48;
+      --border-whisper: 1px solid rgba(226,232,240,0.5);
+      --shadow-diffused: 0 20px 40px -15px rgba(0,0,0,0.05);
+      --radius-card: 2.5rem;
+      --radius-inner: 0.75rem;
+      --radius-tight: 0.5rem;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-display);
+      background: var(--color-canvas);
+      color: var(--color-ink);
+      line-height: 1.65;
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .tabular { font-variant-numeric: tabular-nums; }
+    .mono { font-family: var(--font-mono); }
+
+    a { color: var(--color-accent); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: var(--color-accent-hover); }
+
+    .skip-link {
+      position: fixed;
+      top: -100%;
+      left: 1rem;
+      z-index: 9999;
+      padding: 0.5rem 1.25rem;
+      background: var(--color-accent);
+      color: #fff;
+      border-radius: var(--radius-tight);
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: top 0.2s;
+    }
+    .skip-link:focus { top: 1rem; }
+
+    /* ---- Layout Grid ---- */
+    .app-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100dvh;
+    }
+
+    /* ---- Sidebar ---- */
+    .sidebar {
+      background: var(--color-ink);
+      padding: 1.5rem 1rem;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 1.5rem;
+      position: sticky;
+      top: 0;
+      height: 100dvh;
+    }
+
+    .sidebar-brand {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0 0.5rem;
+    }
+
+    .sidebar-brand-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--color-accent);
+      border-radius: var(--radius-tight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    .sidebar-brand-text {
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.025em;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .sidebar-brand-text small {
+      display: block;
+      font-weight: 400;
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .sidebar-nav {
+      display: grid;
+      gap: 0.2rem;
+    }
+
+    .nav-link-sidebar {
+      display: grid;
+      grid-template-columns: 1.25rem 1fr;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.6rem 0.75rem;
+      border-radius: var(--radius-tight);
+      color: rgba(255,255,255,0.45);
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+
+    .nav-link-sidebar i { font-size: 1rem; text-align: center; }
+    .nav-link-sidebar:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.03); }
+    .nav-link-sidebar.active {
+      color: #fff;
+      background: rgba(255,255,255,0.05);
+      border-left-color: var(--color-accent);
+    }
+
+    .sidebar-user {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.75rem 0.5rem 0;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .sidebar-user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-tight);
+      background: rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .sidebar-user-name {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.2;
+    }
+
+    .sidebar-user-name small {
+      display: block;
+      font-weight: 400;
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* ---- Main Area ---- */
+    .main-area {
+      padding: 1.75rem 2rem 1.5rem;
+      display: grid;
+      gap: 1.5rem;
+      align-content: start;
+    }
+
+    /* ---- Page Header ---- */
+    .page-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .page-breadcrumb {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+    }
+
+    .page-breadcrumb span { color: var(--color-ink); }
+
+    .page-title {
+      font-weight: 700;
+      font-size: 1.35rem;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+      color: var(--color-ink);
+      margin-top: 0.15rem;
+    }
+
+    .page-actions {
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 1.25rem;
+      align-items: center;
+    }
+
+    .notif-bell {
+      position: relative;
+      color: var(--color-steel);
+      font-size: 1.15rem;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .notif-bell:hover { color: var(--color-ink); }
+
+    .notif-dot {
+      position: absolute;
+      top: -2px;
+      right: -4px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--color-error);
+    }
+
+    .clock-display {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 0.4rem;
+      align-items: center;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--color-steel);
+    }
+
+    .clock-display i { font-size: 0.8rem; }
+    .clock-display .tz { opacity: 0.45; }
+
+    /* ---- Bento Stats: 3 unequal columns ---- */
+    .bento-stats {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    /* ---- Card Base ---- */
+    .card-bento {
+      background: var(--color-surface);
+      border: var(--border-whisper);
+      box-shadow: var(--shadow-diffused);
+      border-radius: var(--radius-card);
+      padding: 1.5rem 1.75rem;
+      display: grid;
+      transition: transform 0.25s, box-shadow 0.25s;
+    }
+
+    .card-bento:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 24px 48px -18px rgba(0,0,0,0.07);
+    }
+
+    .card-bento:active { transform: translateY(-1px); }
+
+    .card-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .card-value {
+      font-weight: 700;
+      font-size: 2.5rem;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      color: var(--color-ink);
+    }
+
+    .card-value small {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--color-steel);
+      letter-spacing: 0;
+    }
+
+    .trend-up { color: #059669; font-size: 0.78rem; font-weight: 600; }
+    .trend-down { color: #dc2626; font-size: 0.78rem; font-weight: 600; }
+
+    /* Hero card internal grid: 2-column breakdown */
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid rgba(226,232,240,0.5);
+    }
+
+    .hero-stat-label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--color-steel);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .hero-stat-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      color: var(--color-ink);
+    }
+
+    /* Processed ring */
+    .processed-section {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .process-ring {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: conic-gradient(var(--color-accent) 0deg 170deg, rgba(0,0,0,0.05) 170deg 360deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .process-ring-inner {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--color-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--color-ink);
+    }
+
+    /* Mini stat grid for throughput */
+    .mini-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .mini-stat-value {
+      font-weight: 700;
+      font-size: 1.3rem;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      color: var(--color-ink);
+    }
+
+    .mini-stat-value.overdue { color: var(--color-error); }
+    .mini-stat-label {
+      font-size: 0.7rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-steel);
+    }
+
+    /* Stat cards row for secondary metrics */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+    }
+
+    .stat-card-base {
+      background: var(--color-surface);
+      border: var(--border-whisper);
+      box-shadow: var(--shadow-diffused);
+      border-radius: var(--radius-card);
+      padding: 1.25rem 1.5rem;
+      display: grid;
+      align-content: start;
+      gap: 0.5rem;
+      transition: transform 0.25s, box-shadow 0.25s;
+    }
+
+    .stat-card-base:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 24px 48px -18px rgba(0,0,0,0.07);
+    }
+
+    .stat-card-base .stat-head {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .stat-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-tight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .stat-icon.received { background: rgba(5,150,105,0.08); color: #059669; }
+    .stat-icon.pending { background: rgba(217,119,6,0.08); color: #d97706; }
+    .stat-icon.transit { background: rgba(59,130,246,0.08); color: var(--color-accent); }
+
+    .stat-card-base .stat-label {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--color-steel);
+    }
+
+    .stat-card-base .stat-value {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 1.6rem;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: var(--color-ink);
+    }
+
+    .stat-action {
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--color-accent);
+      display: inline-grid;
+      grid-template-columns: auto auto;
+      gap: 0.3rem;
+      align-items: center;
+      transition: gap 0.2s;
+    }
+
+    .stat-action:hover { gap: 0.55rem; color: var(--color-accent-hover); }
+    .stat-action i { font-size: 0.55rem; }
+
+    /* ---- Skeleton Shimmer Demo ---- */
+    .skeleton-section {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .skeleton-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+    }
+
+    .skeleton-card {
+      background: var(--color-surface);
+      border: var(--border-whisper);
+      box-shadow: var(--shadow-diffused);
+      border-radius: var(--radius-card);
+      padding: 1.5rem 1.75rem;
+      display: grid;
+      gap: 0.75rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .skeleton-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(59,130,246,0.04) 50%, transparent 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.8s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .skeleton-line {
+      height: 12px;
+      border-radius: var(--radius-tight);
+      background: rgba(0,0,0,0.04);
+    }
+
+    .skeleton-line.w40 { width: 40%; }
+    .skeleton-line.w55 { width: 55%; }
+    .skeleton-line.w70 { width: 70%; }
+    .skeleton-line.h18 { height: 18px; }
+    .skeleton-line.h28 { height: 28px; }
+
+    .skeleton-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    /* ---- Bento Content: 70/30 ---- */
+    .bento-content {
+      display: grid;
+      grid-template-columns: 7fr 3fr;
+      gap: 1.5rem;
+    }
+
+    /* Table */
+    .table-container {
+      background: var(--color-surface);
+      border: var(--border-whisper);
+      box-shadow: var(--shadow-diffused);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      display: grid;
+      align-content: start;
+    }
+
+    .table-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: center;
+      padding: 1.1rem 1.5rem;
+      border-bottom: 1px solid rgba(226,232,240,0.5);
+    }
+
+    .table-header h2 {
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.02em;
+      color: var(--color-ink);
+    }
+
+    .table-search {
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 0.5rem;
+    }
+
+    .input-search, .input-select {
+      font-family: var(--font-display);
+      font-size: 0.78rem;
+      padding: 0.4rem 0.7rem;
+      border: 1px solid rgba(226,232,240,0.8);
+      border-radius: var(--radius-tight);
+      background: var(--color-canvas);
+      color: var(--color-ink);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-search:focus, .input-select:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+
+    .table thead th {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      border-bottom: 1px solid rgba(226,232,240,0.5);
+      padding: 0.8rem 1.5rem;
+      background: transparent;
+    }
+
+    .table tbody td {
+      font-size: 0.82rem;
+      padding: 0.7rem 1.5rem;
+      vertical-align: middle;
+      border-bottom: 1px solid rgba(226,232,240,0.3);
+      color: var(--color-steel);
+    }
+
+    .table tbody tr:last-child td { border-bottom: none; }
+    .table tbody tr { transition: background 0.15s; }
+    .table tbody tr:hover { background: rgba(59,130,246,0.02); }
+
+    .doc-number {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 0.78rem;
+      color: var(--color-ink);
+    }
+
+    .doc-title { font-weight: 500; color: var(--color-ink); }
+
+    .badge-status {
+      font-weight: 500;
+      font-size: 0.68rem;
+      padding: 0.2em 0.65em;
+      border-radius: var(--radius-tight);
+      letter-spacing: 0.01em;
+      display: inline-block;
+    }
+
+    .badge-status.success { background: rgba(5,150,105,0.08); color: #059669; }
+    .badge-status.warning { background: rgba(217,119,6,0.08); color: #92400e; }
+    .badge-status.info { background: rgba(59,130,246,0.08); color: var(--color-accent); }
+    .badge-status.danger { background: rgba(225,29,72,0.08); color: var(--color-error); }
+    .badge-status.secondary { background: rgba(100,116,139,0.08); color: #475569; }
+
+    .btn-track {
+      font-size: 0.7rem;
+      color: var(--color-accent);
+      background: rgba(59,130,246,0.06);
+      border: none;
+      border-radius: var(--radius-tight);
+      padding: 0.25rem 0.6rem;
+      transition: background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .btn-track:hover { background: rgba(59,130,246,0.12); }
+
+    /* Table footer */
+    .table-footer {
+      border-top: 1px solid rgba(226,232,240,0.5);
+      padding: 0.7rem 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--color-muted);
+    }
+
+    .pagination-grid {
+      display: grid;
+      grid-template-columns: repeat(5, auto);
+      gap: 0.15rem;
+      align-items: center;
+    }
+
+    .pagination-grid a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: var(--radius-tight);
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--color-muted);
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .pagination-grid a:hover { background: rgba(0,0,0,0.04); color: var(--color-ink); }
+    .pagination-grid a.active { background: var(--color-accent); color: #fff; }
+    .pagination-grid a.disabled { opacity: 0.3; pointer-events: none; }
+
+    /* ---- Upload Form ---- */
+    .upload-container {
+      background: var(--color-surface);
+      border: var(--border-whisper);
+      box-shadow: var(--shadow-diffused);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      display: grid;
+      align-content: start;
+    }
+
+    .upload-header {
+      padding: 1.1rem 1.5rem;
+      border-bottom: 1px solid rgba(226,232,240,0.5);
+    }
+
+    .upload-header h2 {
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.02em;
+      color: var(--color-ink);
+    }
+
+    .upload-body { padding: 1.5rem; }
+
+    .form-group {
+      display: grid;
+      gap: 0.35rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--color-ink);
+    }
+
+    .form-input, .form-select {
+      font-family: var(--font-display);
+      font-size: 0.82rem;
+      padding: 0.5rem 0.8rem;
+      border: 1px solid rgba(226,232,240,0.8);
+      border-radius: var(--radius-tight);
+      background: var(--color-canvas);
+      color: var(--color-ink);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+
+    .form-input.is-valid, .form-select.is-valid {
+      border-color: #059669;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%23059669' viewBox='0 0 16 16'%3E%3Cpath d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      background-size: 0.85rem;
+      padding-right: 2rem;
+    }
+
+    .form-input.is-invalid, .form-select.is-invalid {
+      border-color: var(--color-error);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%23E11D48' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      background-size: 0.85rem;
+      padding-right: 2rem;
+    }
+
+    .invalid-feedback {
+      font-size: 0.72rem;
+      color: var(--color-error);
+      font-weight: 500;
+      display: none;
+    }
+
+    .was-validated .invalid-feedback { display: block; }
+
+    .upload-actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .btn-primary {
+      background: var(--color-accent);
+      border: none;
+      color: #fff;
+      border-radius: var(--radius-tight);
+      padding: 0.5rem 1.25rem;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.82rem;
+      transition: background 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover { background: var(--color-accent-hover); color: #fff; }
+    .btn-primary:active { transform: scale(0.98); }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid rgba(226,232,240,0.8);
+      color: var(--color-steel);
+      border-radius: var(--radius-tight);
+      padding: 0.5rem 1.1rem;
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 0.82rem;
+      transition: border-color 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+
+    .btn-outline:hover { border-color: rgba(0,0,0,0.15); }
+    .btn-outline:active { transform: scale(0.98); }
+
+    .csrf-footer {
+      padding: 0.8rem 1.5rem;
+      border-top: 1px solid rgba(226,232,240,0.5);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.4rem;
+      align-items: center;
+      font-size: 0.7rem;
+      color: var(--color-steel);
+    }
+
+    .csrf-footer i { font-size: 0.6rem; color: #059669; }
+
+    /* ---- Footer ---- */
+    .page-footer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: center;
+      padding-top: 1.25rem;
+      border-top: 1px solid rgba(226,232,240,0.5);
+      font-size: 0.72rem;
+      color: var(--color-muted);
+    }
+
+    .footer-links {
+      display: grid;
+      grid-template-columns: repeat(3, auto);
+      gap: 1.25rem;
+      align-items: center;
+    }
+
+    .footer-links a {
+      font-size: 0.72rem;
+      color: var(--color-muted);
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--color-ink); }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 1200px) {
+      .bento-stats { grid-template-columns: 1fr 1fr; }
+      .bento-content { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 900px) {
+      .app-layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .main-area { padding: 1.25rem; }
+      .bento-stats { grid-template-columns: 1fr; }
+      .stat-row { grid-template-columns: 1fr; }
+      .page-header { grid-template-columns: 1fr; }
+      .page-actions { justify-self: start; }
+      .table-header { grid-template-columns: 1fr; }
+      .table-search { grid-template-columns: 1fr; }
+      .table-footer { grid-template-columns: 1fr; text-align: center; }
+      .pagination-grid { justify-content: center; }
+      .page-footer { grid-template-columns: 1fr; text-align: center; }
+      .footer-links { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<a href="#main-start" class="skip-link">Skip to content</a>
+
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" role="navigation" aria-label="Main">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon"><i class="bi bi-file-earmark-text"></i></div>
+      <div class="sidebar-brand-text">
+        Document tracker
+        <small>DTS v2.4</small>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-link-sidebar active" aria-current="page"><i class="bi bi-speedometer2"></i> Dashboard</a>
+      <a href="#" class="nav-link-sidebar"><i class="bi bi-files"></i> Documents</a>
+      <a href="#" class="nav-link-sidebar"><i class="bi bi-arrow-left-right"></i> Transfers</a>
+      <a href="#" class="nav-link-sidebar"><i class="bi bi-person-badge"></i> Departments</a>
+      <a href="#" class="nav-link-sidebar"><i class="bi bi-clock-history"></i> Audit log</a>
+      <a href="#" class="nav-link-sidebar"><i class="bi bi-gear"></i> Settings</a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">JM</div>
+      <div class="sidebar-user-name">
+        Jeremiah Monte
+        <small>Administrator</small>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main area -->
+  <main id="main-start" class="main-area" role="main">
+
+    <!-- Page Header -->
+    <header class="page-header">
+      <div>
+        <div class="page-breadcrumb">DTS / <span>Dashboard</span></div>
+        <h1 class="page-title">Overview</h1>
+      </div>
+      <div class="page-actions">
+        <div class="notif-bell" role="button" tabindex="0" aria-label="Notifications">
+          <i class="bi bi-bell"></i>
+          <span class="notif-dot"></span>
+        </div>
+        <div class="clock-display">
+          <i class="bi bi-clock"></i>
+          <span class="mono tabular" id="clockDisplay"></span>
+          <span class="tz">PHT</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Bento Row 1: 3 unequal columns -->
+    <section class="bento-stats">
+
+      <!-- Card 1: Total Documents (hero, 2fr) -->
+      <div class="card-bento">
+        <div class="card-label">Total documents</div>
+        <div>
+          <span class="card-value tabular mono">2,147</span>
+          <span class="trend-up" style="margin-left:0.75rem;"><i class="bi bi-arrow-up-short"></i> 8.3%</span>
+        </div>
+        <div class="hero-grid">
+          <div>
+            <div class="hero-stat-label">Received this week</div>
+            <div class="hero-stat-value tabular mono">312</div>
+          </div>
+          <div>
+            <div class="hero-stat-label">Overdue</div>
+            <div class="hero-stat-value tabular mono" style="color:var(--color-error);">16</div>
+          </div>
+          <div>
+            <div class="hero-stat-label">In transit</div>
+            <div class="hero-stat-value tabular mono">38</div>
+          </div>
+          <div>
+            <div class="hero-stat-label">On hold</div>
+            <div class="hero-stat-value tabular mono">9</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Processed rate (1fr) -->
+      <div class="card-bento">
+        <div class="card-label">Processed rate</div>
+        <div class="processed-section">
+          <div>
+            <div class="card-value" style="font-size:2rem;">
+              <span class="tabular mono">47.2</span><small>%</small>
+            </div>
+            <span class="trend-up" style="font-size:0.72rem;"><i class="bi bi-arrow-up-short"></i> 3.1 pp</span>
+          </div>
+          <div class="process-ring">
+            <div class="process-ring-inner tabular mono">47%</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid rgba(226,232,240,0.5); padding-top:1rem; margin-top:0.5rem;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+            <div>
+              <div class="hero-stat-label">Avg routing</div>
+              <div class="hero-stat-value tabular mono" style="font-size:1.1rem;">3.4 <span style="font-size:0.7rem; font-weight:400; color:var(--color-steel);">days</span></div>
+            </div>
+            <div>
+              <div class="hero-stat-label">Completed</div>
+              <div class="hero-stat-value tabular mono" style="font-size:1.1rem;">1,014</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Throughput summary (1fr) -->
+      <div class="card-bento">
+        <div class="card-label">Throughput</div>
+        <div class="mini-grid" style="margin-top:0.5rem;">
+          <div>
+            <div class="mini-stat-value tabular mono">312</div>
+            <div class="mini-stat-label">This week</div>
+          </div>
+          <div>
+            <div class="mini-stat-value tabular mono overdue">16</div>
+            <div class="mini-stat-label">Overdue</div>
+          </div>
+          <div>
+            <div class="mini-stat-value tabular mono">89</div>
+            <div class="mini-stat-label">Pending review</div>
+          </div>
+          <div>
+            <div class="mini-stat-value tabular mono">97</div>
+            <div class="mini-stat-label">Pending transfer</div>
+          </div>
+        </div>
+        <a href="#" class="stat-action" style="margin-top:1rem;">
+          View report <i class="bi bi-chevron-right"></i>
+        </a>
+      </div>
+    </section>
+
+    <!-- Secondary metric row: 3 equal columns with bottom-aligned actions -->
+    <section class="stat-row">
+      <div class="stat-card-base">
+        <div class="stat-head">
+          <div class="stat-icon received"><i class="bi bi-inbox"></i></div>
+          <div>
+            <div class="stat-label">Received</div>
+            <div class="stat-value">839</div>
+          </div>
+        </div>
+        <div class="trend-up"><i class="bi bi-arrow-up-short"></i> 12.4% from last month</div>
+        <a href="#" class="stat-action">View received <i class="bi bi-chevron-right"></i></a>
+      </div>
+      <div class="stat-card-base">
+        <div class="stat-head">
+          <div class="stat-icon pending"><i class="bi bi-hourglass-split"></i></div>
+          <div>
+            <div class="stat-label">Pending transfer</div>
+            <div class="stat-value">97</div>
+          </div>
+        </div>
+        <div class="trend-up"><i class="bi bi-arrow-up-short"></i> 5 since yesterday</div>
+        <a href="#" class="stat-action">Review pending <i class="bi bi-chevron-right"></i></a>
+      </div>
+      <div class="stat-card-base">
+        <div class="stat-head">
+          <div class="stat-icon transit"><i class="bi bi-truck"></i></div>
+          <div>
+            <div class="stat-label">In transit</div>
+            <div class="stat-value">38</div>
+          </div>
+        </div>
+        <div class="trend-down"><i class="bi bi-arrow-down-short"></i> 8.7% from last week</div>
+        <a href="#" class="stat-action">Track shipments <i class="bi bi-chevron-right"></i></a>
+      </div>
+    </section>
+
+    <!-- Skeleton shimmer demo (replaces circular spinners) -->
+    <section class="skeleton-section">
+      <div class="skeleton-label">Loading state example</div>
+      <div class="skeleton-card" aria-label="Loading" role="status">
+        <div class="skeleton-line w40"></div>
+        <div class="skeleton-line w55 h28"></div>
+        <div class="skeleton-line w70 h18"></div>
+        <div class="skeleton-row">
+          <div><div class="skeleton-line w55"></div><div class="skeleton-line w40 h18" style="margin-top:0.5rem;"></div></div>
+          <div><div class="skeleton-line w55"></div><div class="skeleton-line w40 h18" style="margin-top:0.5rem;"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bento Row 2: 70/30 split -->
+    <section class="bento-content">
+
+      <!-- Table (7fr) -->
+      <div class="table-container">
+        <div class="table-header">
+          <h2>Document tracking</h2>
+          <div class="table-search">
+            <input type="text" class="input-search" placeholder="Search by title or doc no." style="width:160px;">
+            <select class="input-select" style="width:auto;">
+              <option>All status</option>
+              <option>Received</option>
+              <option>Pending</option>
+              <option>In transit</option>
+              <option>Completed</option>
+              <option>Overdue</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Doc no.</th>
+                <th>Title</th>
+                <th>Department</th>
+                <th>Status</th>
+                <th>Last updated</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="doc-number">DTS-2026-F913</span></td>
+                <td><span class="doc-title">Purchase requisition — IT equipment</span></td>
+                <td>Procurement</td>
+                <td><span class="badge-status success">Received</span></td>
+                <td class="mono tabular" style="font-size:0.75rem;">2026-06-24 09:43</td>
+                <td><a href="#" class="btn-track"><i class="bi bi-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td><span class="doc-number">DTS-2026-A71B</span></td>
+                <td><span class="doc-title">Contract renewal — office lease</span></td>
+                <td>Legal Affairs</td>
+                <td><span class="badge-status warning">Pending</span></td>
+                <td class="mono tabular" style="font-size:0.75rem;">2026-06-23 14:52</td>
+                <td><a href="#" class="btn-track"><i class="bi bi-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td><span class="doc-number">DTS-2026-3F9C</span></td>
+                <td><span class="doc-title">Memorandum — Q3 budget revision</span></td>
+                <td>Corporate Finance</td>
+                <td><span class="badge-status info">In transit</span></td>
+                <td class="mono tabular" style="font-size:0.75rem;">2026-06-24 07:12</td>
+                <td><a href="#" class="btn-track"><i class="bi bi-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td><span class="doc-number">DTS-2026-D42E</span></td>
+                <td><span class="doc-title">Incident report — data breach response</span></td>
+                <td>IT Security Ops</td>
+                <td><span class="badge-status success">Received</span></td>
+                <td class="mono tabular" style="font-size:0.75rem;">2026-06-22 11:28</td>
+                <td><a href="#" class="btn-track"><i class="bi bi-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td><span class="doc-number">DTS-2026-85B1</span></td>
+                <td><span class="doc-title">Employee onboarding checklist — Q3</span></td>
+                <td>Human Resources</td>
+                <td><span class="badge-status warning">Pending</span></td>
+                <td class="mono tabular" style="font-size:0.75rem;">2026-06-24 08:37</td>
+                <td><a href="#" class="btn-track"><i class="bi bi-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td><span class="doc-number">DTS-2026-C973</span></td>
+                <td><span class="doc-title">Resignation letter — senior developer</span></td>
+                <td>Human Resources</td>
+                <td><span class="badge-status secondary">Archived</span></td>
+                <td class="mono tabular" style="font-size:0.75rem;">2026-06-20 16:04</td>
+                <td><a href="#" class="btn-track"><i class="bi bi-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td><span class="doc-number">DTS-2026-F20A</span></td>
+                <td><span class="doc-title">Service invoice — cloud hosting Q2</span></td>
+                <td>Accounting Services</td>
+                <td><span class="badge-status info">In transit</span></td>
+                <td class="mono tabular" style="font-size:0.75rem;">2026-06-24 06:55</td>
+                <td><a href="#" class="btn-track"><i class="bi bi-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td><span class="doc-number">DTS-2026-4E6D</span></td>
+                <td><span class="doc-title">Board resolution — FY2027 budget</span></td>
+                <td>Executive Office</td>
+                <td><span class="badge-status danger">Overdue</span></td>
+                <td class="mono tabular" style="font-size:0.75rem;">2026-06-18 10:15</td>
+                <td><a href="#" class="btn-track"><i class="bi bi-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td><span class="doc-number">DTS-2026-1B87</span></td>
+                <td><span class="doc-title">Compliance audit report — Q2 findings</span></td>
+                <td>Quality Assurance</td>
+                <td><span class="badge-status success">Received</span></td>
+                <td class="mono tabular" style="font-size:0.75rem;">2026-06-23 15:48</td>
+                <td><a href="#" class="btn-track"><i class="bi bi-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td><span class="doc-number">DTS-2026-9A54</span></td>
+                <td><span class="doc-title">Travel authority — regional summit</span></td>
+                <td>Admin Services</td>
+                <td><span class="badge-status warning">Pending</span></td>
+                <td class="mono tabular" style="font-size:0.75rem;">2026-06-24 09:08</td>
+                <td><a href="#" class="btn-track"><i class="bi bi-arrow-up-right"></i></a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span>Showing 10 of 2,147 documents</span>
+          <nav class="pagination-grid" aria-label="Table pages">
+            <a href="#" class="disabled" aria-disabled="true"><i class="bi bi-chevron-left" style="font-size:0.6rem;"></i></a>
+            <a href="#" class="active" aria-current="page">1</a>
+            <a href="#">2</a>
+            <a href="#">3</a>
+            <a href="#"><i class="bi bi-chevron-right" style="font-size:0.6rem;"></i></a>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Upload form (3fr) -->
+      <div class="upload-container">
+        <div class="upload-header">
+          <h2>Quick upload</h2>
+        </div>
+        <div class="upload-body">
+          <form class="needs-validation" novalidate>
+            <input type="hidden" name="_token" value="sandbox-csrf-token-dts-2026-abc123xyz">
+            <div class="form-group">
+              <label class="form-label" for="docTitle">Document title</label>
+              <input type="text" class="form-input" id="docTitle" placeholder="e.g. Purchase order — Q3 supplies" required>
+              <div class="invalid-feedback">Please enter a document title.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="docDept">Department</label>
+              <select class="form-select" id="docDept" required>
+                <option value="" selected disabled>Select department</option>
+                <option>Procurement Division</option>
+                <option>Legal Affairs</option>
+                <option>Corporate Finance</option>
+                <option>IT Security Operations</option>
+                <option>Human Resources</option>
+                <option>Accounting Services</option>
+                <option>Executive Office</option>
+                <option>Quality Assurance</option>
+                <option>Admin Services</option>
+                <option>Internal Audit</option>
+              </select>
+              <div class="invalid-feedback">Please select a department.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="docCategory">Category</label>
+              <select class="form-select" id="docCategory" required>
+                <option value="" selected disabled>Select category</option>
+                <option>Memorandum</option>
+                <option>Purchase requisition</option>
+                <option>Contract</option>
+                <option>Report</option>
+                <option>Invoice</option>
+                <option>Letter</option>
+                <option>Resolution</option>
+              </select>
+              <div class="invalid-feedback">Please select a category.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="docFile">Attach file</label>
+              <input type="file" class="form-input" id="docFile" required>
+              <div class="invalid-feedback">Please attach a file.</div>
+            </div>
+            <div class="upload-actions">
+              <button type="submit" class="btn-primary"><i class="bi bi-cloud-upload me-1"></i> Upload</button>
+              <button type="reset" class="btn-outline">Clear</button>
+            </div>
+          </form>
+        </div>
+        <div class="csrf-footer">
+          <i class="bi bi-shield-check"></i>
+          <span>CSRF token active</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page Footer -->
+    <footer class="page-footer" role="contentinfo">
+      <span>Document tracking system &mdash; sandbox v2.4</span>
+      <div class="footer-links">
+        <a href="#">Privacy policy</a>
+        <a href="#">Terms of service</a>
+        <a href="#">Data processing</a>
+        <span><i class="bi bi-globe2 me-1"></i> PHT (UTC+8)</span>
+      </div>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // Live PHT clock
+  (function() {
+    var el = document.getElementById('clockDisplay');
+    function tick() {
+      var now = new Date();
+      var pht = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 8 * 3600000);
+      el.textContent = pht.toLocaleString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  // Form validation (Bootstrap-style)
+  (function() {
+    'use strict';
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function(form) {
+      form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  })();
+</script>
+
+</body>
+</html>

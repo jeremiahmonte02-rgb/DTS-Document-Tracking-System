@@ -2,15 +2,16 @@
 <script>
     window.DTS_AUTH_CONTEXT = {
         userId: @json($authUser?->id),
-        userName: @json($authUser?->name ?? 'Guest'),
-        departmentName: @json($authUser?->department?->name ?? 'No Department Assigned'),
-        departmentCode: @json($authUser?->department?->code ?? 'N/A'),
-        roleName: @json($authUser?->role?->name ?? 'Guest'),
+        departmentId: {{ $authUser?->department_id ?? 'null' }},
+        userName: @json($authUser?->name),
+        departmentName: @json($authUser?->department?->name),
+        departmentCode: @json($authUser?->department?->code),
+        roleName: @json($authUser?->role?->name),
     };
 
     const currentUserId = @json($authUser?->id);
-    const currentUserName = @json($authUser?->name ?? 'Guest');
-    const currentDepartmentName = @json($authUser?->department?->name ?? 'No Department Assigned');
-    const currentDepartmentCode = @json($authUser?->department?->code ?? 'N/A');
-    const currentUserRole = @json($authUser?->role?->name ?? 'Guest');
+    const currentUserName = @json($authUser?->name);
+    const currentDepartmentName = @json($authUser?->department?->name);
+    const currentDepartmentCode = @json($authUser?->department?->code);
+    const currentUserRole = @json($authUser?->role?->name);
 </script>

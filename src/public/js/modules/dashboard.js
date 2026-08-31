@@ -14,12 +14,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!canvas) return;
 
         try {
-            // Harvest raw JSON payload passed through the HTML data attribute
             const rawData = JSON.parse(canvas.getAttribute('data-metrics') || '{}');
-            
-            // Standardize object keys to handle capitalization matching your schema choices
-            const labels = Object.keys(rawData).map(label => label.toUpperCase().replace('_', ' '));
+
+            const labels = Object.keys(rawData).map(label => label.toUpperCase().replace(/_/g, ' '));
             const dataValues = Object.values(rawData);
+
+            const colorMap = {
+                'RECEIVED':         '#198754',
+                'COMPLETED':        '#198754',
+                'IN TRANSIT':       '#0dcaf0',
+                'PENDING TRANSFER': '#ffc107',
+                'REJECTED':         '#dc3545',
+                'CANCELLED':        '#6c757d',
+            };
 
             new Chart(canvas, {
                 type: 'doughnut',
@@ -27,12 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     labels: labels,
                     datasets: [{
                         data: dataValues,
-                        backgroundColor: [
-                            '#198754', // RECEIVED / COMPLETED (Green)
-                            '#0dcaf0', // IN TRANSIT (Teal)
-                            '#ffc107', // PENDING (Yellow)
-                            '#dc3545'  // REJECTED (Red)
-                        ],
+                        backgroundColor: labels.map(label => colorMap[label] || '#6c757d'),
                         borderWidth: 2,
                         borderColor: '#ffffff'
                     }]
@@ -95,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             grid: { borderDash: [4, 4] }
                         },
                         x: {
-                            ticks: { font: { size: 10 } },
+                            ticks: { font: { size: 10, family: "'Inter', 'Segoe UI', sans-serif" } },
                             grid: { display: false }
                         }
                     }

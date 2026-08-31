@@ -1,6 +1,14 @@
-FROM php:8.3-apache
+# === STAGE 1: COMPILE FRONTEND ASSETS ===
+FROM node:20-alpine AS asset-builder
+WORKDIR /app
+COPY src/package*.json ./
+RUN npm install
+COPY . .
+WORKDIR /app/src
+RUN npm run build
 
-# Install basic system packages and PHP development extensions
+# === STAGE 2: PRODUCTION RUNTIME ===
+FROM php:8.3-apache
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -8,22 +16,25 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     zip \
-    unzip
-
-# Clear cache memory
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Enable Docker PHP Extensions matching your document guidelines
+    unzip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN docker-php-ext-install pdo_mysql mysqli mbstring exif pcntl bcmath gd
-
-# Enable Apache mod_rewrite module for Laravel routing syntax
+RUN echo "upload_max_filesize=32M" > /usr/local/etc/php/conf.d/uploads.ini \
+ && echo "post_max_size=32M" >> /usr/local/etc/php/conf.d/uploads.ini
 RUN a2enmod rewrite
+RUN sed -i 's|/var/www/html|/var/www/html/src/public|g' /etc/apache2/sites-available/000-default.conf
+RUN sed -i 's|/var/www/html|/var/www/html/src/public|g' /etc/apache2/apache2.conf
 
-# Re-route Apache's default site configuration to look inside /public
-# RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
-
-# Get latest secure Composer build layer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Setup the web document working root inside the container
 WORKDIR /var/www/html
+COPY . .
+COPY --from=asset-builder /app/src/public/build ./src/public/build
+
+WORKDIR /var/www/html/src
+ENV COMPOSER_ALLOW_SUPERUSER=1
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+RUN composer install --no-interaction --optimize-autoloader --no-dev
+RUN chown -R www-data:www-data /var/www/html/src/storage /var/www/html/src/bootstrap/cache /var/www/html/src/public
+
+EXPOSE 80
+WORKDIR /var/www/html
+CMD sh -c "php src/artisan migrate --force && apache2-foreground"

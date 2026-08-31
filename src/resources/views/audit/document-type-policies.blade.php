@@ -1,0 +1,188 @@
+@extends('layouts.app')
+
+@section('title', 'Routing Settings - Document Tracking System')
+
+
+
+@section('pageTitle', 'Routing Settings')
+
+@section('content')
+            <div class="policy-header">
+                <h1>Document Type Routing Settings</h1>
+                <p>Configure whether each document type follows a fixed immutable path or a mutable template path across departments.</p>
+            </div>
+
+            @if (session('success'))
+            <div class="alert alert-success alert-flash d-flex align-items-center gap-2 mb-4">
+                <i class="bi bi-check-circle-fill"></i>
+                {{ session('success') }}
+            </div>
+            @endif
+
+            <div class="row g-4">
+                <div class="col-lg-5">
+                    <div class="table-container">
+                        <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Document Type</th>
+                                    <th>Settings Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="policyTableBody">
+                                @forelse($documentTypes as $type)
+                                <tr data-type-id="{{ $type->id }}"
+                                    data-type-name="{{ $type->name }}"
+                                    data-is-immutable="{{ $type->routingPolicy?->is_immutable ?? 'null' }}"
+                                    data-predefined-route="{{ json_encode($type->routingPolicy?->predefined_route ?? []) }}"
+                                    onclick="selectPolicyType(this)">
+                                    <td class="fw-semibold">{{ $type->name }}</td>
+                                    <td>
+                                        @if ($type->routingPolicy)
+                                            @if ($type->routingPolicy->is_immutable)
+                                            <span class="badge badge-policy badge-immutable">Immutable</span>
+                                            @else
+                                            <span class="badge badge-policy badge-mutable">Mutable</span>
+                                            @endif
+                                        @else
+                                        <span class="badge badge-policy badge-default">Default</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="2">
+                                        <div class="empty-state">
+                                            <i class="bi bi-folder2-open"></i>
+                                            <p>No document types defined.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-7">
+                    <div class="editor-card" id="policyEditor">
+                        <div class="empty-state" id="editorPlaceholder">
+                            <i class="bi bi-arrow-left-circle"></i>
+                            <p>Select a document type from the list to configure its routing settings.</p>
+                        </div>
+
+                        <div id="editorContent" style="display: none;">
+                            <form method="POST" action="{{ route('audit.policies.store') }}" id="policyForm">
+                                @csrf
+                                <input type="hidden" name="document_type_id" id="policyDocumentTypeId">
+                                <input type="hidden" name="is_immutable" id="policyIsImmutable" value="0">
+                                <input type="hidden" name="predefined_route" id="policyPredefinedRoute">
+
+                                <h5 id="editorTitle">Configure Settings</h5>
+                                <p class="editor-subtitle" id="editorSubtitle">Set the routing behavior for this document type.</p>
+
+                                <div class="mb-4">
+                                    <label class="form-label">Routing Mode</label>
+                                    <div class="policy-toggle">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" id="immutableToggle" onchange="toggleImmutable(this)">
+                                        </div>
+                                        <span class="toggle-label mutable" id="modeLabel">Mutable — departments can be reordered during upload</span>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label">Total Lifecycle SLA</label>
+                                    <div class="row mb-2">
+                                        <div class="col-sm-6">
+                                            <input type="number" id="lifecycle_time_value" class="form-control" placeholder="e.g. 3" min="1">
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <select id="lifecycle_time_unit" class="form-select">
+                                                <option value="1">Minutes</option>
+                                                <option value="60">Hours</option>
+                                                <option value="1440">Days</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" name="total_lifecycle_sla" id="total_lifecycle_sla">
+                                    <small class="text-muted">Distributes evenly across all route steps. The remainder goes to the final step.</small>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label">Default Route Path</label>
+                                    <p class="placeholder-text mb-2">Select departments and build the ordered routing sequence.</p>
+
+                                    <div class="row g-3">
+                                        <div class="col-md-5">
+                                            <select id="deptPool" class="form-select mb-2" size="8" multiple>
+                                                @foreach($departments as $dept)
+                                                <option value="{{ $dept->id }}" data-name="{{ $dept->name }}">{{ $dept->name }}</option>
+                                                @endforeach
+                                            </select>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-accent btn-sm flex-grow-1" onclick="addSelectedDepts()">
+                                                    <i class="bi bi-plus-lg"></i> Add
+                                                </button>
+                                                <button type="button" class="btn btn-accent-outline btn-sm" onclick="clearRoute()">
+                                                    <i class="bi bi-x-lg"></i> Clear
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-7">
+                                            <div class="route-list-container" id="routeListContainer">
+                                                <div class="placeholder-text d-flex align-items-center justify-content-center h-100" id="routePlaceholder">
+                                                    Selected departments appear here in order
+                                                </div>
+                                                <ul class="list-unstyled mb-0" id="routeList"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2 pt-2 border-top" style="border-color: var(--whisper) !important;">
+                                    <button type="submit" class="btn btn-accent" id="savePolicyBtn">
+                                        <i class="bi bi-check-lg"></i> Save Settings
+                                    </button>
+                                    <button type="button" class="btn btn-accent-outline" onclick="resetEditor()">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+    @include('partials.access-denied-modal')
+
+    <!-- Save Policy Confirmation Modal -->
+    <div class="modal fade" id="savePolicyConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Settings Changes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="mb-3">You are about to save routing settings changes for <strong id="modalDocTypeName" class="text-primary"></strong>.</p>
+                    <div class="alert alert-secondary p-3 mb-0">
+                        <strong>Routing Mode:</strong> <span id="modalRoutingMode"></span><br>
+                        <strong>Total Steps:</strong> <span id="modalTotalSteps"></span>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning fw-bold px-4" id="confirmSavePolicyBtn">Confirm & Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
+
+@section('scripts')
+    <script src="{{ asset('js/modules/audit-policies.js') }}"></script>
+@endsection

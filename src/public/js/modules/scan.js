@@ -106,7 +106,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const hasUserDeptProcessed = routes.some(function(route) {
             return String(route.department_id) === userDepartmentId && route.status === 'received';
         });
-        const isAuthorizedDepartment = routes.some(function(route) {
+        const isNextInLine = routes.some(function(route) {
+            return String(route.department_id) === userDepartmentId && route.status === 'next';
+        });
+        const hasCustody = routes.some(function(route) {
             return String(route.department_id) === userDepartmentId && route.status === 'current';
         });
 
@@ -126,14 +129,25 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="bi bi-info-circle-fill me-2 text-warning"></i> This sequence tracking step is completed. Ready for downstream routing transfers.
                     </div>
                 `;
-            } else if (isAuthorizedDepartment) {
+            } else if (hasCustody) {
+                headerClass = 'bg-info text-white';
+                headerIcon = 'bi-arrow-right-circle-fill';
+                headerTitle = 'Custody Held';
+                borderClass = 'border-info';
+                statusBadgeClass = 'bg-light-info text-info';
+                actionSlot = `
+                    <div class="alert alert-info d-flex align-items-center m-0 py-1 px-2 text-xs w-100 border border-info-subtle rounded">
+                        <i class="bi bi-info-circle-fill me-2 text-info"></i> Your department currently holds custody of this document. No further action required at this time.
+                    </div>
+                `;
+            } else if (isNextInLine) {
                 headerClass = 'bg-success text-white';
                 headerIcon = 'bi-check-circle-fill';
                 headerTitle = 'Document Found';
                 borderClass = 'border-success';
                 statusBadgeClass = 'bg-light-success text-success';
                 actionSlot = `
-                    <button type="button" class="btn btn-success btn-sm px-3 shadow-3xs" id="actionConfirmReceiptBtn">
+                    <button type="button" class="btn btn-success btn-sm px-3 d-inline-flex align-items-center justify-content-center gap-1 shadow-3xs" id="actionConfirmReceiptBtn">
                         <i class="bi bi-check-circle me-1"></i> Confirm Receipt
                     </button>
                 `;
@@ -144,11 +158,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 borderClass = 'border-success';
                 statusBadgeClass = 'bg-light-success text-success';
                 actionSlot = `
-                    <div class="alert alert-info d-flex align-items-center m-0 mb-3 py-2 px-3 text-xs border border-info-subtle rounded">
-                        <i class="bi bi-info-circle-fill me-2 text-info"></i> This document requires routing approval. Your department may not be authorized to receive it directly.
+                    <div class="alert alert-info d-flex align-items-center flex-grow-1 m-0 mb-2 py-2 px-3 text-xs border border-info-subtle rounded">
+                        <i class="bi bi-info-circle-fill me-2 text-info flex-shrink-0"></i>
+                        <span>This document requires routing approval. Your department may not be authorized to receive it directly.</span>
                     </div>
-                    <button type="button" class="btn btn-warning btn-sm px-3 shadow-3xs text-dark font-semibold" id="actionAttemptReceiptBtn">
-                        <i class="bi bi-shield-x me-1"></i> Attempt Receipt
+                    <button type="button" class="btn btn-warning btn-sm px-3 text-dark font-semibold d-inline-flex align-items-center justify-content-center gap-1" id="actionAttemptReceiptBtn">
+                        <i class="bi bi-shield-x"></i> Attempt Receipt
                     </button>
                 `;
             }
@@ -170,10 +185,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="col-sm-6"><strong>Current Status:</strong> <span class="badge ${statusBadgeClass} text-xs font-semibold px-2 py-0.5">${escapeHtml(doc.status)}</span></div>
                             <div class="col-11 border-top pt-2 mt-2"><strong>Description:</strong> <p class="text-muted text-xs mb-0 mt-1">${escapeHtml(doc.description || 'No descriptive context log attached.')}</p></div>
                         </div>
-                        <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top">
+                        <div class="d-grid d-md-flex align-items-center gap-2 mt-3 pt-2 border-top">
                             ${actionSlot}
-                            <button type="button" class="btn btn-outline-primary btn-sm px-3" id="actionViewFullDetailsBtn">
-                                <i class="bi bi-eye me-1"></i> View Full Details
+                            <button type="button" class="btn btn-outline-primary btn-sm px-3 d-inline-flex align-items-center justify-content-center gap-1" id="actionViewFullDetailsBtn">
+                                <i class="bi bi-eye"></i> View Full Details
                             </button>
                         </div>
                     </div>
@@ -184,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const confirmBtn = document.getElementById('actionConfirmReceiptBtn');
             if (confirmBtn) {
                 confirmBtn.addEventListener('click', function() {
-                    executeReceiptTransaction(doc.id || doc.document_number);
+                    executeReceiptTransaction(doc.document_number || doc.id);
                 });
             }
 
@@ -228,6 +243,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else if (route.status === 'received' || route.status === 'completed') {
                         badgeStyle = 'bg-success text-white';
                         rowModifier = 'border-success';
+                    } else if (route.status === 'next') {
+                        badgeStyle = 'bg-info text-white';
+                        rowModifier = 'border-info';
                     }
 
                     stepRow.className = `d-flex align-items-center justify-content-between p-2 mb-2 rounded border shadow-3xs bg-white ${rowModifier}`;
@@ -246,46 +264,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // --- PART C: RENDER TRANSACTION HISTORY TIMELINE ---
-        if (timelineContainer) {
-            timelineContainer.innerHTML = '';
-            if (events.length > 0) {
-                events.forEach(ev => {
-                    const card = document.createElement('div');
-                    card.className = 'timeline-item border-start ps-3 pb-3 position-relative';
-                    card.innerHTML = `
-                        <span class="position-absolute start-0 top-0 translate-middle-x badge rounded-circle bg-primary p-1" style="margin-left:-1px; margin-top:4px;"><span class="visually-hidden">.</span></span>
-                        <div class="text-xxs text-muted font-mono">${escapeHtml(ev.formatted_date || ev.created_at)}</div>
-                        <div class="text-xs font-semibold text-dark mt-0.5">${escapeHtml(ev.event_label)} - <span class="text-primary font-normal">${escapeHtml(ev.execution_department)}</span></div>
-                        <p class="text-muted text-xxs mb-0 mt-0.5 bg-light p-1 rounded border">Note: ${escapeHtml(ev.note || 'No transaction notes added.')} <br><span class="text-dark font-medium">By: ${escapeHtml(ev.processed_by_user)}</span></p>
-                    `;
-                    timelineContainer.appendChild(card);
-                });
-            } else {
-                timelineContainer.innerHTML = '<div class="text-muted text-xs p-3 bg-light rounded text-center">No transactional logging history logs discovered.</div>';
-            }
+        if (typeof window.renderTimeline === 'function') {
+            window.renderTimeline('trackingTimeline', events, { reverseOrder: false });
         }
     }
 
     /**
      * Dispatch Receipt Confirmation to server pipeline
      */
-    function executeReceiptTransaction(docId) {
+    function executeReceiptTransaction(docNumber) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-        fetch('/documents/confirm-receipt', {
+        fetch('/scan/receive', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrfToken
             },
-            body: JSON.stringify({ document_id: docId })
+            body: JSON.stringify({ document_number: docNumber })
         })
         .then(function(response) {
+            if (!response.ok) {
+                throw new Error('HTTP Error status ' + response.status);
+            }
             return response.json();
         })
         .then(function(data) {
             if (data.success) {
-                alert('Receipt successfully verified and saved to database!');
+                alert(data.message || 'Receipt successfully verified and saved to database!');
                 if (lookupInput && lookupInput.value) {
                     executeDocumentLookupQuery(lookupInput.value);
                 }
@@ -294,8 +300,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(function(err) {
-            console.error('Network execution failure:', err);
-            alert('Critical connection failure during document state modification.');
+            console.error('executeReceiptTransaction failure:', err);
+            alert('Receipt failed: ' + err.message);
         });
     }
 
