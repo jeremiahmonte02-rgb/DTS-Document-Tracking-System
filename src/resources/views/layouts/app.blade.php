@@ -35,46 +35,56 @@
                             id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false"
                             aria-label="Notifications">
                         <i class="bi bi-bell fs-5"></i>
-                        <span id="notificationBadge" class="notification-badge {{ (($unreadNotificationsCount ?? 0) + ($unreadAnnouncementsCount ?? 0)) > 0 ? '' : 'd-none' }}">{{ ($unreadNotificationsCount ?? 0) + ($unreadAnnouncementsCount ?? 0) }}</span>
+                        @php $totalUnread = ($unreadNotificationsCount ?? 0) + ($unreadAnnouncementsCount ?? 0); @endphp
+                        <span id="notificationBadge" class="notification-badge {{ $totalUnread > 0 ? '' : 'd-none' }}">{{ $totalUnread > 99 ? '99+' : $totalUnread }}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end notification-menu shadow" aria-labelledby="notificationBell">
-                        @forelse($recentNotifications ?? [] as $notification)
+                        {{-- Keep in sync with the empty-state HTML in public/js/main.js (ensureDropdownEmptyState and backfillDropdown) --}}
+                        @if($totalUnread === 0)
                             <li>
-                                <a class="dropdown-item notification-item"
-                                   href="{{ $notification->document ? route('document-details.show', $notification->document->document_number) : '#' }}"
-                                   data-notification-id="{{ $notification->id }}"
-                                   data-no-spinner="true">
-                                    <div class="notification-title fw-semibold">{{ $notification->title }}</div>
-                                    <div class="notification-message small text-muted text-truncate">{{ \Illuminate\Support\Str::limit($notification->message, 90) }}</div>
-                                    <div class="notification-time small text-muted mt-1">{{ $notification->created_at?->diffForHumans() }}</div>
-                                </a>
+                                <span class="dropdown-item-text text-center py-4 text-muted">
+                                    <i class="bi bi-bell-slash d-block fs-4 mb-2"></i>
+                                    No new notifications
+                                    <small class="d-block text-muted mt-1" style="font-size:0.75rem;">You're all caught up</small>
+                                </span>
                             </li>
-                            @if (!$loop->last)
-                                <li><hr class="dropdown-divider"></li>
-                            @endif
+                        @else
+                            @forelse($unifiedFeed as $item)
+                                <li>
+                                    <a class="dropdown-item notification-item {{ $item['type'] === 'announcement' ? 'announcement-item' : '' }}"
+                                       href="{{ $item['type'] === 'notification' && $item['document'] ? route('document-details.show', $item['document']->document_number) : '#' }}"
+                                       data-{{ $item['type'] === 'notification' ? 'notification' : 'announcement' }}-id="{{ $item['id'] }}"
+                                       data-no-spinner="true">
+                                        <div class="d-flex gap-2">
+                                            <i class="bi {{ $item['type'] === 'notification' ? 'bi-file-earmark-text' : 'bi-megaphone-fill' }} text-muted mt-1" style="font-size:0.875rem;"></i>
+                                            <div class="flex-grow-1" style="min-width:0;">
+                                                <div class="notification-title fw-semibold">{{ $item['title'] }}</div>
+                                                <div class="notification-message small text-muted text-truncate">{{ \Illuminate\Support\Str::limit($item['message'], 90) }}</div>
+                                                <div class="notification-time small text-muted mt-1">{{ $item['created_at']?->diffForHumans() }}</div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </li>
+                                @if (!$loop->last)
+                                    <li><hr class="dropdown-divider"></li>
+                                @endif
                             @empty
-                                <li><span class="dropdown-item-text text-muted text-center py-3">No new notifications</span></li>
+                                <li><span class="dropdown-item-text text-muted text-center py-3 small">No notifications</span></li>
                             @endforelse
-                            @if(($unreadAnnouncements ?? collect())->isNotEmpty())
-                                <li><hr class="dropdown-divider"></li>
-                                <li><h6 class="dropdown-header">Announcements</h6></li>
-                                @foreach($unreadAnnouncements as $announcement)
-                                    <li>
-                                        <a class="dropdown-item notification-item announcement-item"
-                                           href="#" data-announcement-id="{{ $announcement->id }}" data-no-spinner="true">
-                                            <div class="notification-title fw-semibold">{{ $announcement->title }}</div>
-                                            <div class="notification-message small text-muted text-truncate">{{ \Illuminate\Support\Str::limit($announcement->message, 90) }}</div>
-                                            <div class="notification-time small text-muted mt-1">{{ $announcement->created_at?->diffForHumans() }}</div>
-                                        </a>
-                                    </li>
-                                @endforeach
-                            @endif
+                        @endif
+                        @if($totalUnread > 0)
+                            <li class="dropdown-footer-sticky"><hr class="dropdown-divider my-0"><button id="dismissAllBtn" class="dropdown-item text-center small text-muted">Dismiss All</button></li>
+                        @endif
                         </ul>
                 </div>
                 <div class="dropdown">
                     <button class="btn btn-link dropdown-toggle d-flex align-items-center gap-2"
                             type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle fs-5"></i>
+                        @if(auth()->user()->avatar_path)
+                            <img src="{{ auth()->user()->avatarUrl() }}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="Profile picture">
+                        @else
+                            <i class="bi bi-person-circle fs-5"></i>
+                        @endif
                         <span class="d-none d-md-inline">{{ auth()->user()->name }}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
@@ -84,7 +94,7 @@
                             <span class="profile-role-badge badge bg-primary">{{ auth()->user()->role->name ?? 'Standard User' }}</span>
                         </li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Profile</a></li>
+                        <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="bi bi-person"></i> Profile</a></li>
                         <li><a class="dropdown-item" href="{{ route('activity-log') }}"><i class="bi bi-clock-history"></i> Activity Log</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
@@ -109,11 +119,15 @@
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+    @include('partials.confirm-modal')
+
     <!-- Auth Context -->
     @include('partials.auth-context')
 
     <!-- Global JS -->
     <script src="{{ asset('js/main.js') }}?v={{ filemtime(public_path('js/main.js')) }}"></script>
+
+    <script src="{{ asset('js/modules/confirm-modal.js') }}?v={{ filemtime(public_path('js/modules/confirm-modal.js')) }}"></script>
 
     <!-- Global Formatting Utility -->
     <script src="{{ asset('js/core/format.js') }}?v={{ filemtime(public_path('js/core/format.js')) }}"></script>

@@ -2,10 +2,10 @@
 
 namespace App\Providers;
 
-use App\Models\Notification;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use App\Models\Notification;
+use App\Services\NotificationFeedBuilder;
+use Illuminate\Support\Facades\View;
 use Illuminate\View\View as ViewContract;
 
 class NotificationServiceProvider extends ServiceProvider
@@ -31,41 +31,31 @@ class NotificationServiceProvider extends ServiceProvider
             $unreadAnnouncementsCount = 0;
             $unreadAnnouncements = collect();
             $activeAnnouncements = collect();
+            $unifiedFeed = collect();
 
             if ($user) {
-                $unreadNotificationsCount = DB::table('notifications')
-                    ->where('user_id', $user->id)
-                    ->whereNull('read_at')
-                    ->count();
+                $counts = NotificationFeedBuilder::getUnreadCounts($user);
+                $unreadNotificationsCount = $counts['unreadNotificationsCount'];
+                $unreadAnnouncementsCount = $counts['unreadAnnouncementsCount'];
 
                 $recentNotifications = Notification::query()
                     ->with('document:id,document_number,title')
                     ->where('user_id', $user->id)
                     ->whereNull('read_at')
                     ->orderByDesc('created_at')
-                    ->limit(5)
+                    ->limit(10)
                     ->get();
 
                 $unreadAnnouncements = \App\Models\Announcement::query()
+                    ->whereDoesntHave('reads', function ($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    })
                     ->orderByDesc('created_at')
                     ->limit(10)
                     ->get();
 
-                if ($unreadAnnouncements->isNotEmpty()) {
-                    $readIds = DB::table('announcement_reads')
-                        ->where('user_id', $user->id)
-                        ->whereIn('announcement_id', $unreadAnnouncements->pluck('id')->all())
-                        ->pluck('announcement_id')
-                        ->all();
+                $unifiedFeed = NotificationFeedBuilder::buildUnifiedFeed($user, 10);
 
-                    $unreadAnnouncements->each(function ($announcement) use ($readIds) {
-                        $announcement->is_read = in_array($announcement->id, $readIds, true);
-                    });
-
-                    $unreadAnnouncements = $unreadAnnouncements->where('is_read', false)->values();
-                }
-
-                $unreadAnnouncementsCount = $unreadAnnouncements->count();
                 $activeAnnouncements = $unreadAnnouncements->take(3);
             }
 
@@ -74,6 +64,7 @@ class NotificationServiceProvider extends ServiceProvider
             $view->with('unreadAnnouncementsCount', $unreadAnnouncementsCount);
             $view->with('unreadAnnouncements', $unreadAnnouncements);
             $view->with('activeAnnouncements', $activeAnnouncements);
+            $view->with('unifiedFeed', $unifiedFeed);
         });
     }
 }

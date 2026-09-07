@@ -36,6 +36,18 @@
                 });
             }
 
+            var confirmDeactivateBtn = document.getElementById('confirmDeactivateBtn');
+            if (confirmDeactivateBtn) {
+                confirmDeactivateBtn.addEventListener('click', function () {
+                    var id = pendingDeactivateId;
+                    pendingDeactivateId = null;
+                    var modalEl = document.getElementById('deactivateDepartmentConfirmModal');
+                    var modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+                    if (modal) modal.hide();
+                    if (id) toggleDepartment(id);
+                });
+            }
+
             document.addEventListener('click', function (e) {
                 var btn = e.target.closest('[data-action]');
                 if (!btn) return;
@@ -51,7 +63,13 @@
                     submitEditDepartment();
                 } else if (action === 'toggle-department') {
                     var id = btn.getAttribute('data-id');
-                    if (id) toggleDepartment(parseInt(id, 10));
+                    if (!id) return;
+                    var isActive = btn.getAttribute('data-is-active') === '1';
+                    if (isActive) {
+                        openDeactivateConfirm(parseInt(id, 10), btn.getAttribute('data-name') || ('department #' + id));
+                    } else {
+                        toggleDepartment(parseInt(id, 10));
+                    }
                 } else if (action === 'view-department') {
                     var id = btn.getAttribute('data-id');
                     if (id && detailsUrlPrefix) {
@@ -132,7 +150,7 @@
                     + '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit-department" data-id="' + dept.id + '" title="Edit department">'
                     + '<i class="bi bi-pencil"></i>'
                     + '</button>'
-                    + '<button class="btn btn-sm btn-outline-warning" data-action="toggle-department" data-id="' + dept.id + '" title="' + toggleLabel + '">'
+                    + '<button class="btn btn-sm btn-outline-warning" data-action="toggle-department" data-id="' + dept.id + '" data-name="' + escapeHtml(dept.name) + '" data-is-active="' + (dept.is_active ? '1' : '0') + '" title="' + toggleLabel + '">'
                     + '<i class="bi ' + toggleIcon + '"></i>'
                     + '</button>'
                     + '</td>'
@@ -367,6 +385,21 @@
                     fb.classList.add('alert-danger');
                 }
             });
+        }
+
+        var pendingDeactivateId = null;
+
+        function openDeactivateConfirm(deptId, deptName) {
+            pendingDeactivateId = deptId;
+            var nameEl = document.getElementById('deactivateDeptName');
+            if (nameEl) nameEl.textContent = deptName;
+
+            var modalEl = document.getElementById('deactivateDepartmentConfirmModal');
+            if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                new bootstrap.Modal(modalEl).show();
+            } else {
+                toggleDepartment(deptId);
+            }
         }
 
         function toggleDepartment(deptId) {

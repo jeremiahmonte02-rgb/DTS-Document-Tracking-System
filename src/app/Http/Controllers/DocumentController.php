@@ -39,7 +39,7 @@ class DocumentController extends Controller
         $user = auth()->user();
 
         $documentTypes = DB::table('document_types')->orderBy('name')->get();
-        $departments = DB::table('departments')->orderBy('name')->get();
+        $departments = DB::table('departments')->where('is_active', true)->orderBy('name')->get();
 
         $existingDocuments = Document::with(['routes.department'])
             ->where('sender_department_id', $user->department_id)
@@ -664,6 +664,9 @@ class DocumentController extends Controller
                 }
 
                 // Step 5: Update the documents table
+                $previousDocStatus = $document->status;
+                $releasingDepartmentId = $existingCurrent ? (int) $existingCurrent->department_id : null;
+
                 DB::table('documents')
                     ->where('id', $document->id)
                     ->update([
@@ -671,6 +674,30 @@ class DocumentController extends Controller
                         'current_department_id' => $user->department_id,
                         'updated_at'           => Carbon::now('Asia/Manila'),
                     ]);
+
+                // Step 5b: Auto-resolve open Document Error issues for the department
+                // that just released custody, but only when this receive resolves a
+                // prior correction (previous status was returned_for_correction).
+                // Best-effort side effect: failures here must never block or roll
+                // back the custody transfer above.
+                if ($previousDocStatus === 'returned_for_correction' && $releasingDepartmentId) {
+                    try {
+                        DB::table('document_issues')
+                            ->where('document_id', $document->id)
+                            ->where('type', 'Document Error')
+                            ->where('status', 'open')
+                            ->where('assigned_department_id', $releasingDepartmentId)
+                            ->update([
+                                'status'      => 'resolved',
+                                'resolved_at' => Carbon::now('Asia/Manila'),
+                                'updated_at'  => Carbon::now('Asia/Manila'),
+                            ]);
+                    } catch (\Exception $autoResolveError) {
+                        \Illuminate\Support\Facades\Log::warning(
+                            'Auto-resolve of Document Error issues failed for document ' . $document->document_number . ': ' . $autoResolveError->getMessage()
+                        );
+                    }
+                }
 
                 // Step 6: Log audit event
                 DB::table('document_events')->insert([
@@ -854,8 +881,7 @@ class DocumentController extends Controller
                 'documents.created_at as date_uploaded',
                 'documents.status as computed_status'
             )
-            ->where('documents.sender_department_id', $userDeptId)
-            ->whereIn('documents.status', ['pending_transfer', 'in_transit', 'received', 'rejected', 'cancelled']);
+            ->where('documents.sender_department_id', $userDeptId);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -1197,9 +1223,9 @@ class DocumentController extends Controller
             $issueType = $validated['issue_type'] ?? null;
             $assignedDeptId = $validated['assigned_department_id'] ?? null;
 
-            $isProcessingError = in_array($issueType, ['Processing Error', 'Document Error', 'Processing Delay']);
+            $isReroutableIssue = in_array($issueType, ['Processing Error', 'Document Error']);
 
-            if ($isProcessingError && $assignedDeptId) {
+            if ($isReroutableIssue && $assignedDeptId) {
                 $targetRoute = DB::table('document_routes')
                     ->where('document_id', $document->id)
                     ->where('department_id', $assignedDeptId)
@@ -1310,6 +1336,16 @@ class DocumentController extends Controller
                     'note'          => 'Document returned to ' . $targetDeptName . ' due to reported error.',
                     'created_at'    => Carbon::now('Asia/Manila'),
                 ]);
+            }
+
+            if ($issueType === 'Processing Delay' && $assignedDeptId && !$isReroute) {
+                \App\Models\Notification::broadcastToDepartment(
+                    (int) $assignedDeptId,
+                    'processing_delay',
+                    'Processing Delay Reported',
+                    "A processing delay was reported on document {$document->document_number}: \"" . substr($validated['description'], 0, 120) . '"',
+                    $document->id
+                );
             }
 
             return $documentModel;

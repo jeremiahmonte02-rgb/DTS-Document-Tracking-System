@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\DepartmentDocumentSla;
 use App\Models\DocumentRoute;
 use App\Models\Notification;
+use App\Services\SlaResolver;
 use Illuminate\Console\Command;
 
 class CheckOverdueDocuments extends Command
@@ -30,7 +31,7 @@ class CheckOverdueDocuments extends Command
      */
     public function handle(): int
     {
-        $defaultSlaMinutes = 1440;
+        $defaultSlaMinutes = SlaResolver::DEFAULT_FALLBACK_MINUTES;
 
         $routes = DocumentRoute::with(['document', 'document.documentType'])
             ->where('status', 'current')
@@ -50,6 +51,14 @@ class CheckOverdueDocuments extends Command
                 continue;
             }
 
+            // NOTE (known, deferred limitation): This command does NOT consult the document
+            // type's per-step `predefined_route.sla_minutes` configuration. Unlike SlaResolver
+            // (used by the document-details page), only the DepartmentDocumentSla override,
+            // DocumentType.default_processing_time, and SlaResolver::DEFAULT_FALLBACK_MINUTES
+            // chain apply here. As a result a document type's configured "Total Lifecycle SLA"
+            // does not currently drive automated overdue detection or notifications. Aligning
+            // this command with SlaResolver per-step logic is a deferred decision pending future
+            // work; the fallback value is now sourced from the shared constant for consistency.
             $slaMinutes = $defaultSlaMinutes;
 
             $override = DepartmentDocumentSla::where('department_id', $route->department_id)

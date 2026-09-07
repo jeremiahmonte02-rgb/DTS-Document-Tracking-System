@@ -125,6 +125,11 @@
 
                                     <input type="hidden" id="routesInput" name="routes">
                                     <p class="text-muted fst-italic mt-2 mb-0" style="font-size: 0.75rem;">Select departments above, then click "Add Selected" to build the routing sequence.</p>
+                                    <div class="alert alert-warning alert-dismissible fade show d-none mt-2 mb-0 py-2" id="addedDeptWarning" role="alert">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                        <span>Departments added beyond the predefined route will use standard processing-time settings (a 30-minute default unless a specific override is configured for that department), not this document type's configured lifecycle SLA.</span>
+                                        <button type="button" class="btn-close" id="addedDeptWarningClose" aria-label="Close"></button>
+                                    </div>
                                 </div>
 
                                 <div class="mb-3">

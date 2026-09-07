@@ -4,19 +4,6 @@
 
 @section('pageTitle', 'Audit Portal')
 
-<style>
-    @media print {
-        body {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-        .card {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-        }
-    }
-</style>
-
 @section('content')
 
             <!-- Month Selector -->
@@ -35,7 +22,13 @@
                         max="{{ now()->format('Y-m') }}"
                         onchange="this.form.submit()"
                     >
-                    <button type="button" class="btn btn-sm btn-light text-secondary border-0" onclick="window.print()"><i class="bi bi-printer"></i> Export</button>
+                    <div class="dropdown d-inline">
+                        <button type="button" class="btn btn-sm btn-light text-secondary border-0 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-printer"></i> Export</button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <li><a class="dropdown-item" href="{{ route('audit.export', ['month' => $startOfMonth->format('Y-m')]) }}" data-no-spinner="true">Export as Excel</a></li>
+                            <li><button type="button" class="dropdown-item" onclick="window.print()">Export as Snapshot</button></li>
+                        </ul>
+                    </div>
                     @if($startOfMonth->format('Y-m') !== now()->format('Y-m'))
                         <a href="{{ request()->url() }}" class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-arrow-counterclockwise"></i> Current

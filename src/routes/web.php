@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Api\DocumentTypePolicyController;
+use App\Http\Controllers\ProfileController;
 
 // Public Guest Routes
 Route::middleware('guest')->group(function () {
@@ -18,8 +19,9 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Protected Application Routes (Phase 2 & 3 Pages)
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'no-cache'])->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/export', [App\Http\Controllers\DashboardController::class, 'exportExcel'])->name('dashboard.export');
     Route::get('/upload', [App\Http\Controllers\DocumentController::class, 'create'])->name('documents.create');
     Route::post('/upload', [App\Http\Controllers\DocumentController::class, 'store'])->name('documents.store');
     Route::get('/scan', [App\Http\Controllers\DocumentController::class, 'showScanPage'])->name('scan');
@@ -38,13 +40,21 @@ Route::middleware('auth')->group(function () {
     Route::post('/documents/{document_number}/update-routing', [App\Http\Controllers\DocumentController::class, 'updateRoutingPath'])->name('documents.update-routing');
     Route::post('/api/issues', [App\Http\Controllers\DocumentController::class, 'reportIssue'])->name('api.issues.report');
     Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log');
+    Route::post('/notifications/read-all', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
     Route::post('/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/announcements/read-all', [App\Http\Controllers\AnnouncementController::class, 'markAllAsRead'])->name('announcements.mark-all-read');
     Route::post('/announcements/{id}/read', [App\Http\Controllers\AnnouncementController::class, 'markAsRead'])->name('announcements.mark-read');
     Route::get('/api/document-types/{id}/policy', [DocumentTypePolicyController::class, 'show'])->name('api.document-types.policy');
+    Route::get('/api/notifications/feed', [App\Http\Controllers\NotificationController::class, 'feed'])->name('api.notifications.feed');
+
+    // Account Profile (self-service)
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
+    Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
+    Route::get('/api/profile/documents', [ProfileController::class, 'documentsData'])->name('api.profile.documents');
 });
 
 // Admin-only routes (gated via UserPolicy)
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'no-cache'])->group(function () {
     Route::get('/manage-users', [UserController::class, 'index'])->name('users')->can('viewAny', App\Models\User::class);
     Route::get('/api/users/data', [UserController::class, 'getUsersData'])->name('api.users.data')->can('viewAny', App\Models\User::class);
     Route::get('/api/users/stats', [UserController::class, 'stats'])->name('api.users.stats')->can('viewAny', App\Models\User::class);
@@ -53,8 +63,9 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/api/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('api.users.toggle-status')->can('toggleStatus', 'user');
 });
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'no-cache'])->group(function () {
     Route::get('/audit', [AuditorController::class, 'dashboard'])->name('audit.dashboard');
+    Route::get('/audit/export', [AuditorController::class, 'exportExcel'])->name('audit.export');
     Route::get('/audit/documents', [AuditorController::class, 'documents'])->name('audit.documents');
     Route::get('/api/audit/documents/data', [AuditorController::class, 'getDocumentData'])->name('api.audit.documents.data');
 

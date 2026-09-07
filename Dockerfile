@@ -15,10 +15,11 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
+    libzip-dev \
     zip \
     unzip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
-RUN docker-php-ext-install pdo_mysql mysqli mbstring exif pcntl bcmath gd
+RUN docker-php-ext-install pdo_mysql mysqli mbstring exif pcntl bcmath gd zip
 RUN echo "upload_max_filesize=32M" > /usr/local/etc/php/conf.d/uploads.ini \
  && echo "post_max_size=32M" >> /usr/local/etc/php/conf.d/uploads.ini
 RUN a2enmod rewrite
@@ -37,4 +38,17 @@ RUN chown -R www-data:www-data /var/www/html/src/storage /var/www/html/src/boots
 
 EXPOSE 80
 WORKDIR /var/www/html
-CMD sh -c "php src/artisan migrate --force && apache2-foreground"
+
+# Copy the entrypoint script into the container
+COPY docker-entrypoint.sh /usr/local/bin/
+
+# Ensure the script is executable
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Add a health check so Render knows when the app is actually ready
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost/ || exit 1
+
+# Set the entrypoint to our script, and pass the web server start command
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["apache2-foreground"]

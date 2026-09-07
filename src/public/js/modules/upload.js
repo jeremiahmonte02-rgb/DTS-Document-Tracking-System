@@ -14,6 +14,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const documentTypeSelect = document.getElementById('documentType');
     const doneQrBtn = document.getElementById('doneQrBtn');
 
+    // Policy-aware state used to drive the added-department SLA warning
+    let currentPolicyExists = false;
+    let currentPolicyIsImmutable = true;
+    let currentPolicyPredefinedDeptIds = [];
+    let addedDeptWarningDismissed = false;
+
     if (!uploadForm) return;
 
     // 2. Extract Data Collections from HTML Canvas attributes
@@ -35,6 +41,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function attachInteractiveListeners() {
         if (addToRouteBtn) addToRouteBtn.addEventListener('click', appendSelectedDepartmentsToChain);
         if (clearRouteBtn) clearRouteBtn.addEventListener('click', wipeRouteChainCanvas);
+
+        // Dismiss the added-department SLA warning without removing it permanently;
+        // it will reappear if the route is changed to add departments again.
+        const addedDeptWarningClose = document.getElementById('addedDeptWarningClose');
+        if (addedDeptWarningClose) {
+            addedDeptWarningClose.addEventListener('click', function() {
+                addedDeptWarningDismissed = true;
+                const warningEl = document.getElementById('addedDeptWarning');
+                if (warningEl) warningEl.classList.add('d-none');
+            });
+        }
         
         // Handle post-upload completion redirection loop
         if (doneQrBtn) {
@@ -94,8 +111,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 wipeRouteChainCanvas();
 
                 const typeId = this.value;
+                resetPolicyState();
                 if (!typeId) {
                     applyImmutableLockState(false);
+                    updateAddedDeptWarning();
                     return;
                 }
 
@@ -104,7 +123,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!response.ok) throw new Error('Fetch failed');
                     const data = await response.json();
 
-                    if (data.has_policy && data.predefined_route && data.predefined_route.length > 0) {
+                    currentPolicyExists = data.has_policy === true;
+                    currentPolicyIsImmutable = data.is_immutable === true;
+                    currentPolicyPredefinedDeptIds = (data.predefined_route || []).map(s => String(s.department_id));
+
+                    if (currentPolicyExists && data.predefined_route && data.predefined_route.length > 0) {
                         wipeRouteChainCanvas();
                         data.predefined_route.forEach(step => {
                             const li = document.createElement('li');
@@ -120,13 +143,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             routeListContainer.appendChild(li);
                         });
                         synchronizeSerializedRouteInputs();
-                        applyImmutableLockState(data.is_immutable === true);
+                        applyImmutableLockState(currentPolicyIsImmutable);
                     } else {
                         applyImmutableLockState(false);
                     }
                 } catch (err) {
                     applyImmutableLockState(false);
                 }
+                updateAddedDeptWarning();
             });
         }
 
@@ -224,6 +248,44 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         routesHiddenInput.value = JSON.stringify(serializedDataArr);
+        updateAddedDeptWarning();
+    }
+
+    function resetPolicyState() {
+        currentPolicyExists = false;
+        currentPolicyIsImmutable = true;
+        currentPolicyPredefinedDeptIds = [];
+        addedDeptWarningDismissed = false;
+    }
+
+    // Shows an informational warning when the current route contains departments that were
+    // added beyond the document type's predefined route and the policy is Mutable. Added
+    // departments fall back to standard processing-time settings (a 30-minute default unless a
+    // specific DepartmentDocumentSla override exists), not the document type's lifecycle SLA.
+    function updateAddedDeptWarning() {
+        const warningEl = document.getElementById('addedDeptWarning');
+        if (!warningEl) return;
+
+        if (!routeListContainer) {
+            warningEl.classList.add('d-none');
+            return;
+        }
+
+        let hasAddedDept = false;
+        routeListContainer.querySelectorAll('li').forEach(li => {
+            const deptId = li.getAttribute('data-dept-id');
+            if (deptId && currentPolicyPredefinedDeptIds.indexOf(String(deptId)) === -1) {
+                hasAddedDept = true;
+            }
+        });
+
+        const shouldShow = hasAddedDept && currentPolicyExists && !currentPolicyIsImmutable;
+        if (!shouldShow) {
+            warningEl.classList.add('d-none');
+            addedDeptWarningDismissed = false;
+        } else if (!addedDeptWarningDismissed) {
+            warningEl.classList.remove('d-none');
+        }
     }
 
     function applyImmutableLockState(isImmutable) {

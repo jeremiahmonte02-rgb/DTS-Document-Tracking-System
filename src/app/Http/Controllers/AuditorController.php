@@ -10,10 +10,13 @@ use App\Models\DocumentType;
 use App\Models\DepartmentDocumentSla;
 use App\Models\DocumentIssue;
 use App\Enums\ActivityCode;
+use App\Exports\AuditorDashboardSummaryExport;
 use App\Services\ActivityLogger;
 use App\Services\AnnouncementBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AuditorController extends Controller
 {
@@ -26,8 +29,36 @@ class AuditorController extends Controller
             abort(403, 'Unauthorized access to the Audit Portal.');
         }
 
-        $now = \Carbon\Carbon::now('Asia/Manila');
+        [$startOfMonth, $endOfMonth] = $this->resolveMonthRange($request);
 
+        $stats = $this->buildAuditorDashboardStats($startOfMonth, $endOfMonth);
+
+        return view('audit.dashboard', array_merge($stats, [
+            'startOfMonth' => $startOfMonth,
+        ]));
+    }
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        if (!auth()->user() || !auth()->user()->isAuditor()) {
+            abort(403, 'Unauthorized access to the Audit Portal.');
+        }
+
+        [$startOfMonth, $endOfMonth] = $this->resolveMonthRange($request);
+
+        $stats = $this->buildAuditorDashboardStats($startOfMonth, $endOfMonth);
+
+        return Excel::download(
+            new AuditorDashboardSummaryExport($stats, [
+                'month' => $startOfMonth->format('F Y'),
+                'scope' => 'Organization-wide',
+            ]),
+            'audit-dashboard-summary-' . $startOfMonth->format('Y-m') . '.xlsx'
+        );
+    }
+
+    private function resolveMonthRange(Request $request): array
+    {
         // Month filtering — auditors can always browse historical months
         try {
             $monthParam = $request->filled('month')
@@ -38,6 +69,13 @@ class AuditorController extends Controller
             $startOfMonth = now('Asia/Manila')->startOfMonth();
         }
         $endOfMonth = $startOfMonth->copy()->endOfMonth()->endOfDay();
+
+        return [$startOfMonth, $endOfMonth];
+    }
+
+    private function buildAuditorDashboardStats(\Carbon\Carbon $startOfMonth, \Carbon\Carbon $endOfMonth): array
+    {
+        $now = \Carbon\Carbon::now('Asia/Manila');
 
         // 1. Global KPI cards — scoped to selected month
         $totalDocuments = DB::table('documents')
@@ -62,7 +100,16 @@ class AuditorController extends Controller
 
         // 2. SLA-overdue count — live operational state, intentionally UNscoped by month
         $activeRoutes = \App\Models\DocumentRoute::join('documents', 'document_routes.document_id', '=', 'documents.id')
-            ->select('document_routes.*', 'documents.document_type_id')
+            ->select(
+                'document_routes.*',
+                'documents.document_type_id',
+                'documents.document_number',
+                'documents.title',
+                'documents.sender_department_id',
+                'documents.current_department_id',
+                'documents.status as document_status',
+                'documents.created_at as document_created_at'
+            )
             ->where('document_routes.status', 'current')
             ->whereNotIn('documents.status', ['completed', 'cancelled', 'rejected'])
             ->whereBetween('document_routes.created_at', [$startOfMonth, $endOfMonth])
@@ -74,16 +121,30 @@ class AuditorController extends Controller
 
         $documentTypes = \App\Models\DocumentType::get()->keyBy('id');
 
+        $departmentsMap = \App\Models\Department::pluck('name', 'id');
+
         $policies = \App\Models\DocumentRoutingPolicy::whereIn('document_type_id', $activeRoutes->pluck('document_type_id')->unique())
             ->get()->keyBy('document_type_id');
 
         $overdueCount = 0;
+        $overdueDocuments = [];
         foreach ($activeRoutes as $route) {
             $predefinedRoute = isset($policies[$route->document_type_id]) ? $policies[$route->document_type_id]->predefined_route : null;
             $allowedMinutes = \App\Services\SlaResolver::resolve($route->department_id, $route->document_type_id, $route->route_order ?? null, $predefinedRoute);
-            $deadline = \Carbon\Carbon::parse($route->updated_at, 'Asia/Manila')->copy()->addMinutes($allowedMinutes);
+            $referenceTime = \Carbon\Carbon::parse($route->updated_at, 'Asia/Manila');
+            $deadline = $referenceTime->copy()->addMinutes($allowedMinutes);
             if ($now->greaterThan($deadline)) {
                 $overdueCount++;
+                $overdueDocuments[] = [
+                    'document_number' => $route->document_number,
+                    'title' => $route->title,
+                    'document_type' => $documentTypes[$route->document_type_id]->name ?? 'N/A',
+                    'sender_department' => $departmentsMap[$route->sender_department_id] ?? 'N/A',
+                    'current_department' => $departmentsMap[$route->current_department_id] ?? ($departmentsMap[$route->department_id] ?? 'N/A'),
+                    'status' => ucwords(str_replace('_', ' ', $route->document_status)),
+                    'time_at_step' => $referenceTime->diffForHumans($now, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2),
+                    'uploaded_at' => \Carbon\Carbon::parse($route->document_created_at, 'Asia/Manila')->format('Y-m-d H:i'),
+                ];
             }
         }
 
@@ -112,8 +173,7 @@ class AuditorController extends Controller
         $resolvedIssues = DocumentIssue::whereBetween('created_at', [$startOfMonth, $endOfMonth])->where('status', 'resolved')->count();
 
         // SLA bottleneck distribution — overdue steps grouped by department (scoped to selected month)
-        $departmentsMap = \App\Models\Department::pluck('name', 'id');
-
+        // Note: $departmentsMap is defined above (section 2) and reused here.
         $bottleneckRoutes = \App\Models\DocumentRoute::join('documents', 'document_routes.document_id', '=', 'documents.id')
             ->select('document_routes.*', 'documents.document_type_id')
             ->whereIn('document_routes.status', ['current', 'received'])
@@ -220,15 +280,25 @@ class AuditorController extends Controller
             ->take(12)
             ->get();
 
-        return view('audit.dashboard', compact(
-            'totalDocuments', 'pendingDocuments', 'inTransitDocuments',
-            'completedDocuments', 'rejectedDocuments', 'overdueCount',
-            'statusMetrics', 'departmentDistribution',
-            'totalIssues', 'openIssues', 'resolvedIssues',
-            'slaBottlenecksByDept', 'issuesByDepartment',
-            'avgDwellHours', 'avgCompletionHours', 'activityFeed',
-            'startOfMonth'
-        ));
+        return [
+            'totalDocuments' => $totalDocuments,
+            'pendingDocuments' => $pendingDocuments,
+            'inTransitDocuments' => $inTransitDocuments,
+            'completedDocuments' => $completedDocuments,
+            'rejectedDocuments' => $rejectedDocuments,
+            'overdueCount' => $overdueCount,
+            'overdueDocuments' => $overdueDocuments,
+            'statusMetrics' => $statusMetrics,
+            'departmentDistribution' => $departmentDistribution,
+            'totalIssues' => $totalIssues,
+            'openIssues' => $openIssues,
+            'resolvedIssues' => $resolvedIssues,
+            'slaBottlenecksByDept' => $slaBottlenecksByDept,
+            'issuesByDepartment' => $issuesByDepartment,
+            'avgDwellHours' => $avgDwellHours,
+            'avgCompletionHours' => $avgCompletionHours,
+            'activityFeed' => $activityFeed,
+        ];
     }
 
     /**
@@ -793,7 +863,14 @@ class AuditorController extends Controller
             ->latest()
             ->paginate(25);
 
-        return view('audit.issues', compact('issues'));
+        $issueCounts = [
+            'total' => DocumentIssue::count(),
+            'open' => DocumentIssue::where('status', 'open')->count(),
+            'in_progress' => DocumentIssue::where('status', 'in_progress')->count(),
+            'resolved' => DocumentIssue::where('status', 'resolved')->count(),
+        ];
+
+        return view('audit.issues', compact('issues', 'issueCounts'));
     }
 
     public function storePolicy(Request $request)
@@ -811,14 +888,24 @@ class AuditorController extends Controller
         $routeArray = $validated['predefined_route'] ? json_decode($validated['predefined_route'], true) : null;
 
         if ($routeArray) {
+            $totalSlaProvided = $request->filled('total_lifecycle_sla');
+
             foreach ($routeArray as $index => $step) {
-                if (isset($step['sla_minutes']) && (!is_numeric($step['sla_minutes']) || $step['sla_minutes'] < 1)) {
+                $stepSla = $step['sla_minutes'] ?? null;
+                if ($totalSlaProvided) {
+                    if (!is_numeric($stepSla) || $stepSla < 1) {
+                        return redirect()->back()->withErrors(['predefined_route' => "Step " . ($index + 1) . " SLA must be a positive number."]);
+                    }
+                } elseif (isset($step['sla_minutes']) && (!is_numeric($step['sla_minutes']) || $step['sla_minutes'] < 1)) {
                     return redirect()->back()->withErrors(['predefined_route' => "Step " . ($index + 1) . " SLA must be a positive number."]);
                 }
             }
 
-            if ($request->filled('total_lifecycle_sla')) {
+            if ($totalSlaProvided) {
                 $totalSlaLimit = (int) $request->input('total_lifecycle_sla');
+                if (count($routeArray) > $totalSlaLimit) {
+                    return redirect()->back()->withErrors(['predefined_route' => "Total Lifecycle SLA ($totalSlaLimit mins) is too low to allocate to " . count($routeArray) . " departments. Increase the total or reduce the number of route steps."]);
+                }
                 $currentSum = 0;
                 foreach ($routeArray as $step) {
                     $currentSum += (int) ($step['sla_minutes'] ?? 0);

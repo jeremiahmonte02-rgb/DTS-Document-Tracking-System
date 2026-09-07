@@ -58,15 +58,17 @@
                     <form method="POST" action="{{ route('login.submit') }}" autocomplete="on" class="px-12 pb-12 space-y-6" onsubmit="let btn = this.querySelector('button[type=submit]'); btn.disabled = true; btn.innerHTML = '<span class=\'flex items-center justify-center gap-2\'><span class=\'spinner-border spinner-border-sm\' role=\'status\' aria-hidden=\'true\'></span> Signing In...</span>';">
                         @csrf
 
-                        @if ($errors->any())
-                            <div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-sm mb-2">
-                                <ul class="mb-0 ps-4 list-disc space-y-0.5">
-                                    @foreach ($errors->all() as $error)
-                                        <li>{{ $error }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        @endif
+                        @unless (session('department_deactivated'))
+                            @if ($errors->any())
+                                <div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-sm mb-2">
+                                    <ul class="mb-0 ps-4 list-disc space-y-0.5">
+                                        @foreach ($errors->all() as $error)
+                                            <li>{{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                        @endunless
 
                         <div class="space-y-1">
                             <label for="email" class="block text-sm font-semibold text-gray-800">Email Address</label>
@@ -123,5 +125,43 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ asset('js/modules/login.js') }}"></script>
+
+    @if (session('department_deactivated'))
+        <!-- Department Deactivated Error Modal -->
+        <div class="modal fade" id="departmentDeactivatedModal" tabindex="-1" aria-labelledby="departmentDeactivatedLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title" id="departmentDeactivatedLabel">
+                            <i class="bi bi-shield-x"></i> Access Denied
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center">
+                            <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem;"></i>
+                            <h5 class="mt-3">Department Deactivated</h5>
+                            <p class="text-muted">
+                                Your department has been deactivated. Please contact an administrator to restore access.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle"></i> Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    new bootstrap.Modal(document.getElementById('departmentDeactivatedModal')).show();
+                }
+            });
+        </script>
+    @endif
 </body>
 </html>

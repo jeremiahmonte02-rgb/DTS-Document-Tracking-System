@@ -192,6 +192,34 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade dept-modal" id="deactivateDepartmentConfirmModal" tabindex="-1" aria-labelledby="deactivateDepartmentConfirmLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning-subtle">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="deactivate-warning-icon"><i class="bi bi-exclamation-triangle"></i></span>
+                        <h5 class="modal-title mb-0" id="deactivateDepartmentConfirmLabel">
+                            Deactivate Department
+                        </h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body deactivate-confirm-body">
+                    <p class="mb-0">
+                        Are you sure you want to deactivate <strong id="deactivateDeptName"></strong>?
+                        Users in this department and the upload screen will no longer be able to select it.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeactivateBtn">
+                        <i class="bi bi-pause-circle"></i> Deactivate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')

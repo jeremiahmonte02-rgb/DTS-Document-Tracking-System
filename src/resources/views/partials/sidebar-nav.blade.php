@@ -66,7 +66,6 @@
                 <a class="nav-link" href="/inbox">
                     <i class="bi bi-inbox"></i>
                     <span>Inbox</span>
-                    <span class="badge bg-danger ms-auto">{{ $unreadNotificationsCount ?? 0 }}</span>
                 </a>
             </li>
             <li class="nav-item">

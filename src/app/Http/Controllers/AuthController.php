@@ -44,6 +44,15 @@ class AuthController extends Controller
                 ]);
             }
 
+            // 3b. Block users whose assigned department has been deactivated
+            if ($user->department_id && $user->department && !$user->department->is_active) {
+                Auth::logout();
+                $request->session()->flash('department_deactivated', true);
+                throw ValidationException::withMessages([
+                    'email' => 'Your department has been deactivated. Please contact an administrator.',
+                ]);
+            }
+
             // 4. Securely regenerate the session identifier string
             $request->session()->regenerate();
 

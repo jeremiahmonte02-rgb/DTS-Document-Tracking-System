@@ -8,13 +8,20 @@ use App\Models\DocumentType;
 class SlaResolver
 {
     /**
+     * Fallback processing time (minutes) when neither a policy step SLA, a
+     * department-document-type override, nor a document-type default applies.
+     * Centralized here so the value lives in exactly one place.
+     */
+    public const DEFAULT_FALLBACK_MINUTES = 30;
+
+    /**
      * Resolve allowed processing time in minutes for a specific route step.
      *
      * Priority Hierarchy:
-     * 1. Policy Step SLA (per route_order override in predefined_route JSON)
+     * 1. Policy Step SLA (matched by department_id in predefined_route JSON)
      * 2. Department-Document Type SLA override
      * 3. Document Type default processing time
-     * 4. Hardcoded Fallback (1440 mins / 24h)
+     * 4. Fallback (SlaResolver::DEFAULT_FALLBACK_MINUTES, 30 mins)
      */
     public static function resolve(
         int $departmentId,
@@ -22,10 +29,14 @@ class SlaResolver
         ?int $routeOrder = null,
         ?array $predefinedRoute = null
     ): int {
-        // Priority 1: Policy step SLA
-        if ($routeOrder !== null && !empty($predefinedRoute)) {
+        // Priority 1: Policy step SLA, matched by department_id (not route_order).
+        // Matching by department_id keeps the correct sla_minutes even when a Mutable
+        // route is reordered or has extra departments inserted, since a step's route_order
+        // can change without it being a different department. Matching by route_order alone
+        // would misattribute another department's configured sla_minutes to the wrong step.
+        if (!empty($predefinedRoute)) {
             foreach ($predefinedRoute as $step) {
-                if ((int)($step['route_order'] ?? 0) === (int)$routeOrder
+                if ((int)($step['department_id'] ?? 0) === $departmentId
                     && isset($step['sla_minutes'])
                     && is_numeric($step['sla_minutes'])
                     && $step['sla_minutes'] > 0
@@ -50,7 +61,7 @@ class SlaResolver
             return (int) $docType->default_processing_time;
         }
 
-        // Priority 4: System Fallback (24 hours)
-        return 1440;
+        // Priority 4: System Fallback
+        return self::DEFAULT_FALLBACK_MINUTES;
     }
 }

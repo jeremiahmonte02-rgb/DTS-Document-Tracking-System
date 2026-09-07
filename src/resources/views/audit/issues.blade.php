@@ -13,10 +13,10 @@
             </div>
 
             @php
-                $totalIssues = $issues->total();
-                $openCount = $issues->where('status', 'open')->count();
-                $inProgressCount = $issues->where('status', 'in_progress')->count();
-                $resolvedCount = $issues->where('status', 'resolved')->count();
+                $totalIssues = $issueCounts['total'] ?? $issues->total();
+                $openCount = $issueCounts['open'] ?? 0;
+                $inProgressCount = $issueCounts['in_progress'] ?? 0;
+                $resolvedCount = $issueCounts['resolved'] ?? 0;
             @endphp
 
             <div class="row g-3 mb-4">
@@ -106,7 +106,7 @@
                                     </a>
                                 </td>
                                 <td>
-                                    <span class="meta-cell">{{ $issue->issue_type ?? 'General' }}</span>
+                                    <span class="meta-cell">{{ $issue->type ?? 'General' }}</span>
                                 </td>
                                 <td>
                                     <span class="meta-cell">{{ $issue->assignedDepartment->name ?? 'Unassigned' }}</span>

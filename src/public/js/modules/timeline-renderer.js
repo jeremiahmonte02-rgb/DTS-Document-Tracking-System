@@ -23,7 +23,7 @@
         list.forEach(function (ev) {
             var processingHtml = '';
 
-            if (ev.processing_time) {
+            if (ev.processing_time && ev.event_type !== 'issue') {
                 var timeClass = ev.is_sla_breached ? 'text-danger fw-bold' : 'text-muted opacity-75 fw-semibold';
                 processingHtml = '<span> · <span class="' + timeClass + '">Processing Time: ' + escapeHtml(ev.processing_time) + '</span>';
                 if (ev.is_sla_breached) {

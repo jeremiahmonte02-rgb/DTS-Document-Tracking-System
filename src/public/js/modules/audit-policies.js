@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const lifecycleTimeValue = document.getElementById('lifecycle_time_value');
     const lifecycleTimeUnit = document.getElementById('lifecycle_time_unit');
     const savePolicyBtn = document.querySelector('#policyForm button[type="submit"]');
+    var slaOverLimitToastShown = false;
+    var slaTooLowToastShown = false;
+    var slaZeroStepToastShown = false;
 
     const policyForm = document.getElementById('policyForm');
     const confirmModalEl = document.getElementById('savePolicyConfirmModal');
@@ -21,7 +24,12 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
 
             if (typeof validateSlaTotals === 'function') validateSlaTotals();
-            if (savePolicyBtn && savePolicyBtn.disabled) return;
+            if (savePolicyBtn && savePolicyBtn.disabled) {
+                if (typeof showToast === 'function') {
+                    showToast('Cannot save: Total step SLA exceeds the configured Lifecycle SLA.', 'error');
+                }
+                return;
+            }
 
             const nameEl = document.getElementById('editorTitle');
             const modalName = document.getElementById('modalDocTypeName');
@@ -63,6 +71,13 @@ document.addEventListener('DOMContentLoaded', function () {
         var total = parseInt(totalHiddenSla.value);
         if (isNaN(total) || total < 1) {
             if (errorMsg) errorMsg.textContent = '';
+            var tooLowMsgEarly = document.getElementById('slaTooLowError');
+            if (tooLowMsgEarly) tooLowMsgEarly.textContent = '';
+            var zeroMsgEarly = document.getElementById('slaZeroStepError');
+            if (zeroMsgEarly) zeroMsgEarly.textContent = '';
+            slaOverLimitToastShown = false;
+            slaTooLowToastShown = false;
+            slaZeroStepToastShown = false;
             savePolicyBtn.disabled = false;
             return;
         }
@@ -82,10 +97,72 @@ document.addEventListener('DOMContentLoaded', function () {
                 lifecycleTimeValue.closest('.mb-4').appendChild(errorMsg);
             }
             errorMsg.textContent = 'Error: Total step SLA (' + sum + ' mins) exceeds lifecycle SLA (' + total + ' mins).';
+            if (!slaOverLimitToastShown && typeof showToast === 'function') {
+                showToast('Error: Total step SLA (' + sum + ' mins) exceeds lifecycle SLA (' + total + ' mins).', 'error');
+            }
+            slaOverLimitToastShown = true;
             savePolicyBtn.disabled = true;
         } else {
             if (errorMsg) errorMsg.textContent = '';
+            slaOverLimitToastShown = false;
             savePolicyBtn.disabled = false;
+        }
+
+        var stepCount = routeList.querySelectorAll('li').length;
+        var tooLow = stepCount > 0 && total < stepCount;
+
+        var tooLowMsg = document.getElementById('slaTooLowError');
+        if (tooLow) {
+            if (!tooLowMsg) {
+                tooLowMsg = document.createElement('div');
+                tooLowMsg.id = 'slaTooLowError';
+                tooLowMsg.className = 'text-danger small mt-1';
+                lifecycleTimeValue.closest('.mb-4').appendChild(tooLowMsg);
+            }
+            tooLowMsg.textContent = 'Error: Total Lifecycle SLA (' + total + ' mins) is too low to allocate to ' + stepCount + ' departments. Increase the total or reduce the number of route steps.';
+            if (!slaTooLowToastShown && typeof showToast === 'function') {
+                showToast('Error: Total Lifecycle SLA (' + total + ' mins) is too low to allocate to ' + stepCount + ' departments. Increase the total or reduce the number of route steps.', 'error');
+            }
+            slaTooLowToastShown = true;
+            savePolicyBtn.disabled = true;
+        } else {
+            if (tooLowMsg) tooLowMsg.textContent = '';
+            slaTooLowToastShown = false;
+        }
+
+        var zeroDepts = [];
+        slaInputs.forEach(function (input) {
+            var val = parseInt(input.value);
+            if (isNaN(val) || val < 1) {
+                var li = input.closest('li');
+                var nameEl = li ? li.querySelector('span.fw-medium') : null;
+                zeroDepts.push(nameEl ? nameEl.textContent.trim() : 'Unknown department');
+            }
+        });
+
+        var zeroMsg = document.getElementById('slaZeroStepError');
+        if (zeroDepts.length > 0 && !tooLow) {
+            var zeroNames = zeroDepts.length > 1
+                ? zeroDepts.join(', ') + ' have 0 minutes allocated.'
+                : zeroDepts[0] + ' has 0 minutes allocated.';
+            var zeroEscaped = zeroDepts.length > 1
+                ? zeroDepts.map(escapeHtml).join(', ') + ' have 0 minutes allocated.'
+                : escapeHtml(zeroDepts[0]) + ' has 0 minutes allocated.';
+            if (!zeroMsg) {
+                zeroMsg = document.createElement('div');
+                zeroMsg.id = 'slaZeroStepError';
+                zeroMsg.className = 'text-danger small mt-1';
+                lifecycleTimeValue.closest('.mb-4').appendChild(zeroMsg);
+            }
+            zeroMsg.textContent = 'Error: ' + zeroNames + ' Each department needs at least 1 minute.';
+            if (!slaZeroStepToastShown && typeof showToast === 'function') {
+                showToast('Error: ' + zeroEscaped + ' Each department needs at least 1 minute.', 'error');
+            }
+            slaZeroStepToastShown = true;
+            savePolicyBtn.disabled = true;
+        } else {
+            if (zeroMsg) zeroMsg.textContent = '';
+            slaZeroStepToastShown = false;
         }
     };
 

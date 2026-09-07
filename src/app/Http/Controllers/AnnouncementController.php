@@ -34,4 +34,40 @@ class AnnouncementController extends Controller
             'message' => 'Announcement marked as read.',
         ], 200);
     }
+
+    public function markAllAsRead(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        $unreadIds = Announcement::query()
+            ->whereDoesntHave('reads', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            })
+            ->pluck('id');
+
+        if ($unreadIds->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No unread announcements.',
+            ], 200);
+        }
+
+        $now = now();
+        $rows = $unreadIds->map(function ($announcementId) use ($userId, $now) {
+            return [
+                'announcement_id' => $announcementId,
+                'user_id' => $userId,
+                'read_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        })->all();
+
+        DB::table('announcement_reads')->insertOrIgnore($rows);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'All announcements marked as read.',
+        ], 200);
+    }
 }

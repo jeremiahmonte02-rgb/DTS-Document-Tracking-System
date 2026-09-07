@@ -570,31 +570,37 @@
         // --- Document Action Functions ---
 
         function markDocumentAsComplete(documentNumber) {
-            if (!confirm('Are you sure you want to officially mark this document as complete? This will finalize its routing record.')) return;
+            window.showConfirmModal({
+                title: 'Mark Document as Complete',
+                message: 'Are you sure you want to officially mark this document as complete? This will finalize its routing record.',
+                confirmLabel: 'Mark as Complete',
+                variant: 'success',
+                onConfirm: function () {
+                    const token = "{{ csrf_token() }}";
 
-            const token = "{{ csrf_token() }}";
-
-            fetch(`/documents/${documentNumber}/complete`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': token
+                    fetch(`/documents/${documentNumber}/complete`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': token
+                        }
+                    })
+                    .then(response => {
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            window.location.reload();
+                        } else {
+                            alert("Backend Error: " + (data.message || 'An error occurred.'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Network Fetch Failure:", error);
+                        alert("Network Error: Check browser console for network stream logs.");
+                    });
                 }
-            })
-            .then(response => {
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert("Backend Error: " + (data.message || 'An error occurred.'));
-                }
-            })
-            .catch(error => {
-                console.error("Network Fetch Failure:", error);
-                alert("Network Error: Check browser console for network stream logs.");
             });
         }
 

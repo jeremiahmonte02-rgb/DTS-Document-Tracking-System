@@ -163,6 +163,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (doc.computed_status === 'Pending Transfer') badgeClass = 'bg-warning text-dark';
             if (doc.computed_status === 'In Transit') badgeClass = 'bg-info text-white';
             if (doc.computed_status === 'Received' || doc.computed_status === 'Completed') badgeClass = 'bg-success text-white';
+            if (doc.computed_status === 'Returned For Correction') badgeClass = 'bg-warning text-dark';
 
             return `
                 <tr data-doc-number="${doc.document_number}">

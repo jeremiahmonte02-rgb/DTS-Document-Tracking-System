@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Represents an authenticated system user with an assigned department and role.
  */
-#[Fillable(['name', 'email', 'password', 'department_id', 'role_id', 'status'])]
+#[Fillable(['name', 'email', 'password', 'department_id', 'role_id', 'status', 'avatar_path'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -71,7 +71,17 @@ class User extends Authenticatable
     }
 
     /**
- * Determine whether this user holds the system administrator role.
+     * Get the public URL for the user's avatar, or null if none is set.
+     *
+     * @return string|null
+     */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_path ? asset('storage/' . $this->avatar_path) : null;
+    }
+
+    /**
+     * Determine whether this user holds the system administrator role.
  *
  * @return bool
  */
