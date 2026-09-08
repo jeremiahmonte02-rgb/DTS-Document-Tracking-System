@@ -115,7 +115,132 @@ function createDropdownItem(item) {
     return li;
 }
 
-function backfillDropdown() {
+function renderDropdownFromFeed(data) {
+        updateBadgeFromCounts(data.totalUnread);
+        var menu = document.querySelector('.notification-menu');
+        if (!menu) return;
+
+        // Full re-render: drop every previously rendered row (items,
+        // dividers, stale empty-state markup) except the sticky footer
+        // itself, then rebuild the list from the fresh feed in the exact
+        // order returned (newest-first). This keeps the DOM exactly in
+        // sync with the server on every call: a brand-new arrival lands
+        // on top, anything outside the feed's top-10 window drops off,
+        // and no stale rows can survive — regardless of whether this
+        // call was triggered by a dismiss or a WebSocket nudge.
+        var footer = menu.querySelector('.dropdown-footer-sticky');
+        Array.prototype.slice.call(menu.children).forEach(function(child) {
+            if (child !== footer) child.remove();
+        });
+
+        var feed = data.feed || [];
+        if (feed.length === 0) {
+            ensureDropdownEmptyState();
+            return;
+        }
+
+        feed.forEach(function(item, idx) {
+            var li = createDropdownItem(item);
+            if (footer) {
+                menu.insertBefore(li, footer);
+            } else {
+                menu.appendChild(li);
+            }
+            if (idx < feed.length - 1) {
+                var divider = document.createElement('li');
+                divider.innerHTML = '<hr class="dropdown-divider">';
+                if (footer) {
+                    menu.insertBefore(divider, footer);
+                } else {
+                    menu.appendChild(divider);
+                }
+            }
+            // No per-item binding here: clicks are handled by the single
+            // delegated document-level listeners
+            // (setupNotificationMarkRead/setupAnnouncementMarkRead), which
+            // resolve the clicked row at event time and therefore cover
+            // freshly re-rendered rows automatically.
+        });
+}
+
+// Rebuild the dashboard announcement banner (.announcements-banner) from a
+// fresh feed array. Mirrors partials/announcement-banner.blade.php exactly:
+// icon block, fw-semibold title, full untruncated message, relative time,
+// and a btn-close carrying data-announcement-id (handled by the delegated
+// setupAnnouncementMarkRead listener — no extra binding needed here).
+// Shows max 3 newest announcements, matching the server's take(3). An
+// empty result removes the wrapper, matching the Blade
+// @if(...->isNotEmpty()) behavior. The feed's message field is already
+// full text (truncation is dropdown-Blade-only), so it is reused as-is.
+function renderAnnouncementBanner(feed) {
+    var items = (feed || []).filter(function(it) { return it && it.type === 'announcement'; }).slice(0, 3);
+    var wrap = document.querySelector('.announcements-banner');
+    if (items.length === 0) {
+        if (wrap) wrap.remove();
+        return;
+    }
+    if (!wrap) {
+        // Empty->nonempty transition: the Blade partial renders no wrapper
+        // at all when there is nothing to show, so create it in the same
+        // position (after the first content row). Only on dashboards, which
+        // are the sole pages including the partial (marked by
+        // .dashboard-filter-bar); never inject a banner anywhere else.
+        if (!document.querySelector('.dashboard-filter-bar')) return;
+        var container = document.querySelector('.container-fluid');
+        if (!container) return;
+        wrap = document.createElement('div');
+        wrap.className = 'announcements-banner mb-4';
+        var firstRow = container.querySelector(':scope > .row');
+        if (firstRow) container.insertBefore(wrap, firstRow.nextSibling);
+        else container.insertBefore(wrap, container.firstChild);
+    } else {
+        while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+    }
+    items.forEach(function(item) {
+        var banner = document.createElement('div');
+        banner.className = 'announcement-banner';
+        banner.setAttribute('role', 'alert');
+        banner.setAttribute('data-announcement-id', item.id);
+
+        var icon = document.createElement('div');
+        icon.className = 'announcement-icon';
+        var iconI = document.createElement('i');
+        iconI.className = 'bi bi-megaphone-fill';
+        icon.appendChild(iconI);
+
+        var content = document.createElement('div');
+        content.className = 'announcement-content';
+        var title = document.createElement('div');
+        title.className = 'fw-semibold';
+        title.textContent = item.title || '';
+        var message = document.createElement('div');
+        message.className = 'small';
+        message.textContent = item.message || '';
+        var time = document.createElement('div');
+        time.className = 'small text-muted mt-1';
+        time.textContent = item.time_ago || '';
+        content.appendChild(title);
+        content.appendChild(message);
+        content.appendChild(time);
+
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'btn-close';
+        close.setAttribute('aria-label', 'Dismiss announcement');
+        close.setAttribute('data-announcement-id', item.id);
+
+        banner.appendChild(icon);
+        banner.appendChild(content);
+        banner.appendChild(close);
+        wrap.appendChild(banner);
+    });
+}
+
+// Single shared refresh: ONE fetch, both surfaces. Every dismiss path and
+// the Reverb nudge converge here so the dropdown and the banner can never
+// disagree (two parallel fetches could straddle a state change between
+// the two calls and briefly show inconsistent data).
+function refreshAnnouncementSurfaces() {
     if (isBackfilling) return;
     isBackfilling = true;
 
@@ -125,79 +250,32 @@ function backfillDropdown() {
     })
     .then(function(r) { if (!r.ok) throw new Error('Feed fetch failed ' + r.status); return r.json(); })
     .then(function(data) {
-        updateBadgeFromCounts(data.totalUnread);
-        var menu = document.querySelector('.notification-menu');
-        if (!menu) return;
-        var renderedIds = new Set();
-        menu.querySelectorAll('[data-notification-id]').forEach(function(el) { renderedIds.add('notification-' + el.getAttribute('data-notification-id')); });
-        menu.querySelectorAll('[data-announcement-id]').forEach(function(el) { renderedIds.add('announcement-' + el.getAttribute('data-announcement-id')); });
-        var expected = Math.min(data.totalUnread, 10);
-        var currentCount = renderedIds.size;
-        if (currentCount >= expected) {
-            if (expected === 0) ensureDropdownEmptyState();
-            return;
-        }
-        var toAdd = [];
-        (data.feed || []).forEach(function(item) {
-            var key = item.type + '-' + item.id;
-            if (!renderedIds.has(key) && toAdd.length < (expected - currentCount)) {
-                toAdd.push(item);
-            }
-        });
-        var footer = menu.querySelector('.dropdown-footer-sticky');
-        if (footer && currentCount > 0 && toAdd.length > 0) {
-            var preDivider = document.createElement('li');
-            preDivider.innerHTML = '<hr class="dropdown-divider">';
-            menu.insertBefore(preDivider, footer);
-        }
-        toAdd.forEach(function(item, idx) {
-            var li = createDropdownItem(item);
-            if (footer) {
-                menu.insertBefore(li, footer);
-                if (idx < toAdd.length - 1) {
-                    var divider = document.createElement('li');
-                    divider.innerHTML = '<hr class="dropdown-divider">';
-                    menu.insertBefore(divider, footer);
-                }
-            } else {
-                menu.appendChild(li);
-                if (idx < toAdd.length - 1) {
-                    var divider = document.createElement('li');
-                    divider.innerHTML = '<hr class="dropdown-divider">';
-                    menu.appendChild(divider);
-                }
-            }
-            var el = li.querySelector('[data-notification-id], [data-announcement-id]');
-            if (el) {
-                el.addEventListener('click', function handler(e) {
-                    // Re-attach per-item logic by re-dispatching to existing setup would be complex;
-                    // simplest is to reload the page's handlers via re-binding, but we can just
-                    // attach a one-off listener that mirrors the original behavior:
-                    // For brevity, rely on the fact that the new item will be handled on next page load;
-                    // immediate click on backfilled item will be handled by the next full reload.
-                    // To make it work immediately, we attach a minimal handler:
-                    var id = el.getAttribute('data-notification-id') || el.getAttribute('data-announcement-id');
-                    var isNotif = !!el.getAttribute('data-notification-id');
-                    var url = isNotif ? '/notifications/' + encodeURIComponent(id) + '/read' : '/announcements/' + encodeURIComponent(id) + '/read';
-                    e.preventDefault();
-                    fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' }, keepalive: true })
-                        .then(function(r){ if(!r.ok) throw new Error(); return r.json(); })
-                        .then(function(d){ if(!d.success) throw new Error(); var l=el.closest('li'); var p=l?l.previousElementSibling:null; var n=l?l.nextElementSibling:null; if(l) l.remove(); if(p && n && p.querySelector('hr') && n.querySelector('hr')) n.remove(); if(d.totalUnread!==undefined) updateBadgeFromCounts(d.totalUnread); })
-                        .catch(function(){});
-                });
-            }
-        });
-        if (expected === 0) ensureDropdownEmptyState();
+        renderDropdownFromFeed(data);
+        renderAnnouncementBanner(data.feed);
     })
     .catch(function(e) { console.warn('Backfill failed:', e); })
     .finally(function() { isBackfilling = false; });
 }
 
+// Historic entry point kept for existing callers (per-item dismiss
+// handlers, Reverb listener); now refreshes both announcement surfaces
+// from the single shared fetch above.
+function backfillDropdown() {
+    refreshAnnouncementSurfaces();
+}
+
 // Mark a notification as read in the background, decrement the bell badge,
 // then navigate the user to the referenced document.
 function setupNotificationMarkRead() {
-    document.querySelectorAll('.notification-item[data-notification-id]').forEach(function(item) {
-        item.addEventListener('click', function(event) {
+    // Single delegated implementation (capture phase): dropdown rows are
+    // destroyed and re-created by backfillDropdown(), so setup-time direct
+    // binding would miss every re-rendered row. Resolving the clicked item
+    // at event time covers page-load and re-rendered items identically.
+    // Capture preserves the long-standing ordering relative to Bootstrap's
+    // document-level dropdown handler.
+    document.addEventListener('click', function(event) {
+        var item = event.target && event.target.closest ? event.target.closest('.notification-item[data-notification-id]') : null;
+        if (!item) return;
             event.preventDefault();
 
             const notificationId = item.getAttribute('data-notification-id');
@@ -270,15 +348,20 @@ function setupNotificationMarkRead() {
             } else if (targetUrl === window.location.href) {
                 if (typeof hideSpinner === 'function') hideSpinner();
             }
-        });
-    });
+    }, true);
 }
 
 // Mark an announcement as read/dismissed for the current user. Handles both
 // the bell dropdown items and the dashboard banner close buttons.
 function setupAnnouncementMarkRead() {
-    document.querySelectorAll('[data-announcement-id]').forEach(function(el) {
-        el.addEventListener('click', function(event) {
+    // Single delegated implementation (capture phase) — same rationale as
+    // setupNotificationMarkRead: backfillDropdown() re-creates these rows,
+    // so only event-time resolution covers both page-load and re-rendered
+    // items with one code path. Covers dropdown items and dashboard
+    // banner close buttons alike.
+    document.addEventListener('click', function(event) {
+        var el = event.target && event.target.closest ? event.target.closest('[data-announcement-id]') : null;
+        if (!el) return;
             const announcementId = el.getAttribute('data-announcement-id');
             if (!announcementId) return;
 
@@ -342,8 +425,7 @@ function setupAnnouncementMarkRead() {
                     hideSpinner();
                 }
             });
-        });
-    });
+    }, true);
 }
 
 function setupDismissAll() {
@@ -402,9 +484,10 @@ function setupDismissAll() {
                 }
             }
 
-            document.querySelectorAll('.announcement-banner').forEach(function(b) { b.remove(); });
-            var bannerWrap = document.querySelector('.announcements-banner');
-            if (bannerWrap && bannerWrap.children.length === 0) bannerWrap.remove();
+            // Banner end state comes from the shared refresh (single
+            // fetch, server-reconciled) like every other dismiss path —
+            // no separate inline banner logic here.
+            refreshAnnouncementSurfaces();
 
             if (menu) {
                 var hasItems = menu.querySelectorAll('[data-notification-id], [data-announcement-id]').length > 0;

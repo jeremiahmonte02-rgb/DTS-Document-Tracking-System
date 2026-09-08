@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Events\AnnouncementCreated;
 use App\Models\Announcement;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Builds announcement records when an auditor (or admin) changes a policy
@@ -20,7 +22,7 @@ class AnnouncementBuilder
         ?Model $subject = null,
         ?int $triggeredByUserId = null
     ): Announcement {
-        return Announcement::create([
+        $announcement = Announcement::create([
             'action_type' => $actionType,
             'title' => $title,
             'message' => $message,
@@ -28,6 +30,14 @@ class AnnouncementBuilder
             'subject_type' => $subject ? get_class($subject) : null,
             'subject_id' => $subject?->getKey(),
         ]);
+
+        try {
+            event(new AnnouncementCreated($announcement));
+        } catch (\Throwable $e) {
+            Log::warning('Announcement broadcast failed for announcement ' . $announcement->id . ': ' . $e->getMessage());
+        }
+
+        return $announcement;
     }
 
     /**

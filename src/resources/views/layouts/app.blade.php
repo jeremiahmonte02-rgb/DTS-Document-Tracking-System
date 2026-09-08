@@ -124,6 +124,30 @@
     <!-- Auth Context -->
     @include('partials.auth-context')
 
+    <!-- Real-time (Laravel Reverb via CDN; plain script tags per app convention) -->
+    <script src="https://cdn.jsdelivr.net/npm/pusher-js@8.4.0/dist/web/pusher.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.19.0/dist/echo.iife.js"></script>
+    <script>
+        (function () {
+            try {
+                if (typeof Echo === 'undefined' || typeof Pusher === 'undefined') return;
+                window.Pusher = Pusher;
+                window.Echo = new Echo({
+                    broadcaster: 'reverb',
+                    key: "{{ config('broadcasting.connections.reverb.key') }}",
+                    wsHost: window.location.hostname,
+                    wsPort: {{ (int) config('broadcasting.connections.reverb.options.port', 8080) }},
+                    wssPort: {{ (int) config('broadcasting.connections.reverb.options.port', 8080) }},
+                    forceTLS: {{ config('broadcasting.connections.reverb.options.scheme', 'http') === 'https' ? 'true' : 'false' }},
+                    enabledTransports: ['ws', 'wss']
+                });
+            } catch (e) {
+                window.Echo = undefined;
+            }
+        })();
+    </script>
+    <script src="{{ asset('js/modules/realtime-announcements.js') }}?v={{ filemtime(public_path('js/modules/realtime-announcements.js')) }}"></script>
+
     <!-- Global JS -->
     <script src="{{ asset('js/main.js') }}?v={{ filemtime(public_path('js/main.js')) }}"></script>
 
