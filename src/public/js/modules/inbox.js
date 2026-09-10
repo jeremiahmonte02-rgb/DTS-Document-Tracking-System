@@ -25,6 +25,10 @@ document.addEventListener('DOMContentLoaded', function () {
     initEventListeners();
     fetchInboxRecords();
 
+    // Exposed for the live Inbox nudge (realtime-inbox.js re-runs this exact
+    // table fetch on DocumentRouteUpdated). No behavior change otherwise.
+    window.fetchInboxRecords = fetchInboxRecords;
+
     function initEventListeners() {
         if (searchInput) {
             searchInput.addEventListener('input', debounce(function (e) {

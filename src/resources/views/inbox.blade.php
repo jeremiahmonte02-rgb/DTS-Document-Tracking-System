@@ -134,4 +134,5 @@
 
 @section('scripts')
     <script src="{{ asset('js/modules/inbox.js') }}?v={{ filemtime(public_path('js/modules/inbox.js')) }}"></script>
+    <script src="{{ asset('js/modules/realtime-inbox.js') }}?v={{ filemtime(public_path('js/modules/realtime-inbox.js')) }}"></script>
 @endsection

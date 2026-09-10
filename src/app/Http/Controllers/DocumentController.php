@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Enums\ActivityCode;
+use App\Events\DocumentRouteUpdated;
 use App\Services\ActivityLogger;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class DocumentController extends Controller
@@ -728,8 +730,24 @@ class DocumentController extends Controller
                     'message'  => $hasMoreSteps
                         ? 'Document received. Custody acquired — ready for downstream routing.'
                         : 'Document received. This is the final routing step.',
+                    'route_affected_department_ids' => array_values(array_unique(array_filter([
+                        $existingCurrent ? (int) $existingCurrent->department_id : null,
+                        (int) $user->department_id,
+                        $subsequentStep ? (int) $subsequentStep->department_id : null,
+                    ]))),
                 ];
             });
+
+            // Best-effort live nudge for Inbox + details watchers. Must never
+            // block or roll back the custody transfer committed above.
+            try {
+                event(new DocumentRouteUpdated(
+                    $result['document'],
+                    $result['route_affected_department_ids'] ?? []
+                ));
+            } catch (\Throwable $e) {
+                Log::warning('DocumentRouteUpdated broadcast failed for document ' . $result['document']->document_number . ': ' . $e->getMessage());
+            }
 
             ActivityLogger::log(ActivityCode::DOC_RECEIVED, "Received custody of document {$result['document']->document_number}", $result['document']);
 
@@ -743,6 +761,45 @@ class DocumentController extends Controller
                 'message' => $e->getMessage(),
             ], 200);
         }
+    }
+
+    /**
+     * Return a single document's route/step state for live timeline refresh.
+     *
+     * Same authorization as the details page itself (DocumentPolicy::view)
+     * and the same row shape its Blade loop consumes
+     * (department_name, department_id, status, route_order).
+     */
+    public function getDocumentRoutes(Request $request, $document_number)
+    {
+        $document = Document::where('document_number', $document_number)->first();
+        if (!$document) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Document not found.',
+            ], 404);
+        }
+
+        $this->authorize('view', $document);
+
+        $routes = DB::table('document_routes')
+            ->join('departments', 'document_routes.department_id', '=', 'departments.id')
+            ->where('document_id', $document->id)
+            ->orderBy('route_order', 'asc')
+            ->select(
+                'departments.name as department_name',
+                'departments.id as department_id',
+                'document_routes.status',
+                'document_routes.route_order'
+            )
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'document_id' => $document->id,
+            'document_number' => $document->document_number,
+            'routes' => $routes,
+        ]);
     }
 
     /**
@@ -990,13 +1047,26 @@ class DocumentController extends Controller
                     'created_at'    => Carbon::now('Asia/Manila'),
                 ]);
 
-                return $documentModel;
+                return [
+                    'document' => $documentModel,
+                    'department_id' => (int) $lastStep->department_id,
+                ];
             });
+
+            // Best-effort live nudge. Must never block the completion above.
+            try {
+                event(new DocumentRouteUpdated(
+                    $completedDocument['document'],
+                    [$completedDocument['department_id']]
+                ));
+            } catch (\Throwable $e) {
+                Log::warning('DocumentRouteUpdated broadcast failed for document ' . $completedDocument['document']->document_number . ': ' . $e->getMessage());
+            }
 
             ActivityLogger::log(
                 ActivityCode::DOC_COMPLETED,
-                "Marked document {$completedDocument->document_number} completed",
-                $completedDocument
+                "Marked document {$completedDocument['document']->document_number} completed",
+                $completedDocument['document']
             );
 
             return response()->json([
@@ -1088,10 +1158,25 @@ class DocumentController extends Controller
                     'created_at'    => Carbon::now('Asia/Manila'),
                 ]);
 
-                return $documentModel;
+                return [
+                    'document' => $documentModel,
+                    'department_id' => $currentRouteStep
+                        ? (int) $currentRouteStep->department_id
+                        : (int) auth()->user()->department_id,
+                ];
             });
 
-            ActivityLogger::log(ActivityCode::DOC_REJECTED, "Rejected transfer for document {$rejectedDocument->document_number}", $rejectedDocument);
+            // Best-effort live nudge. Must never block the rejection above.
+            try {
+                event(new DocumentRouteUpdated(
+                    $rejectedDocument['document'],
+                    [$rejectedDocument['department_id']]
+                ));
+            } catch (\Throwable $e) {
+                Log::warning('DocumentRouteUpdated broadcast failed for document ' . $rejectedDocument['document']->document_number . ': ' . $e->getMessage());
+            }
+
+            ActivityLogger::log(ActivityCode::DOC_REJECTED, "Rejected transfer for document {$rejectedDocument['document']->document_number}", $rejectedDocument['document']);
 
             return response()->json([
                 'success' => true,
@@ -1218,8 +1303,9 @@ class DocumentController extends Controller
 
         $isReroute = false;
         $nextDepartmentId = $document->current_department_id;
+        $rerouteAffectedDepts = [];
 
-        DB::transaction(function () use ($document, $documentModel, $validated, $request, &$isReroute, &$nextDepartmentId) {
+        DB::transaction(function () use ($document, $documentModel, $validated, $request, &$isReroute, &$nextDepartmentId, &$rerouteAffectedDepts) {
             $issueType = $validated['issue_type'] ?? null;
             $assignedDeptId = $validated['assigned_department_id'] ?? null;
 
@@ -1270,6 +1356,13 @@ class DocumentController extends Controller
                             'status' => 'next',
                             'updated_at' => now(),
                         ]);
+
+                    $rerouteAffectedDepts = DB::table('document_routes')
+                        ->where('document_id', $document->id)
+                        ->where('route_order', '>=', $targetRoute->route_order)
+                        ->pluck('department_id')
+                        ->map(fn ($v) => (int) $v)
+                        ->all();
 
                     // 3. Update the Main Document state
                     DB::table('documents')
@@ -1351,6 +1444,16 @@ class DocumentController extends Controller
             return $documentModel;
         });
 
+        // Best-effort live nudge, only when route steps actually changed.
+        // Must never block the issue report above.
+        if ($isReroute) {
+            try {
+                event(new DocumentRouteUpdated($documentModel, $rerouteAffectedDepts));
+            } catch (\Throwable $e) {
+                Log::warning('DocumentRouteUpdated broadcast failed for document ' . $documentModel->document_number . ': ' . $e->getMessage());
+            }
+        }
+
         $message = $isReroute
             ? 'Issue reported and document rerouted successfully.'
             : 'Issue reported successfully.';
@@ -1430,6 +1533,12 @@ class DocumentController extends Controller
 
         $user = auth()->user();
 
+        $previousChainDeptIds = DB::table('document_routes')
+            ->where('document_id', $document->id)
+            ->pluck('department_id')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+
         DB::transaction(function () use ($document, $routes, $user) {
             DB::table('document_routes')->where('document_id', $document->id)->delete();
 
@@ -1461,6 +1570,18 @@ class DocumentController extends Controller
                 }
             }
         });
+
+        // Best-effort live nudge to every department in the old or new
+        // chain. Must never block the path update above.
+        try {
+            $newChainDeptIds = collect($routes)->map(fn ($step) => (int) ($step['department_id'] ?? 0))->all();
+            event(new DocumentRouteUpdated(
+                $documentModel,
+                array_values(array_unique(array_merge($previousChainDeptIds, $newChainDeptIds)))
+            ));
+        } catch (\Throwable $e) {
+            Log::warning('DocumentRouteUpdated broadcast failed for document ' . $documentModel->document_number . ': ' . $e->getMessage());
+        }
 
         ActivityLogger::log(
             ActivityCode::DOC_ROUTE_UPDATED,

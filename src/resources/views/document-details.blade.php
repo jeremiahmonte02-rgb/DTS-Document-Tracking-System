@@ -41,7 +41,7 @@
                                     <strong class="text-muted">Document ID:</strong>
                                 </div>
                                 <div class="col-md-8">
-                                    <span id="docId" class="font-mono text-primary fw-bold">{{ $document->document_number }}</span>
+                                    <span id="docId" class="font-mono text-primary fw-bold" data-document-id="{{ $document->id }}">{{ $document->document_number }}</span>
                                 </div>
                             </div>
                             <div class="row mb-3">
@@ -222,7 +222,7 @@
                             @endif
                         </div>
                         <div class="card-body pt-1">
-                            <div class="d-flex flex-column gap-2">
+                            <div class="d-flex flex-column gap-2" id="routeTimelineSteps">
                                 @php $currentReceiverDepartmentId = 'null'; @endphp
                                 @php $userIsNext = false; @endphp
                                 @foreach($routes as $route)
@@ -503,6 +503,8 @@
     <!-- Page Modules -->
     <script src="{{ asset('js/modules/timeline-renderer.js') }}"></script>
     <script src="{{ asset('js/modules/document-details.js') }}"></script>
+    <script src="{{ asset('js/modules/route-status.js') }}"></script>
+    <script src="{{ asset('js/modules/realtime-document.js') }}"></script>
 
     <!-- Utility Functions -->
     <script>

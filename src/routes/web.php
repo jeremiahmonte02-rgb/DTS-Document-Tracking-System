@@ -46,6 +46,7 @@ Route::middleware(['auth', 'no-cache'])->group(function () {
     Route::post('/announcements/{id}/read', [App\Http\Controllers\AnnouncementController::class, 'markAsRead'])->name('announcements.mark-read');
     Route::get('/api/document-types/{id}/policy', [DocumentTypePolicyController::class, 'show'])->name('api.document-types.policy');
     Route::get('/api/notifications/feed', [App\Http\Controllers\NotificationController::class, 'feed'])->name('api.notifications.feed');
+    Route::get('/api/documents/{document_number}/routes', [App\Http\Controllers\DocumentController::class, 'getDocumentRoutes'])->name('api.documents.routes');
 
     // Account Profile (self-service)
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
