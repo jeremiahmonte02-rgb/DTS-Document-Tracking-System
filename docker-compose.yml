@@ -9,11 +9,12 @@ services:
     environment:
       APA_DOC_ROOT: /var/www/html
     volumes:
-      - ./src:/var/www/html
+      - ./src:/var/www/html/src
     ports:
       - "8082:80"
     depends_on:
       - db
+      - reverb
     networks:
       - dts-network
 
@@ -41,6 +42,37 @@ services:
       PMA_HOST: db
       PMA_USER: root
       PMA_PASSWORD: rootpassword
+    depends_on:
+      - db
+    networks:
+      - dts-network
+
+  # Laravel Reverb WebSocket Server (local development only)
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: php src/artisan reverb:start --host=0.0.0.0 --port=8080
+    volumes:
+      - ./src:/var/www/html/src
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - dts-network
+
+  # Laravel Scheduler — runs `php artisan schedule:run` every 60 seconds so
+  # time-based checks (dts:check-overdue, dts:check-near-overdue) actually fire.
+  # Depends only on db: nothing depends on scheduler, and scheduler does not
+  # depend on app or reverb, so no circular dependency is possible.
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sh -c "while true; do php src/artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    volumes:
+      - ./src:/var/www/html/src
     depends_on:
       - db
     networks:

@@ -22,9 +22,9 @@ RUN apt-get update && apt-get install -y \
 RUN docker-php-ext-install pdo_mysql mysqli mbstring exif pcntl bcmath gd zip
 RUN echo "upload_max_filesize=32M" > /usr/local/etc/php/conf.d/uploads.ini \
  && echo "post_max_size=32M" >> /usr/local/etc/php/conf.d/uploads.ini
-RUN a2enmod rewrite
-RUN sed -i 's|/var/www/html|/var/www/html/src/public|g' /etc/apache2/sites-available/000-default.conf
+RUN a2enmod rewrite proxy proxy_http proxy_wstunnel
 RUN sed -i 's|/var/www/html|/var/www/html/src/public|g' /etc/apache2/apache2.conf
+COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
 
 WORKDIR /var/www/html
 COPY . .
