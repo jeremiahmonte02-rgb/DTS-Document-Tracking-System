@@ -18,11 +18,20 @@ document.addEventListener('DOMContentLoaded', function () {
         page: 1,
         search: '',
         type: '',
-        status: '',
-        date: ''
+        status: ''
     };
 
     initEventListeners();
+
+    // Shared date-range filter (presets + custom From/To). Date state lives
+    // in the shared module, not in currentFilters.
+    if (window.DateRangeFilter) {
+        window.DateRangeFilter.init('[data-date-range-filter]', function () {
+            currentFilters.page = 1;
+            fetchInboxRecords();
+        });
+    }
+
     fetchInboxRecords();
 
     // Exposed for the live Inbox nudge (realtime-inbox.js re-runs this exact
@@ -69,17 +78,6 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("Critical: Type filter element missing from DOM during init.");
         }
 
-        const dateInput = document.querySelector('[data-filter="date"]') || document.getElementById('date-filter') || document.querySelector('input[type="date"]');
-        if (dateInput) {
-            dateInput.addEventListener('change', function(e) {
-                currentFilters.date = this.value;
-                currentFilters.page = 1;
-                fetchInboxRecords();
-            });
-        } else {
-            console.error("Critical: Date filter input element was missing from the DOM during script initialization.");
-        }
-
         document.addEventListener('click', function (e) {
             const actionButton = e.target.closest('[data-action]');
             if (!actionButton) return;
@@ -105,7 +103,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 </td>
             </tr>`;
 
-        const dateInput = document.querySelector('[data-filter="date"]') || document.getElementById('date-filter') || document.querySelector('input[type="date"]');
         const statusEl = document.querySelector('[data-filter="status"]') || document.getElementById('status-filter') || document.querySelector('select[name="status"]');
         const typeEl = document.querySelector('[data-filter="type"]') || document.getElementById('type-filter') || document.querySelector('select[name="type"]');
 
@@ -113,9 +110,14 @@ document.addEventListener('DOMContentLoaded', function () {
             page: currentFilters.page,
             search: searchInput ? searchInput.value : '',
             type: typeEl ? typeEl.value : '',
-            status: statusEl ? statusEl.value : '',
-            date: dateInput ? dateInput.value : ''
-        }).toString();
+            status: statusEl ? statusEl.value : ''
+        });
+
+        var dateRange = window.DateRangeFilter ? window.DateRangeFilter.getState('[data-date-range-filter]') : null;
+        if (dateRange) {
+            if (dateRange.from) queryParams.set('date_from', dateRange.from);
+            if (dateRange.to) queryParams.set('date_to', dateRange.to);
+        }
 
         fetch(`${fetchUrl}?${queryParams}`, {
             method: 'GET',
@@ -210,12 +212,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (searchInput) searchInput.value = '';
         const statusEl = document.querySelector('[data-filter="status"]') || document.getElementById('status-filter') || document.querySelector('select[name="status"]');
         const typeEl = document.querySelector('[data-filter="type"]') || document.getElementById('type-filter') || document.querySelector('select[name="type"]');
-        const dateInput = document.querySelector('[data-filter="date"]') || document.getElementById('date-filter') || document.querySelector('input[type="date"]');
         if (statusEl) statusEl.value = '';
         if (typeEl) typeEl.value = '';
-        if (dateInput) dateInput.value = '';
-        
-        currentFilters = { page: 1, search: '', type: '', status: '', date: '' };
+        if (window.DateRangeFilter) window.DateRangeFilter.reset('[data-date-range-filter]');
+
+        currentFilters = { page: 1, search: '', type: '', status: '' };
         fetchInboxRecords();
     }
 

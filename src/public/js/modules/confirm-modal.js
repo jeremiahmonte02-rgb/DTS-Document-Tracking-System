@@ -41,6 +41,7 @@
             message: '',
             confirmLabel: 'Confirm',
             variant: 'success',
+            showCancel: true,
             onConfirm: null
         }, options);
 
@@ -76,6 +77,11 @@
             };
             btn.addEventListener('click', handler);
             previousConfirmHandler = handler;
+        }
+
+        var cancelBtn = $('.btn-cancel');
+        if (cancelBtn) {
+            cancelBtn.style.display = (opts.showCancel === false) ? 'none' : '';
         }
 
         modalInstance.show();

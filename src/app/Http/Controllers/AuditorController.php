@@ -98,7 +98,9 @@ class AuditorController extends Controller
             ->where('status', 'rejected')
             ->count();
 
-        // 2. SLA-overdue count — live operational state, intentionally UNscoped by month
+        // 2. SLA-overdue count — live operational state, intentionally UNscoped
+        // by month (a genuinely-overdue-right-now document counts regardless
+        // of when its route row was created)
         $activeRoutes = \App\Models\DocumentRoute::join('documents', 'document_routes.document_id', '=', 'documents.id')
             ->select(
                 'document_routes.*',
@@ -112,7 +114,6 @@ class AuditorController extends Controller
             )
             ->where('document_routes.status', 'current')
             ->whereNotIn('documents.status', ['completed', 'cancelled', 'rejected'])
-            ->whereBetween('document_routes.created_at', [$startOfMonth, $endOfMonth])
             ->get();
 
         $departmentSlas = \App\Models\DepartmentDocumentSla::get()
@@ -392,7 +393,14 @@ class AuditorController extends Controller
             if ($request->filled('type')) {
                 $q->where('documents.document_type_id', $request->type);
             }
-            if ($request->filled('date')) {
+            if ($request->filled('date_from') || $request->filled('date_to')) {
+                if ($request->filled('date_from')) {
+                    $q->whereDate('documents.created_at', '>=', $request->date_from);
+                }
+                if ($request->filled('date_to')) {
+                    $q->whereDate('documents.created_at', '<=', $request->date_to);
+                }
+            } elseif ($request->filled('date')) {
                 $q->whereDate('documents.created_at', $request->date);
             }
             if ($request->filled('status')) {
@@ -566,7 +574,7 @@ class AuditorController extends Controller
             $after = $department->only(['name', 'code', 'description']);
             $diff = AnnouncementBuilder::diffToSentence($before, $after);
             $message = $diff !== ''
-                ? 'Auditor ' . auth()->user()->name . ' updated the ' . $department->name . ' department: ' . $diff . '.'
+                ? 'Auditor ' . auth()->user()->name . ' updated the ' . $department->name . ' department - ' . $diff . '.'
                 : 'Auditor ' . auth()->user()->name . ' updated the ' . $department->name . ' department.';
 
             AnnouncementBuilder::create(
@@ -800,6 +808,11 @@ class AuditorController extends Controller
         DB::transaction(function () use ($request, $id) {
             if (!$request->has('sla')) return;
 
+            $beforeMinutes = DepartmentDocumentSla::where('department_id', $id)
+                ->pluck('processing_time_minutes', 'document_type_id')
+                ->map(fn ($v) => (int) $v)
+                ->all();
+
             foreach ($request->input('sla') as $row) {
                 if (empty($row['value'])) {
                     DepartmentDocumentSla::where('department_id', $id)
@@ -828,10 +841,35 @@ class AuditorController extends Controller
 
             $department = Department::find($id);
 
+            $afterMinutes = DepartmentDocumentSla::where('department_id', $id)
+                ->pluck('processing_time_minutes', 'document_type_id')
+                ->map(fn ($v) => (int) $v)
+                ->all();
+
+            $changedTypeIds = array_unique(array_merge(array_keys($beforeMinutes), array_keys($afterMinutes)));
+            $typeNames = \App\Models\DocumentType::whereIn('id', $changedTypeIds)->pluck('name', 'id');
+            $slaClauses = [];
+            foreach ($changedTypeIds as $typeId) {
+                $oldMinutes = $beforeMinutes[$typeId] ?? null;
+                $newMinutes = $afterMinutes[$typeId] ?? null;
+                if ($oldMinutes === $newMinutes) {
+                    continue;
+                }
+                $typeLabel = $typeNames[$typeId] ?? ('type #' . $typeId);
+                if ($oldMinutes === null) {
+                    $slaClauses[] = "Processing time for {$typeLabel} set to {$newMinutes} minutes";
+                } elseif ($newMinutes === null) {
+                    $slaClauses[] = "Processing time for {$typeLabel} removed (was {$oldMinutes} minutes)";
+                } else {
+                    $slaClauses[] = "Processing time for {$typeLabel} changed from {$oldMinutes} to {$newMinutes} minutes";
+                }
+            }
+
             AnnouncementBuilder::create(
                 'department_slas_updated',
                 'Processing-time SLAs updated',
-                'Auditor ' . auth()->user()->name . ' updated processing-time SLAs for the ' . $department->name . ' department.',
+                'Auditor ' . auth()->user()->name . ' updated processing-time SLAs for the ' . $department->name . ' department'
+                    . ($slaClauses !== [] ? ': ' . implode('; ', $slaClauses) . '.' : '.'),
                 $department
             );
 
@@ -853,15 +891,33 @@ class AuditorController extends Controller
         return view('audit.document-type-policies', compact('documentTypes', 'departments'));
     }
 
-    public function issues()
+    public function issues(Request $request)
     {
         if (!auth()->user() || !auth()->user()->isAuditor()) {
             abort(403, 'Unauthorized access to the Audit Portal.');
         }
 
-        $issues = DocumentIssue::with(['document', 'reportedBy', 'assignedDepartment'])
+        // Date-range filter on the report timestamp (document_issues.created_at
+        // is the "Date" column this table renders). Legacy single `date` param
+        // maps to a same-day range for back-compat with saved links.
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        if (!$dateFrom && !$dateTo && $request->filled('date')) {
+            $dateFrom = $dateTo = $request->input('date');
+        }
+
+        $issuesQuery = DocumentIssue::with(['document', 'reportedBy', 'assignedDepartment']);
+        if ($dateFrom) {
+            $issuesQuery->whereDate('document_issues.created_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $issuesQuery->whereDate('document_issues.created_at', '<=', $dateTo);
+        }
+
+        $issues = $issuesQuery
             ->latest()
-            ->paginate(25);
+            ->paginate(25)
+            ->appends($request->only(['date_from', 'date_to', 'date']));
 
         $issueCounts = [
             'total' => DocumentIssue::count(),
@@ -870,7 +926,7 @@ class AuditorController extends Controller
             'resolved' => DocumentIssue::where('status', 'resolved')->count(),
         ];
 
-        return view('audit.issues', compact('issues', 'issueCounts'));
+        return view('audit.issues', compact('issues', 'issueCounts', 'dateFrom', 'dateTo'));
     }
 
     public function storePolicy(Request $request)
@@ -942,7 +998,7 @@ class AuditorController extends Controller
                 ];
                 $diff = AnnouncementBuilder::diffToSentence($beforeValues, $afterValues);
                 $message = 'Auditor ' . auth()->user()->name . ' updated the routing policy for ' . $documentTypeName . ' documents'
-                    . ($diff !== '' ? ': ' . $diff . '.' : ': reviewed and re-saved.');
+                    . ($diff !== '' ? ' - ' . $diff . '.' : ' (reviewed and re-saved, no changes).');
             }
 
             AnnouncementBuilder::create(

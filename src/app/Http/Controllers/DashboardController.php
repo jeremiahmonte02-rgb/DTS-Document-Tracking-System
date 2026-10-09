@@ -104,7 +104,10 @@ class DashboardController extends Controller
             ->pluck('count', 'status')
             ->toArray();
 
-        // 3. Department Bar Distribution — scoped to selected month via withCount callback
+        // 3. Department Bar Distribution — organization-wide (all active
+        // departments), intentionally NOT restricted to the viewer's own
+        // department. Deliberate single-chart exception: every other card on
+        // this dashboard remains viewer-department-scoped.
         $departmentDistribution = Department::query()
             ->where('is_active', true)
             ->withCount(['currentDocuments as count' => function ($q) use ($startOfMonth, $endOfMonth) {
@@ -137,17 +140,48 @@ class DashboardController extends Controller
             ->take(10)
             ->get();
 
-        // 5. Velocity Analytics — per-hop dwell time, scoped to selected month
-        $avgDwellHours = DB::table('document_routes')
-            ->join('documents', 'document_routes.document_id', '=', 'documents.id')
-            ->whereNotNull('document_routes.received_at')
-            ->whereBetween('document_routes.created_at', [$startOfMonth, $endOfMonth])
-            ->when(!$canViewAll && $userDeptId, fn ($q) => $q->where('document_routes.department_id', $userDeptId))
-            ->select(DB::raw('AVG(TIMESTAMPDIFF(HOUR, document_routes.created_at, document_routes.received_at)) as avg_hours'))
-            ->value('avg_hours');
-        $avgDwellHours = $avgDwellHours ? round((float) $avgDwellHours, 1) : 0;
+        // 5. Velocity Analytics — apportioned lifecycle-length, scoped to the
+        // viewer's own department (no admin org-wide exception). Same formula
+        // as the Auditor dashboard: average time between a document's
+        // uploaded_at and completed_at, DIVIDED by the number of completed
+        // route steps. Since we don't have a 'released_at' timestamp on the
+        // route row, per-step dwell is apportioned from the whole lifecycle.
+        $completedDocumentsData = DB::table('documents')
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
+            ->whereNotNull('uploaded_at')
+            ->whereBetween('completed_at', [$startOfMonth, $endOfMonth])
+            ->when($userDeptId, fn ($q) => $q->where(function ($sub) use ($userDeptId) {
+                $sub->where('sender_department_id', $userDeptId)
+                    ->orWhere('current_department_id', $userDeptId);
+            }))
+            ->get();
 
-        // 6. Overdue Detection — live operational state, intentionally UNscoped by month
+        $totalDwellHours = 0;
+        $totalCompletedSteps = 0;
+
+        foreach ($completedDocumentsData as $doc) {
+            $lifecycleHours = Carbon::parse($doc->uploaded_at)->diffInHours(Carbon::parse($doc->completed_at));
+
+            // How many steps did this document go through?
+            $stepCount = DB::table('document_routes')
+                ->where('document_id', $doc->id)
+                ->whereNotNull('received_at') // Count steps that were actually processed
+                ->count();
+
+            if ($stepCount > 0) {
+                // If a document took 100 hours to complete across 4 steps, the average dwell per department is 25 hours.
+                $totalDwellHours += ($lifecycleHours / $stepCount);
+                $totalCompletedSteps++;
+            }
+        }
+
+        $avgDwellHours = $totalCompletedSteps > 0 ? round($totalDwellHours / $totalCompletedSteps, 1) : 0;
+
+        // 6. Overdue Detection — live operational state, intentionally UNscoped
+        // by month (a genuinely-overdue-right-now document counts regardless
+        // of when its route row was created) and scoped to the viewer's own
+        // department (no admin org-wide exception)
         $activeRoutes = \App\Models\DocumentRoute::join('documents', 'document_routes.document_id', '=', 'documents.id')
             ->select(
                 'document_routes.*',
@@ -161,17 +195,15 @@ class DashboardController extends Controller
             )
             ->where('document_routes.status', 'current')
             ->whereNotIn('documents.status', ['completed', 'cancelled', 'rejected'])
-            ->whereBetween('document_routes.created_at', [$startOfMonth, $endOfMonth])
-            ->when(!$canViewAll && $userDeptId, fn ($q) => $q->where('document_routes.department_id', $userDeptId))
+            ->when($userDeptId, fn ($q) => $q->where('document_routes.department_id', $userDeptId))
             ->get();
-
-        $departmentSlas = \App\Models\DepartmentDocumentSla::get()
-            ->groupBy('department_id')
-            ->map(fn($items) => $items->keyBy('document_type_id'));
 
         $documentTypes = \App\Models\DocumentType::get()->keyBy('id');
 
         $departmentsMap = Department::pluck('name', 'id');
+
+        $policies = \App\Models\DocumentRoutingPolicy::whereIn('document_type_id', $activeRoutes->pluck('document_type_id')->unique())
+            ->get()->keyBy('document_type_id');
 
         $dynamicOverdueCount = 0;
         $overdueDocuments = [];
@@ -180,13 +212,8 @@ class DashboardController extends Controller
         foreach ($activeRoutes as $route) {
             $deptId = $route->department_id;
             $docTypeId = $route->document_type_id;
-            $allowedMinutes = \App\Services\SlaResolver::DEFAULT_FALLBACK_MINUTES;
-
-            if (isset($departmentSlas[$deptId][$docTypeId])) {
-                $allowedMinutes = $departmentSlas[$deptId][$docTypeId]->processing_time_minutes;
-            } elseif (isset($documentTypes[$docTypeId]) && !is_null($documentTypes[$docTypeId]->default_processing_time)) {
-                $allowedMinutes = $documentTypes[$docTypeId]->default_processing_time;
-            }
+            $predefinedRoute = isset($policies[$docTypeId]) ? ($policies[$docTypeId]->predefined_route ?? null) : null;
+            $allowedMinutes = \App\Services\SlaResolver::resolve((int) $deptId, (int) $docTypeId, $route->route_order ?? null, $predefinedRoute);
 
             $routeArrival = Carbon::parse($route->created_at, 'Asia/Manila');
             $deadline = $routeArrival->addMinutes($allowedMinutes);
@@ -208,13 +235,14 @@ class DashboardController extends Controller
 
         $overdueCount = $dynamicOverdueCount;
 
-        // 7. Average completion time — scoped by completed_at within selected month
+        // 7. Average completion time — scoped by completed_at within selected
+        // month and to the viewer's own department (no admin org-wide exception)
         $avgCompletionHours = DB::table('documents')
             ->where('status', 'completed')
             ->whereNotNull('completed_at')
             ->whereNotNull('uploaded_at')
             ->whereBetween('completed_at', [$startOfMonth, $endOfMonth])
-            ->when(!$canViewAll && $userDeptId, fn ($q) => $q->where(function ($sub) use ($userDeptId) {
+            ->when($userDeptId, fn ($q) => $q->where(function ($sub) use ($userDeptId) {
                 $sub->where('sender_department_id', $userDeptId)
                     ->orWhere('current_department_id', $userDeptId);
             }))

@@ -85,6 +85,13 @@
                 <i class="bi bi-folder2-open"></i> My Uploaded Documents
             </h5>
         </div>
+        <div class="card-body border-bottom">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-8">
+                    @include('partials.date-range-filter')
+                </div>
+            </div>
+        </div>
         <div class="card-body p-0">
             <div class="table-responsive" id="profile-documents-table-wrapper" data-fetch-url="{{ route('api.profile.documents') }}">
                 <table class="table table-hover mb-0">
@@ -120,5 +127,6 @@
 @endsection
 
 @section('scripts')
+    <script src="{{ asset('js/modules/date-range-filter.js') }}?v={{ filemtime(public_path('js/modules/date-range-filter.js')) }}"></script>
     <script src="{{ asset('js/modules/profile-documents.js') }}?v={{ filemtime(public_path('js/modules/profile-documents.js')) }}"></script>
 @endsection

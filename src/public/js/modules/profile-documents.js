@@ -14,6 +14,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let currentPage = 1;
 
+    // Shared date-range filter (presets + custom From/To).
+    if (window.DateRangeFilter) {
+        window.DateRangeFilter.init('[data-date-range-filter]', function () {
+            currentPage = 1;
+            fetchDocuments();
+        });
+    }
+
     fetchDocuments();
 
     function fetchDocuments() {
@@ -25,7 +33,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 </td>
             </tr>`;
 
-        const queryParams = new URLSearchParams({ page: currentPage }).toString();
+        const queryParams = new URLSearchParams({ page: currentPage });
+
+        var dateRange = window.DateRangeFilter ? window.DateRangeFilter.getState('[data-date-range-filter]') : null;
+        if (dateRange) {
+            if (dateRange.from) queryParams.set('date_from', dateRange.from);
+            if (dateRange.to) queryParams.set('date_to', dateRange.to);
+        }
 
         fetch(`${fetchUrl}?${queryParams}`, {
             method: 'GET',

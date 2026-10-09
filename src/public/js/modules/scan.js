@@ -199,7 +199,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const confirmBtn = document.getElementById('actionConfirmReceiptBtn');
             if (confirmBtn) {
                 confirmBtn.addEventListener('click', function() {
-                    executeReceiptTransaction(doc.document_number || doc.id);
+                    var docNumber = doc.document_number || doc.id;
+                    var confirmMessage = 'Confirm receipt of document "' + (doc.document_number || doc.id) + '" - "'
+                        + (doc.title || 'untitled document') + '" from ' + (doc.sender_department_name || 'origin department') + '?';
+                    if (typeof window.showConfirmModal === 'function') {
+                        window.showConfirmModal({
+                            title: 'Confirm Receipt',
+                            message: confirmMessage,
+                            confirmLabel: 'Confirm Receipt',
+                            variant: 'success',
+                            onConfirm: function () { executeReceiptTransaction(docNumber); }
+                        });
+                    } else {
+                        executeReceiptTransaction(docNumber);
+                    }
                 });
             }
 
@@ -265,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // --- PART C: RENDER TRANSACTION HISTORY TIMELINE ---
         if (typeof window.renderTimeline === 'function') {
-            window.renderTimeline('trackingTimeline', events, { reverseOrder: false });
+            window.renderTimeline('trackingTimeline', events, { reverseOrder: true });
         }
     }
 

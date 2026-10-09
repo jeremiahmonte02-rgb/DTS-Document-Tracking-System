@@ -265,6 +265,7 @@ class DocumentController extends Controller
         $document = DB::table('documents')
             ->join('document_types', 'documents.document_type_id', '=', 'document_types.id')
             ->join('departments', 'documents.sender_department_id', '=', 'departments.id')
+            ->leftJoin('departments as current_dept', 'documents.current_department_id', '=', 'current_dept.id')
             ->where('documents.document_number', $docNumber)
             ->select(
                 'documents.id',
@@ -273,6 +274,8 @@ class DocumentController extends Controller
                 'documents.description',
                 'documents.status',
                 'documents.created_at',
+                'documents.completed_at',
+                'current_dept.name as current_department_name',
                 'documents.document_type_id',
                 'document_types.name as document_type_name',
                 'departments.name as sender_department_name'
@@ -803,6 +806,53 @@ class DocumentController extends Controller
     }
 
     /**
+     * Stream or download the document's uploaded file.
+     *
+     * Same authorization as the details page itself (DocumentPolicy::view).
+     * The stored file_path already contains the doubled
+     * private/private/documents/ segment from the upload flow — it is used
+     * as-is (upload behavior intentionally untouched). PDFs and images are
+     * served inline for native browser rendering; all other accepted types
+     * (DOC/XLS/DOCX/XLSX) download as attachments.
+     */
+    public function viewFile(Request $request, $document_number)
+    {
+        $document = Document::where('document_number', $document_number)->first();
+        if (!$document) {
+            abort(404);
+        }
+
+        $this->authorize('view', $document);
+
+        $file = DB::table('document_files')
+            ->where('document_id', $document->id)
+            ->orderBy('id')
+            ->first();
+        if (!$file) {
+            abort(404);
+        }
+
+        $disk = Storage::disk('local');
+        if (!$disk->exists($file->file_path)) {
+            abort(404);
+        }
+
+        $absolute = $disk->path($file->file_path);
+        $mime = $file->mime_type ?: 'application/octet-stream';
+
+        if ($mime === 'application/pdf' || str_starts_with($mime, 'image/')) {
+            return response()->file($absolute, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; filename="' . $file->original_filename . '"',
+            ]);
+        }
+
+        return response()->download($absolute, $file->original_filename, [
+            'Content-Type' => $mime,
+        ]);
+    }
+
+    /**
      * Render the department inbox listing documents currently in its custody.
      *
      * @return \Illuminate\View\View
@@ -876,7 +926,14 @@ class DocumentController extends Controller
             $query->where('documents.document_type_id', $request->type);
         }
 
-        if ($request->filled('date')) {
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            if ($request->filled('date_from')) {
+                $query->whereDate('documents.created_at', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $query->whereDate('documents.created_at', '<=', $request->date_to);
+            }
+        } elseif ($request->filled('date')) {
             $query->whereDate('documents.created_at', $request->date);
         }
 
@@ -924,6 +981,7 @@ class DocumentController extends Controller
         $query = DB::table('documents')
             ->join('document_types', 'documents.document_type_id', '=', 'document_types.id')
             ->join('departments as current_dept', 'documents.current_department_id', '=', 'current_dept.id')
+            ->join('departments as sender_dept', 'documents.sender_department_id', '=', 'sender_dept.id')
             ->leftJoin('document_routes as next_route', function ($join) {
                 $join->on('next_route.document_id', '=', 'documents.id')
                      ->whereRaw('next_route.route_order = (SELECT MIN(r2.route_order) FROM document_routes r2 WHERE r2.document_id = documents.id AND r2.status = "current" AND r2.route_order > (SELECT COALESCE(MAX(r3.route_order), 0) FROM document_routes r3 WHERE r3.document_id = documents.id AND r3.status = "next"))');
@@ -933,6 +991,7 @@ class DocumentController extends Controller
                 'documents.document_number',
                 'documents.title',
                 'document_types.name as document_type_name',
+                'sender_dept.name as sender_department',
                 'current_dept.name as current_department',
                 'current_dept.name as current_location',
                 'documents.created_at as date_uploaded',
@@ -957,7 +1016,14 @@ class DocumentController extends Controller
             $query->where('documents.status', $statusValue);
         }
 
-        if ($request->filled('date')) {
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            if ($request->filled('date_from')) {
+                $query->whereDate('documents.created_at', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $query->whereDate('documents.created_at', '<=', $request->date_to);
+            }
+        } elseif ($request->filled('date')) {
             $query->whereDate('documents.created_at', $request->date);
         }
 
@@ -1304,8 +1370,9 @@ class DocumentController extends Controller
         $isReroute = false;
         $nextDepartmentId = $document->current_department_id;
         $rerouteAffectedDepts = [];
+        $rerouteTargetDeptName = null;
 
-        DB::transaction(function () use ($document, $documentModel, $validated, $request, &$isReroute, &$nextDepartmentId, &$rerouteAffectedDepts) {
+        DB::transaction(function () use ($document, $documentModel, $validated, $request, &$isReroute, &$nextDepartmentId, &$rerouteAffectedDepts, &$rerouteTargetDeptName) {
             $issueType = $validated['issue_type'] ?? null;
             $assignedDeptId = $validated['assigned_department_id'] ?? null;
 
@@ -1337,14 +1404,26 @@ class DocumentController extends Controller
                             
                         ]);
 
-                    // 2. Reactivate the Target Step so they can re-receive and correct the document
+                    // 2. Reactivate the Target Step with immediate custody: the
+                    // UI never offers a "Receive" action for a rerouted row
+                    // (the receive flow only accepts 'next' steps), so the
+                    // reroute moment itself is the custody start for the
+                    // responsible department. Stamp it here so every
+                    // custody-clock consumer (near-overdue, inbox, dwell and
+                    // auditor reporting) measures the correction period
+                    // correctly. received_by_user_id stays NULL on purpose:
+                    // the reporter performs this action, not the target
+                    // department, so there is no natural "received by" user
+                    // (unlike the normal receive path, which stamps the
+                    // scanning user).
                     DB::table('document_routes')
                         ->where('document_id', $document->id)
                         ->where('route_order', $targetRoute->route_order)
                         ->update([
-                            'status' => 'current', // Force back to current to require a fresh receive
-                            'received_at' => null,
+                            'status' => 'current',
+                            'received_at' => Carbon::now('Asia/Manila'),
                             'received_by_user_id' => null,
+                            'updated_at' => Carbon::now('Asia/Manila'),
 
                         ]);
 
@@ -1391,6 +1470,7 @@ class DocumentController extends Controller
                 $targetDeptName = DB::table('departments')
                     ->where('id', $assignedDeptId)
                     ->value('name') ?? 'Unknown';
+                $rerouteTargetDeptName = $targetDeptName;
             }
 
             $eventLabel = $isReroute && $targetDeptName
@@ -1444,11 +1524,43 @@ class DocumentController extends Controller
             return $documentModel;
         });
 
-        // Best-effort live nudge, only when route steps actually changed.
-        // Must never block the issue report above.
+        // Best-effort live nudge + persisted notifications, only when route
+        // steps actually changed. Must never block the issue report above.
+        // Notifies EVERY department across the full routing chain — past
+        // (already received), present (target), and future (pending) steps —
+        // not just the target/successor/downstream set in
+        // $rerouteAffectedDepts, which continues to govern only the
+        // route-state mechanics above and is deliberately untouched here.
         if ($isReroute) {
             try {
-                event(new DocumentRouteUpdated($documentModel, $rerouteAffectedDepts));
+                // The sender/uploader department is not automatically a
+                // route step (absent on most documents), but must still be
+                // notified on a send-back. Guarded: a null sender (column is
+                // nullable, on-delete set null) must never become a bogus 0.
+                // unique() below collapses it when the sender is also a step.
+                $senderDeptId = (int) ($document->sender_department_id ?? 0);
+                $fullChainDeptIds = DB::table('document_routes')
+                    ->where('document_id', $documentModel->id)
+                    ->pluck('department_id')
+                    ->map(fn ($v) => (int) $v)
+                    ->when($senderDeptId > 0, fn ($c) => $c->push($senderDeptId))
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $reporterDeptName = auth()->user()->department->name ?? 'Unknown department';
+                $notifyTargetName = $rerouteTargetDeptName ?? 'Unknown department';
+                foreach ($fullChainDeptIds as $chainDeptId) {
+                    \App\Models\Notification::broadcastToDepartment(
+                        $chainDeptId,
+                        'document_returned',
+                        'Document returned to ' . $notifyTargetName,
+                        "Document {$documentModel->document_number} \"{$documentModel->title}\" was reported for a Document Error by {$reporterDeptName} and returned to {$notifyTargetName} for correction.",
+                        $documentModel->id
+                    );
+                }
+
+                event(new DocumentRouteUpdated($documentModel, $fullChainDeptIds));
             } catch (\Throwable $e) {
                 Log::warning('DocumentRouteUpdated broadcast failed for document ' . $documentModel->document_number . ': ' . $e->getMessage());
             }

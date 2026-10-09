@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('searchInput');
     const typeFilter = document.getElementById('type-filter');
     const statusFilter = document.getElementById('status-filter');
-    const dateFilter = document.getElementById('date-filter');
     const clearBtn = document.querySelector('[data-action="clear-filters"]');
     const refreshBtn = document.getElementById('refreshTableBtn');
     const countBadge = document.getElementById('documentCount');
@@ -112,7 +111,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (searchInput && searchInput.value.trim()) queryParams.set('search', searchInput.value.trim());
         if (typeFilter && typeFilter.value) queryParams.set('type', typeFilter.value);
         if (statusFilter && statusFilter.value) queryParams.set('status', statusFilter.value);
-        if (dateFilter && dateFilter.value) queryParams.set('date', dateFilter.value);
+        var dateRange = window.DateRangeFilter ? window.DateRangeFilter.getState('[data-date-range-filter]') : null;
+        if (dateRange) {
+            if (dateRange.from) queryParams.set('date_from', dateRange.from);
+            if (dateRange.to) queryParams.set('date_to', dateRange.to);
+        }
         if (isOverdueFilterActive) queryParams.set('overdue', '1');
 
         fetch(fetchUrl + '?' + queryParams.toString(), {
@@ -164,8 +167,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (searchInput) searchInput.addEventListener('input', debounce(fetchAuditorRecords, 300));
     if (typeFilter) typeFilter.addEventListener('change', fetchAuditorRecords);
     if (statusFilter) statusFilter.addEventListener('change', fetchAuditorRecords);
-    if (dateFilter) dateFilter.addEventListener('change', fetchAuditorRecords);
     if (refreshBtn) refreshBtn.addEventListener('click', fetchAuditorRecords);
+
+    // Shared date-range filter (presets + custom From/To).
+    if (window.DateRangeFilter) {
+        window.DateRangeFilter.init('[data-date-range-filter]', fetchAuditorRecords);
+    }
 
     if (tableBody) {
         tableBody.addEventListener('click', function (e) {
@@ -183,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (searchInput) searchInput.value = '';
             if (typeFilter) typeFilter.value = '';
             if (statusFilter) statusFilter.value = '';
-            if (dateFilter) dateFilter.value = '';
+            if (window.DateRangeFilter) window.DateRangeFilter.reset('[data-date-range-filter]');
             isOverdueFilterActive = false;
             if (btnToggleOverdue) btnToggleOverdue.textContent = 'Filter to Overdue';
             fetchAuditorRecords();

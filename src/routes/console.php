@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('dts:check-overdue')->everyFifteenMinutes();
+Schedule::command('dts:check-near-overdue')->everyMinute();

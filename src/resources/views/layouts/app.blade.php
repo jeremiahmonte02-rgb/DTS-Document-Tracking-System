@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/custom.css') }}?v={{ filemtime(public_path('css/custom.css')) }}">
     @yield('styles')
 </head>
 <body>
@@ -72,9 +72,14 @@
                                 <li><span class="dropdown-item-text text-muted text-center py-3 small">No notifications</span></li>
                             @endforelse
                         @endif
-                        @if($totalUnread > 0)
-                            <li class="dropdown-footer-sticky"><hr class="dropdown-divider my-0"><button id="dismissAllBtn" class="dropdown-item text-center small text-muted">Dismiss All</button></li>
-                        @endif
+                        <li class="dropdown-footer-sticky"><hr class="dropdown-divider my-0">
+                            <div class="d-flex">
+                                <a href="{{ route('notifications.index') }}" class="dropdown-item text-center small text-muted flex-fill" data-no-spinner="true">View All</a>
+                                @if($totalUnread > 0)
+                                <button id="dismissAllBtn" class="dropdown-item text-center small text-muted flex-fill border-start">Dismiss All</button>
+                                @endif
+                            </div>
+                        </li>
                         </ul>
                 </div>
                 <div class="dropdown">
@@ -136,9 +141,9 @@
                     broadcaster: 'reverb',
                     key: "{{ config('broadcasting.connections.reverb.key') }}",
                     wsHost: window.location.hostname,
-                    wsPort: {{ (int) config('broadcasting.connections.reverb.options.port', 8080) }},
-                    wssPort: {{ (int) config('broadcasting.connections.reverb.options.port', 8080) }},
-                    forceTLS: {{ config('broadcasting.connections.reverb.options.scheme', 'http') === 'https' ? 'true' : 'false' }},
+                    wsPort: window.location.port ? parseInt(window.location.port, 10) : (window.location.protocol === 'https:' ? 443 : 80),
+                    wssPort: window.location.port ? parseInt(window.location.port, 10) : (window.location.protocol === 'https:' ? 443 : 80),
+                    forceTLS: window.location.protocol === 'https:',
                     enabledTransports: ['ws', 'wss']
                 });
             } catch (e) {
@@ -147,6 +152,7 @@
         })();
     </script>
     <script src="{{ asset('js/modules/realtime-announcements.js') }}?v={{ filemtime(public_path('js/modules/realtime-announcements.js')) }}"></script>
+    <script src="{{ asset('js/modules/realtime-near-overdue.js') }}?v={{ filemtime(public_path('js/modules/realtime-near-overdue.js')) }}"></script>
 
     <!-- Global JS -->
     <script src="{{ asset('js/main.js') }}?v={{ filemtime(public_path('js/main.js')) }}"></script>

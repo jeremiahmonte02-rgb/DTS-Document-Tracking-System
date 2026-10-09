@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Broadcast;
 // these are PRIVATE channels with server-side authorization — unlike the
 // public announcements channel, which is intentionally visible to all.
 Broadcast::channel('department.{departmentId}', function ($user, $departmentId) {
+    if (!$user) {
+        return false;
+    }
+
     if ($user->isAdmin() || $user->isAuditor()) {
         return true;
     }
@@ -24,6 +28,10 @@ Broadcast::channel('department.{departmentId}', function ($user, $departmentId) 
 // Reuses the exact same authorization as the page itself
 // (DocumentPolicy::view) — no parallel authorization rules.
 Broadcast::channel('document.{documentId}', function ($user, $documentId) {
+    if (!$user) {
+        return false;
+    }
+
     $document = Document::find($documentId);
 
     if (!$document) {

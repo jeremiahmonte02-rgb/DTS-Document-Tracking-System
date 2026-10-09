@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Events\AnnouncementCreated;
 use App\Models\Announcement;
+use App\Models\Department;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
@@ -62,7 +63,9 @@ class AnnouncementBuilder
                 continue;
             }
 
-            if (is_array($oldValue) || is_array($newValue)) {
+            if (self::isRouteArray($oldValue) || self::isRouteArray($newValue)) {
+                $clauses[] = self::describeRouteChange($key, (array) $oldValue, (array) $newValue);
+            } elseif (is_array($oldValue) || is_array($newValue)) {
                 $clauses[] = self::labelFor($key) . ' changed';
             } else {
                 $clauses[] = self::labelFor($key) . ' changed from ' . self::formatValue($oldValue)
@@ -71,6 +74,64 @@ class AnnouncementBuilder
         }
 
         return implode('; ', $clauses);
+    }
+
+    /**
+     * Detect a routing-path step list: a non-empty list whose elements are
+     * arrays carrying a department_id (the predefined_route shape).
+     */
+    private static function isRouteArray($value): bool
+    {
+        if (!is_array($value) || $value === []) {
+            return false;
+        }
+
+        foreach ($value as $step) {
+            if (!is_array($step) || !array_key_exists('department_id', $step)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Describe added/removed/reordered departments between two route step
+     * lists. Falls back to the generic phrase when the sequences carry no
+     * department-level difference this can phrase.
+     */
+    private static function describeRouteChange(string $key, array $old, array $new): string
+    {
+        $order = function ($steps) {
+            usort($steps, fn ($a, $b) => ((int) ($a['route_order'] ?? 0)) <=> ((int) ($b['route_order'] ?? 0)));
+            return array_values(array_map(fn ($s) => (int) ($s['department_id'] ?? 0), $steps));
+        };
+
+        $oldIds = $order($old);
+        $newIds = $order($new);
+
+        $names = Department::whereIn(
+            'id',
+            array_values(array_unique(array_merge($oldIds, $newIds)))
+        )->pluck('name', 'id');
+        $name = fn ($id) => $names[$id] ?? ('department #' . $id);
+
+        $parts = [];
+        foreach (array_values(array_diff($newIds, $oldIds)) as $addedId) {
+            $step = array_search($addedId, $newIds, true) + 1;
+            $parts[] = 'added ' . $name($addedId) . ' at step ' . $step;
+        }
+        foreach (array_values(array_diff($oldIds, $newIds)) as $removedId) {
+            $parts[] = 'removed ' . $name($removedId);
+        }
+        if ($parts === [] && $oldIds !== $newIds) {
+            $parts[] = 'reordered to ' . implode(' → ', array_map($name, $newIds));
+        }
+        if ($parts === []) {
+            return self::labelFor($key) . ' changed';
+        }
+
+        return self::labelFor($key) . ' changed: ' . implode(', ', $parts);
     }
 
     private static function valuesEqual($a, $b): bool

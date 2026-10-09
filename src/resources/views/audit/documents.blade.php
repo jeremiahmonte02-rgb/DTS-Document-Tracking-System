@@ -73,8 +73,8 @@
             </div>
 
             <div class="filter-bar">
-                <div class="row g-2 align-items-end">
-                    <div class="col-md-4">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-3">
                         <div class="input-group">
                             <span class="input-group-text">
                                 <i class="bi bi-search" style="font-size: 0.875rem;"></i>
@@ -84,7 +84,7 @@
                         </div>
                     </div>
                     <div class="col-md-2">
-                        <select class="form-select" id="type-filter">
+                        <select class="form-select" id="type-filter" data-filter="type">
                             <option value="">All Types</option>
                             @foreach($documentTypes as $type)
                             <option value="{{ $type->id }}">{{ $type->name }}</option>
@@ -92,7 +92,7 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <select class="form-select" id="status-filter">
+                        <select class="form-select" id="status-filter" data-filter="status">
                             <option value="">All Status</option>
                             <option value="pending_transfer">Pending</option>
                             <option value="in_transit">In Transit</option>
@@ -102,10 +102,10 @@
                             <option value="cancelled">Cancelled</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
-                        <input type="date" class="form-control" id="date-filter">
+                    <div class="col-md-4">
+                        @include('partials.date-range-filter', ['showClear' => false])
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-1">
                         <a href="#" class="filter-btn-clear" data-action="clear-filters">
                             <i class="bi bi-x-lg"></i> Clear
                         </a>
@@ -149,5 +149,6 @@
 @endsection
 
 @section('scripts')
+    <script src="{{ asset('js/modules/date-range-filter.js') }}?v={{ filemtime(public_path('js/modules/date-range-filter.js')) }}"></script>
     <script src="{{ asset('js/modules/audit.js') }}"></script>
 @endsection

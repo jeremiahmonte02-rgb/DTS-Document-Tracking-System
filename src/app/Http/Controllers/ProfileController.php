@@ -111,7 +111,14 @@ class ProfileController extends Controller
             $query->where('documents.document_type_id', $request->type);
         }
 
-        if ($request->filled('date')) {
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            if ($request->filled('date_from')) {
+                $query->whereDate('documents.created_at', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $query->whereDate('documents.created_at', '<=', $request->date_to);
+            }
+        } elseif ($request->filled('date')) {
             $query->whereDate('documents.created_at', $request->date);
         }
 

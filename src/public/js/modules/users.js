@@ -213,6 +213,7 @@
 
             var url = toggleUrlTemplate.replace('__ID__', userId);
 
+            var proceedWithToggle = function () {
             fetch(url, {
                 method: 'PATCH',
                 headers: {
@@ -232,6 +233,32 @@
             .catch(function (err) {
                 console.error("[users.js] Toggle failed:", err);
             });
+            };
+
+            var userData = cachedUsers.find(function (u) { return String(u.id) === String(userId); });
+            if (typeof window.showConfirmModal !== 'function' || !userData) {
+                proceedWithToggle();
+                return;
+            }
+
+            var isActive = userData.status === 'active';
+            if (isActive) {
+                window.showConfirmModal({
+                    title: 'Deactivate ' + userData.name,
+                    message: 'Deactivate ' + userData.name + ' (currently Active)? They will lose access to the system.',
+                    confirmLabel: 'Deactivate',
+                    variant: 'danger',
+                    onConfirm: proceedWithToggle
+                });
+            } else {
+                window.showConfirmModal({
+                    title: 'Activate ' + userData.name,
+                    message: 'Activate ' + userData.name + ' (currently Inactive)? They will regain access to the system.',
+                    confirmLabel: 'Activate',
+                    variant: 'success',
+                    onConfirm: proceedWithToggle
+                });
+            }
         }
 
         function submitAddUser() {

@@ -32,6 +32,7 @@ Route::middleware(['auth', 'no-cache'])->group(function () {
     Route::get('/outbox', [App\Http\Controllers\DocumentController::class, 'outbox'])->name('outbox');
     Route::get('/api/outbox/data', [App\Http\Controllers\DocumentController::class, 'getOutboxData'])->name('api.outbox.data');
     Route::get('/document-details/{document_number}', [App\Http\Controllers\DocumentController::class, 'showDocumentDetails'])->name('document-details.show');
+    Route::get('/documents/{document_number}/file', [App\Http\Controllers\DocumentController::class, 'viewFile'])->name('documents.file');
     //Route::post('/documents/confirm-receipt', [App\Http\Controllers\DocumentController::class, 'confirmReceipt'])->name('documents.confirm-receipt');
     Route::post('/documents/{document_number}/receive', [App\Http\Controllers\DocumentController::class, 'receiveDocument'])->name('documents.receive');
     Route::post('/documents/{document_number}/complete', [App\Http\Controllers\DocumentController::class, 'completeDocument'])->name('documents.complete');
@@ -40,6 +41,7 @@ Route::middleware(['auth', 'no-cache'])->group(function () {
     Route::post('/documents/{document_number}/update-routing', [App\Http\Controllers\DocumentController::class, 'updateRoutingPath'])->name('documents.update-routing');
     Route::post('/api/issues', [App\Http\Controllers\DocumentController::class, 'reportIssue'])->name('api.issues.report');
     Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log');
+    Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
     Route::post('/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
     Route::post('/announcements/read-all', [App\Http\Controllers\AnnouncementController::class, 'markAllAsRead'])->name('announcements.mark-all-read');

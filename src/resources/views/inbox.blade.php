@@ -8,8 +8,8 @@
             <!-- Filters and Search -->
             <div class="card mb-4">
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-3">
                             <div class="input-group">
                                 <span class="input-group-text">
                                     <i class="bi bi-search"></i>
@@ -35,13 +35,12 @@
                                 <option value="rejected">Rejected</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <input type="date" class="form-control" id="date-filter" data-filter="date"
-                                   placeholder="Filter by date">
+                        <div class="col-md-4">
+                            @include('partials.date-range-filter', ['showClear' => false])
                         </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-outline-secondary w-100" data-action="clear-filters">
-                                <i class="bi bi-x-circle"></i> Clear
+                        <div class="col-md-1">
+                            <button class="filter-btn-clear" data-action="clear-filters">
+                                <i class="bi bi-x-lg"></i> Clear
                             </button>
                         </div>
                     </div>
@@ -133,6 +132,7 @@
 @endsection
 
 @section('scripts')
+    <script src="{{ asset('js/modules/date-range-filter.js') }}?v={{ filemtime(public_path('js/modules/date-range-filter.js')) }}"></script>
     <script src="{{ asset('js/modules/inbox.js') }}?v={{ filemtime(public_path('js/modules/inbox.js')) }}"></script>
     <script src="{{ asset('js/modules/realtime-inbox.js') }}?v={{ filemtime(public_path('js/modules/realtime-inbox.js')) }}"></script>
 @endsection

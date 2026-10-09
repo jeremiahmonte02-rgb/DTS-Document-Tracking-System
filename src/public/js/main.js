@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     setupNotificationMarkRead();
     setupAnnouncementMarkRead();
+    setupNearOverdueBannerDismiss();
     setupDismissAll();
     highlightActiveNav();
     setupSidebarCloseOnOutsideClick();
@@ -166,14 +167,21 @@ function renderDropdownFromFeed(data) {
 // Rebuild the dashboard announcement banner (.announcements-banner) from a
 // fresh feed array. Mirrors partials/announcement-banner.blade.php exactly:
 // icon block, fw-semibold title, full untruncated message, relative time,
-// and a btn-close carrying data-announcement-id (handled by the delegated
-// setupAnnouncementMarkRead listener — no extra binding needed here).
-// Shows max 3 newest announcements, matching the server's take(3). An
+// and a btn-close carrying data-announcement-id for system announcements
+// (handled by the delegated setupAnnouncementMarkRead listener) or
+// data-notification-id for near-overdue warnings (handled by
+// setupNearOverdueBannerDismiss) — no extra binding needed here.
+// Shows max 3 newest banner items (announcements + own-department
+// near-overdue warnings), matching the server's take(3). An
 // empty result removes the wrapper, matching the Blade
 // @if(...->isNotEmpty()) behavior. The feed's message field is already
 // full text (truncation is dropdown-Blade-only), so it is reused as-is.
 function renderAnnouncementBanner(feed) {
-    var items = (feed || []).filter(function(it) { return it && it.type === 'announcement'; }).slice(0, 3);
+    var items = (feed || []).filter(function(it) {
+        if (!it) return false;
+        if (it.type === 'announcement') return true;
+        return it.type === 'notification' && it.notification_type === 'near_overdue';
+    }).slice(0, 3);
     var wrap = document.querySelector('.announcements-banner');
     if (items.length === 0) {
         if (wrap) wrap.remove();
@@ -197,15 +205,17 @@ function renderAnnouncementBanner(feed) {
         while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
     }
     items.forEach(function(item) {
+        var isWarning = item.type === 'notification' && item.notification_type === 'near_overdue';
         var banner = document.createElement('div');
-        banner.className = 'announcement-banner';
+        banner.className = 'announcement-banner' + (isWarning ? ' announcement-banner-warning' : '');
         banner.setAttribute('role', 'alert');
-        banner.setAttribute('data-announcement-id', item.id);
+        if (isWarning) banner.setAttribute('data-notification-id', item.id);
+        else banner.setAttribute('data-announcement-id', item.id);
 
         var icon = document.createElement('div');
         icon.className = 'announcement-icon';
         var iconI = document.createElement('i');
-        iconI.className = 'bi bi-megaphone-fill';
+        iconI.className = isWarning ? 'bi bi-exclamation-triangle-fill' : 'bi bi-megaphone-fill';
         icon.appendChild(iconI);
 
         var content = document.createElement('div');
@@ -226,8 +236,13 @@ function renderAnnouncementBanner(feed) {
         var close = document.createElement('button');
         close.type = 'button';
         close.className = 'btn-close';
-        close.setAttribute('aria-label', 'Dismiss announcement');
-        close.setAttribute('data-announcement-id', item.id);
+        if (isWarning) {
+            close.setAttribute('aria-label', 'Dismiss near-overdue warning');
+            close.setAttribute('data-notification-id', item.id);
+        } else {
+            close.setAttribute('aria-label', 'Dismiss announcement');
+            close.setAttribute('data-announcement-id', item.id);
+        }
 
         banner.appendChild(icon);
         banner.appendChild(content);
@@ -428,6 +443,60 @@ function setupAnnouncementMarkRead() {
     }, true);
 }
 
+// Dismiss a near-overdue warning shown on the dashboard banner. Warnings are
+// persisted notification rows (not announcements), so dismissal marks the
+// viewer's own notification row as read via the notifications endpoint —
+// scoped to that user only, never affecting other departments' copies.
+// Mirrors the setupAnnouncementMarkRead flow: remove every matching banner
+// node, then refresh both surfaces from the authoritative feed.
+function setupNearOverdueBannerDismiss() {
+    document.addEventListener('click', function(event) {
+        var el = event.target && event.target.closest ? event.target.closest('.announcement-banner-warning [data-notification-id]') : null;
+        if (!el) return;
+        var banner = el.closest ? el.closest('.announcement-banner-warning') : null;
+        if (!banner) return;
+        var notificationId = banner.getAttribute('data-notification-id') || el.getAttribute('data-notification-id');
+        if (!notificationId) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        fetch('/notifications/' + encodeURIComponent(notificationId) + '/read', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken(),
+                'Accept': 'application/json'
+            },
+            keepalive: true
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Near-overdue dismiss failed with status ' + response.status);
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            if (!data.success) {
+                throw new Error('Near-overdue dismiss returned success=false');
+            }
+            document.querySelectorAll('.announcement-banner-warning[data-notification-id="' + CSS.escape(notificationId) + '"]').forEach(function(otherBanner) {
+                otherBanner.remove();
+            });
+            var bannerWrap = document.querySelector('.announcements-banner');
+            if (bannerWrap && bannerWrap.children.length === 0) bannerWrap.remove();
+            backfillDropdown();
+        })
+        .catch(function(error) {
+            console.error('Near-overdue dismiss failed:', error);
+        })
+        .finally(function() {
+            if (typeof hideSpinner === 'function') {
+                hideSpinner();
+            }
+        });
+    }, true);
+}
+
 function setupDismissAll() {
     var btn = document.getElementById('dismissAllBtn');
     if (!btn) return;
@@ -515,11 +584,8 @@ function setupDismissAll() {
             }
             btn.classList.add('d-none');
             btn.style.display = 'none';
-            var footer = btn.closest('.dropdown-footer-sticky');
-            if (footer) {
-                footer.classList.add('d-none');
-                footer.style.display = 'none';
-            }
+            // The sticky footer itself stays visible: it now permanently
+            // hosts the "View All" link. Only the Dismiss All button hides.
         })
         .catch(function(error) {
             console.error('Dismiss all failed:', error);

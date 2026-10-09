@@ -138,7 +138,7 @@
 @section('scripts')
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>window.DTS_USER_DEPT_ID = {{ auth()->user()->department_id ?? 'null' }};</script>
-    <script src="{{ asset('js/modules/timeline-renderer.js') }}"></script>
+    <script src="{{ asset('js/modules/timeline-renderer.js') }}?v={{ filemtime(public_path('js/modules/timeline-renderer.js')) }}"></script>
     <script src="{{ asset('js/core/api.js') }}"></script>
     <script src="{{ asset('js/modules/scan.js') }}"></script>
 @endsection

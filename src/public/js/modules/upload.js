@@ -357,18 +357,34 @@ document.addEventListener('DOMContentLoaded', function() {
         event.preventDefault();
 
         const submitBtn = uploadForm.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Uploading...';
-        }
 
         if (!routesHiddenInput || !routesHiddenInput.value || JSON.parse(routesHiddenInput.value).length === 0) {
             alert('Validation Denied: You must attach at least one department destination routing step to this tracking sequence.');
             return;
         }
 
-        showLoadingSpinner();
-        const payloadFormDataStream = new FormData(uploadForm);
+        var docTitle = (document.getElementById('title') || {}).value || 'untitled document';
+        var routeItems = routeListContainer ? routeListContainer.querySelectorAll('li') : [];
+        var routeCount = routeItems.length;
+        var firstDepartmentName = 'the first department';
+        if (routeItems.length > 0) {
+            var nameSpan = routeItems[0].querySelector('span:not(.index-counter-badge)');
+            var rawName = nameSpan
+                ? nameSpan.textContent.trim()
+                : (routeItems[0].textContent || '').trim().replace(/^\d+\s*/, '');
+            if (rawName) firstDepartmentName = rawName;
+        }
+        var confirmMessage = 'Upload "' + docTitle + '" and send it through '
+            + routeCount + ' routing step(s), starting with ' + firstDepartmentName + '?';
+
+        var proceedWithUpload = function () {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Uploading...';
+            }
+
+            showLoadingSpinner();
+            const payloadFormDataStream = new FormData(uploadForm);
 
         fetch(storeEndpointUrl, {
             method: 'POST',
@@ -444,6 +460,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = '<i class="bi bi-cloud-upload"></i> Upload Document';
             }
         });
+        };
+
+        if (typeof window.showConfirmModal === 'function') {
+            window.showConfirmModal({
+                title: 'Upload Document',
+                message: confirmMessage,
+                confirmLabel: 'Upload Document',
+                variant: 'success',
+                onConfirm: proceedWithUpload
+            });
+        } else {
+            proceedWithUpload();
+        }
     }
 
     function escapeHtml(str) {

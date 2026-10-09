@@ -74,6 +74,14 @@
                 </div>
             </div>
 
+            <div class="filter-bar mb-3">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-8">
+                        @include('partials.date-range-filter', ['dateFrom' => $dateFrom ?? null, 'dateTo' => $dateTo ?? null])
+                    </div>
+                </div>
+            </div>
+
             <div class="table-container">
                 <div class="table-header-section">
                     <h5>
@@ -156,4 +164,9 @@
                 </div>
                 @endif
             </div>
+@endsection
+
+@section('scripts')
+    <script src="{{ asset('js/modules/date-range-filter.js') }}?v={{ filemtime(public_path('js/modules/date-range-filter.js')) }}"></script>
+    <script src="{{ asset('js/modules/audit-issues.js') }}?v={{ filemtime(public_path('js/modules/audit-issues.js')) }}"></script>
 @endsection

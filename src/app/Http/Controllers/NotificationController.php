@@ -46,6 +46,24 @@ class NotificationController extends Controller
         ], 200);
     }
 
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $type = $request->query('type');
+        if (!in_array($type, ['notification', 'announcement'], true)) {
+            $type = null;
+        }
+        $page = max(1, (int) $request->query('page', 1));
+
+        $feed = NotificationFeedBuilder::buildPaginatedFeed($user, $type, $page, 20);
+        $feed->appends(array_filter(['type' => $request->query('type')]));
+
+        return view('notifications.index', [
+            'feed' => $feed,
+            'activeType' => $type ?? 'all',
+        ]);
+    }
+
     public function feed(Request $request): JsonResponse
     {
         $user = $request->user();

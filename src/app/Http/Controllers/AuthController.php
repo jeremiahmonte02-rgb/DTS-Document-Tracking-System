@@ -30,10 +30,10 @@ class AuthController extends Controller
         ]);
 
         $credentials = $request->only('email', 'password');
-        $remember = $request->boolean('rememberMe');
 
-        // 2. Attempt authentication using Laravel Auth
-        if (Auth::attempt($credentials, $remember)) {
+        // 2. Attempt authentication using Laravel Auth (no "remember me":
+        // sessions always expire per normal session lifetime)
+        if (Auth::attempt($credentials)) {
             $user = Auth::user();
 
             // 3. Block inactive employee records

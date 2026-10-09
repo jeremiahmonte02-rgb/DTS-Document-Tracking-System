@@ -68,25 +68,12 @@
                                     <span id="docSender">{{ $document->origin_department }}</span>
                                 </div>
                             </div>
-                            @php
-                                // Find the last step in the routing chain that has been marked received or completed
-                                $lastReceivedStep = collect($routes)
-                                    ->whereIn('status', ['received', 'completed'])
-                                    ->sortByDesc('route_order')
-                                    ->first();
-
-                                // Determine display name: use the last receiving department, or fall back to the sender department
-                                $currentLocationName = $lastReceivedStep
-                                    ? $lastReceivedStep->department_name
-                                    : ($document->origin_department ?? 'Originating Office');
-                            @endphp
-
                             <div class="row mb-3">
                                 <div class="col-md-4">
                                     <strong class="text-muted">Current Location:</strong>
                                 </div>
                                 <div class="col-md-8">
-                                    <span id="docReceiver" class="fw-bold">{{ $currentLocationName }}</span>
+                                    <span id="docReceiver" class="fw-bold">{{ $document->current_department ?? $document->origin_department ?? 'Originating Office' }}</span>
                                 </div>
                             </div>
                             <div class="row mb-3">
@@ -150,9 +137,9 @@
                                 <button class="btn btn-primary w-100 w-md-auto" onclick="window.print()">
                                     <i class="bi bi-printer"></i> Print Details
                                 </button>
-                                <button class="btn btn-success w-100 w-md-auto" onclick="downloadDocument()">
-                                    <i class="bi bi-download"></i> Download Document
-                                </button>
+                                <a class="btn btn-success w-100 w-md-auto" href="{{ route('documents.file', $document->document_number) }}" target="_blank" rel="noopener" data-no-spinner="true">
+                                    <i class="bi bi-eye"></i> View Document
+                                </a>
                                 <button class="btn btn-info w-100 w-md-auto" onclick="shareDocument()">
                                     <i class="bi bi-share"></i> Share
                                 </button>
@@ -501,7 +488,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
     <!-- Page Modules -->
-    <script src="{{ asset('js/modules/timeline-renderer.js') }}"></script>
+    <script src="{{ asset('js/modules/timeline-renderer.js') }}?v={{ filemtime(public_path('js/modules/timeline-renderer.js')) }}"></script>
     <script src="{{ asset('js/modules/document-details.js') }}"></script>
     <script src="{{ asset('js/modules/route-status.js') }}"></script>
     <script src="{{ asset('js/modules/realtime-document.js') }}"></script>
@@ -606,10 +593,6 @@
             });
         }
 
-        function downloadDocument() {
-            showToast('Download feature coming soon', 'info');
-        }
-
         function shareDocument() {
             const docId = document.getElementById('docId').textContent;
             const shareUrl = window.location.href;
@@ -699,6 +682,18 @@
                 hideSpinner();
                 showToast('A network or server error occurred.', 'danger');
             });
+        }
+
+        function formatCompletedDate(value) {
+            if (!value) return '-';
+            var d = new Date(String(value).replace(' ', 'T'));
+            if (isNaN(d.getTime())) return '-';
+            var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            function p(n) { return (n < 10 ? '0' : '') + n; }
+            var h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            if (h === 0) h = 12;
+            return months[d.getMonth()] + ' ' + p(d.getDate()) + ', ' + d.getFullYear() + ' ' + p(h) + ':' + p(d.getMinutes()) + ' ' + ap;
         }
 
         function refreshDocumentState(docNumber) {
@@ -793,6 +788,20 @@
                     } else {
                         docStatusBadge.classList.add('bg-secondary', 'text-white');
                     }
+                }
+
+                // Live-update Current Location + Completed Date from data
+                // already present in this response. Location derivation
+                // mirrors the server-side Blade version exactly: last route
+                // step with status received/completed by route_order desc,
+                // falling back to the sender (origin) department.
+                var locEl = document.getElementById('docReceiver');
+                if (locEl && data.document && data.document.current_department_name) {
+                    locEl.textContent = data.document.current_department_name;
+                }
+                var compEl = document.getElementById('docReceivedDate');
+                if (compEl) {
+                    compEl.textContent = formatCompletedDate(data.document ? data.document.completed_at : null);
                 }
             })
             .catch(function (err) {
