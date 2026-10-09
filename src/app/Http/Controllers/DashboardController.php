@@ -87,15 +87,37 @@ class DashboardController extends Controller
         $deptScope($baseQuery);
         $baseQuery->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
 
-        // 1. KPI Metric Cards
-        $totalDocuments = (clone $baseQuery)->count();
-        $pendingDocuments = (clone $baseQuery)->where('status', 'pending_transfer')->count();
-        $inTransitDocuments = (clone $baseQuery)->where('status', 'in_transit')->count();
-        $receivedInMonth = DB::table('document_events')
-            ->where('event_type', 'receipt')
-            ->where('department_id', $userDeptId)
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->count();
+        // 1. KPI Metric Cards — each card's document_number list is built ONCE
+        // here (single source of truth); the displayed number is derived from
+        // the list length so a card number and its "Document Lists" export
+        // column can never differ. Filters match the pre-existing card
+        // definitions exactly (same status, same created_at month boundary in
+        // Asia/Manila, same viewer-department scope).
+        $totalDocumentNumbers = (clone $baseQuery)->pluck('documents.document_number')->all();
+        sort($totalDocumentNumbers, SORT_STRING);
+        $pendingDocumentNumbers = (clone $baseQuery)->where('status', 'pending_transfer')->pluck('documents.document_number')->all();
+        sort($pendingDocumentNumbers, SORT_STRING);
+        $inTransitDocumentNumbers = (clone $baseQuery)->where('status', 'in_transit')->pluck('documents.document_number')->all();
+        sort($inTransitDocumentNumbers, SORT_STRING);
+        // RECEIVED IN MONTH counts DISTINCT documents with a receipt event in
+        // the month (same event_type/department/created_at filters as before;
+        // documents joined only to read document_number, no extra filters).
+        // A document created in an earlier month still counts when received
+        // in the selected month; a document received twice counts once.
+        $receivedDocumentNumbers = DB::table('document_events')
+            ->join('documents', 'document_events.document_id', '=', 'documents.id')
+            ->where('document_events.event_type', 'receipt')
+            ->where('document_events.department_id', $userDeptId)
+            ->whereBetween('document_events.created_at', [$startOfMonth, $endOfMonth])
+            ->distinct()
+            ->pluck('documents.document_number')
+            ->all();
+        sort($receivedDocumentNumbers, SORT_STRING);
+
+        $totalDocuments = count($totalDocumentNumbers);
+        $pendingDocuments = count($pendingDocumentNumbers);
+        $inTransitDocuments = count($inTransitDocumentNumbers);
+        $receivedInMonth = count($receivedDocumentNumbers);
 
         // 2. Status Distribution Doughnut — dynamically extracted, no hardcoded keys
         $statusMetrics = (clone $baseQuery)
@@ -205,7 +227,6 @@ class DashboardController extends Controller
         $policies = \App\Models\DocumentRoutingPolicy::whereIn('document_type_id', $activeRoutes->pluck('document_type_id')->unique())
             ->get()->keyBy('document_type_id');
 
-        $dynamicOverdueCount = 0;
         $overdueDocuments = [];
         $now = Carbon::now('Asia/Manila');
 
@@ -219,7 +240,6 @@ class DashboardController extends Controller
             $deadline = $routeArrival->addMinutes($allowedMinutes);
 
             if ($now->greaterThan($deadline)) {
-                $dynamicOverdueCount++;
                 $overdueDocuments[] = [
                     'document_number' => $route->document_number,
                     'title' => $route->title,
@@ -233,7 +253,14 @@ class DashboardController extends Controller
             }
         }
 
-        $overdueCount = $dynamicOverdueCount;
+        // Overdue document_number list is the single source of truth for both
+        // the card number and the export column: reuse this loop's values,
+        // deduplicated (one row per document even if it ever holds two
+        // 'current' steps), sorted ascending.
+        $overdueDocumentNumbers = array_values(array_unique(array_column($overdueDocuments, 'document_number')));
+        sort($overdueDocumentNumbers, SORT_STRING);
+
+        $overdueCount = count($overdueDocumentNumbers);
 
         // 7. Average completion time — scoped by completed_at within selected
         // month and to the viewer's own department (no admin org-wide exception)
@@ -250,6 +277,16 @@ class DashboardController extends Controller
             ->value('avg_hours');
         $avgCompletionHours = $avgCompletionHours ? round((float) $avgCompletionHours, 1) : 0;
 
+        // Column-per-card source for the "Document Lists" export sheet.
+        // NEW key only — every pre-existing key above is untouched.
+        $documentLists = [
+            'TOTAL DOCUMENT' => $totalDocumentNumbers,
+            'PENDING TRANSFER' => $pendingDocumentNumbers,
+            'RECEIVED IN MONTH' => $receivedDocumentNumbers,
+            'IN-TRANSIT' => $inTransitDocumentNumbers,
+            'OVERDUED' => $overdueDocumentNumbers,
+        ];
+
         return [
             'totalDocuments' => $totalDocuments,
             'pendingDocuments' => $pendingDocuments,
@@ -262,6 +299,7 @@ class DashboardController extends Controller
             'overdueCount' => $overdueCount,
             'overdueDocuments' => $overdueDocuments,
             'avgCompletionHours' => $avgCompletionHours,
+            'documentLists' => $documentLists,
         ];
     }
 }

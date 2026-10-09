@@ -77,26 +77,48 @@ class AuditorController extends Controller
     {
         $now = \Carbon\Carbon::now('Asia/Manila');
 
-        // 1. Global KPI cards — scoped to selected month
-        $totalDocuments = DB::table('documents')
+        // 1. Global KPI cards — scoped to selected month. Each card's
+        // document_number list is built ONCE here (single source of truth);
+        // the displayed number is derived from the list length so a card
+        // number and its "Document Lists" export column can never differ.
+        // Filters match the pre-existing card definitions exactly
+        // (same status, same created_at month boundary in Asia/Manila,
+        // organization-wide with no department clause).
+        $totalDocumentNumbers = DB::table('documents')
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->count();
-        $pendingDocuments = DB::table('documents')
+            ->pluck('document_number')
+            ->all();
+        sort($totalDocumentNumbers, SORT_STRING);
+        $pendingDocumentNumbers = DB::table('documents')
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->where('status', 'pending_transfer')
-            ->count();
-        $inTransitDocuments = DB::table('documents')
+            ->pluck('document_number')
+            ->all();
+        sort($pendingDocumentNumbers, SORT_STRING);
+        $inTransitDocumentNumbers = DB::table('documents')
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->where('status', 'in_transit')
-            ->count();
-        $completedDocuments = DB::table('documents')
+            ->pluck('document_number')
+            ->all();
+        sort($inTransitDocumentNumbers, SORT_STRING);
+        $completedDocumentNumbers = DB::table('documents')
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->whereIn('status', ['received', 'completed'])
-            ->count();
-        $rejectedDocuments = DB::table('documents')
+            ->pluck('document_number')
+            ->all();
+        sort($completedDocumentNumbers, SORT_STRING);
+        $rejectedDocumentNumbers = DB::table('documents')
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->where('status', 'rejected')
-            ->count();
+            ->pluck('document_number')
+            ->all();
+        sort($rejectedDocumentNumbers, SORT_STRING);
+
+        $totalDocuments = count($totalDocumentNumbers);
+        $pendingDocuments = count($pendingDocumentNumbers);
+        $inTransitDocuments = count($inTransitDocumentNumbers);
+        $completedDocuments = count($completedDocumentNumbers);
+        $rejectedDocuments = count($rejectedDocumentNumbers);
 
         // 2. SLA-overdue count — live operational state, intentionally UNscoped
         // by month (a genuinely-overdue-right-now document counts regardless
@@ -127,7 +149,6 @@ class AuditorController extends Controller
         $policies = \App\Models\DocumentRoutingPolicy::whereIn('document_type_id', $activeRoutes->pluck('document_type_id')->unique())
             ->get()->keyBy('document_type_id');
 
-        $overdueCount = 0;
         $overdueDocuments = [];
         foreach ($activeRoutes as $route) {
             $predefinedRoute = isset($policies[$route->document_type_id]) ? $policies[$route->document_type_id]->predefined_route : null;
@@ -135,7 +156,6 @@ class AuditorController extends Controller
             $referenceTime = \Carbon\Carbon::parse($route->updated_at, 'Asia/Manila');
             $deadline = $referenceTime->copy()->addMinutes($allowedMinutes);
             if ($now->greaterThan($deadline)) {
-                $overdueCount++;
                 $overdueDocuments[] = [
                     'document_number' => $route->document_number,
                     'title' => $route->title,
@@ -148,6 +168,15 @@ class AuditorController extends Controller
                 ];
             }
         }
+
+        // Overdue document_number list is the single source of truth for both
+        // the card number and the export column: reuse this loop's values,
+        // deduplicated, sorted ascending. SLA clock (updated_at) and FULL
+        // SlaResolver chain intentionally unchanged here.
+        $overdueDocumentNumbers = array_values(array_unique(array_column($overdueDocuments, 'document_number')));
+        sort($overdueDocumentNumbers, SORT_STRING);
+
+        $overdueCount = count($overdueDocumentNumbers);
 
         // 3. Status distribution — scoped to selected month
         $statusMetrics = DB::table('documents')
@@ -281,6 +310,20 @@ class AuditorController extends Controller
             ->take(12)
             ->get();
 
+        // Column-per-card source for the "Document Lists" export sheet.
+        // NEW key only — every pre-existing key below is untouched. No
+        // RECEIVED IN MONTH column: the auditor stats contain no received
+        // metric (only the merged completedDocuments count), so there is no
+        // received definition to list.
+        $documentLists = [
+            'TOTAL DOCUMENT' => $totalDocumentNumbers,
+            'PENDING TRANSFER' => $pendingDocumentNumbers,
+            'IN-TRANSIT' => $inTransitDocumentNumbers,
+            'COMPLETED' => $completedDocumentNumbers,
+            'REJECTED' => $rejectedDocumentNumbers,
+            'SLA OVERDUE' => $overdueDocumentNumbers,
+        ];
+
         return [
             'totalDocuments' => $totalDocuments,
             'pendingDocuments' => $pendingDocuments,
@@ -299,6 +342,7 @@ class AuditorController extends Controller
             'avgDwellHours' => $avgDwellHours,
             'avgCompletionHours' => $avgCompletionHours,
             'activityFeed' => $activityFeed,
+            'documentLists' => $documentLists,
         ];
     }
 
