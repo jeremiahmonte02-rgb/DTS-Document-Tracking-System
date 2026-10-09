@@ -31,6 +31,14 @@ class DashboardController extends Controller
 
     public function exportExcel(Request $request): BinaryFileResponse
     {
+        // Export gate: only users holding 'users.manage' may export.
+        // Mirrors the exact Blade check gating the Export dropdown
+        // (@if(auth()->user()->hasPermission('users.manage'))). First
+        // statement: no input is read and no query runs before this.
+        if (!auth()->user() || !auth()->user()->hasPermission('users.manage')) {
+            abort(403, 'Unauthorized access to the dashboard export.');
+        }
+
         $user = auth()->user();
         $userDeptId = $user?->department_id;
         $canViewAll = $user->hasPermission('users.manage');
@@ -41,6 +49,31 @@ class DashboardController extends Controller
 
         $stats = $this->buildDashboardStats($userDeptId, $canViewAll, $startOfMonth, $endOfMonth);
 
+        // Card selection (repo inline-validation style): only narrows the
+        // already department-scoped output, never widens it. Stats are
+        // computed fully first; the lists are subset here (filter after
+        // computing). No `cards` parameter (or nothing valid) selects all.
+        $validated = $request->validate([
+            'cards' => ['nullable', 'array'],
+            'cards.*' => ['string', 'max:60'],
+        ]);
+        $rawCards = $validated['cards'] ?? null;
+        $selectedKeys = \App\Support\ExportCards::resolve(
+            \App\Support\ExportCards::DASHBOARD_STANDARD,
+            $rawCards
+        );
+        $explicitSelection = is_array($rawCards) && $rawCards !== [];
+
+        $standardHeaders = \App\Support\ExportCards::headers(
+            \App\Support\ExportCards::DASHBOARD_STANDARD
+        );
+        $selectedLists = [];
+        foreach ($selectedKeys as $key) {
+            $header = $standardHeaders[$key];
+            $selectedLists[$header] = $stats['documentLists'][$header] ?? [];
+        }
+        $stats['documentLists'] = $selectedLists;
+
         $departmentName = $userDeptId
             ? (Department::where('id', $userDeptId)->value('name') ?? 'N/A')
             : 'N/A';
@@ -49,6 +82,8 @@ class DashboardController extends Controller
             new DashboardSummaryExport($stats, [
                 'month' => $startOfMonth->format('F Y'),
                 'scope' => $departmentName,
+                'selectedKeys' => $selectedKeys,
+                'explicitSelection' => $explicitSelection,
             ]),
             'dashboard-summary-' . $startOfMonth->format('Y-m') . '.xlsx'
         );
@@ -236,7 +271,18 @@ class DashboardController extends Controller
             $predefinedRoute = isset($policies[$docTypeId]) ? ($policies[$docTypeId]->predefined_route ?? null) : null;
             $allowedMinutes = \App\Services\SlaResolver::resolve((int) $deptId, (int) $docTypeId, $route->route_order ?? null, $predefinedRoute);
 
-            $routeArrival = Carbon::parse($route->created_at, 'Asia/Manila');
+            // Custody clock: when this department took custody of the step.
+            // Legacy rows may predate received_at, so fall back to created_at.
+            // Mirrors CheckNearOverdueDocuments (the app default timezone is
+            // Asia/Manila per config/app.php, so this parses identically to
+            // the explicit 'Asia/Manila' form used elsewhere on this dashboard).
+            $custodyStart = $route->received_at ?? $route->created_at;
+
+            if (!$custodyStart) {
+                continue;
+            }
+
+            $routeArrival = Carbon::parse($custodyStart, 'Asia/Manila');
             $deadline = $routeArrival->addMinutes($allowedMinutes);
 
             if ($now->greaterThan($deadline)) {

@@ -23,11 +23,20 @@ class DashboardSummaryExport implements Export, WithMultipleSheets
 
     public function sheets(): array
     {
-        return [
+        // The Overdue Documents sheet exists only when its card is among the
+        // resolved keys ('overdue', or every key when nothing was selected,
+        // so the default export is unchanged).
+        $sheets = [
             new DashboardDocumentListsSheet($this->stats['documentLists'] ?? []),
             new DashboardSummarySheet($this->stats, $this->context),
-            new DashboardOverdueSheet($this->stats['overdueDocuments'] ?? []),
         ];
+
+        $selectedKeys = $this->context['selectedKeys'] ?? ['overdue'];
+        if (in_array('overdue', $selectedKeys, true)) {
+            $sheets[] = new DashboardOverdueSheet($this->stats['overdueDocuments'] ?? []);
+        }
+
+        return $sheets;
     }
 }
 
@@ -137,8 +146,26 @@ class DashboardSummarySheet implements FromArray, WithTitle, ShouldAutoSize, Wit
             $rows[] = [$department, $count];
         }
 
+        // Header map is read from the shared ExportCards class so the note
+        // and the "Cards included" row cannot drift from the column headers.
+        $cardMap = \App\Support\ExportCards::headers(\App\Support\ExportCards::DASHBOARD_STANDARD);
+        $selectedKeys = $this->context['selectedKeys'] ?? array_keys($cardMap);
+
+        if (in_array('received', $selectedKeys, true)) {
+            $rows[] = [];
+            $rows[] = ['Note', 'Received in Month counts distinct documents with a receipt event in the selected month and may include documents created in earlier months.'];
+        }
+
         $rows[] = [];
-        $rows[] = ['Note', 'Received in Month counts distinct documents with a receipt event in the selected month and may include documents created in earlier months.'];
+        if (!($this->context['explicitSelection'] ?? false)) {
+            $rows[] = ['Cards included:', 'All cards'];
+        } else {
+            $names = [];
+            foreach ($selectedKeys as $key) {
+                $names[] = $cardMap[$key] ?? $key;
+            }
+            $rows[] = ['Cards included:', implode(', ', $names)];
+        }
 
         return $rows;
     }

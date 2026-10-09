@@ -23,11 +23,20 @@ class AuditorDashboardSummaryExport implements Export, WithMultipleSheets
 
     public function sheets(): array
     {
-        return [
+        // The Overdue Documents sheet exists only when its card is among the
+        // resolved keys ('overdue', or every key when nothing was selected,
+        // so the default export is unchanged).
+        $sheets = [
             new AuditorDocumentListsSheet($this->stats['documentLists'] ?? []),
             new AuditorDashboardSummarySheet($this->stats, $this->context),
-            new AuditorDashboardOverdueSheet($this->stats['overdueDocuments'] ?? []),
         ];
+
+        $selectedKeys = $this->context['selectedKeys'] ?? ['overdue'];
+        if (in_array('overdue', $selectedKeys, true)) {
+            $sheets[] = new AuditorDashboardOverdueSheet($this->stats['overdueDocuments'] ?? []);
+        }
+
+        return $sheets;
     }
 }
 
@@ -155,8 +164,26 @@ class AuditorDashboardSummarySheet implements FromArray, WithTitle, ShouldAutoSi
             $rows[] = [$department, $count];
         }
 
+        // Header map is read from the shared ExportCards class so the note
+        // and the "Cards included" row cannot drift from the column headers.
+        $cardMap = \App\Support\ExportCards::headers(\App\Support\ExportCards::DASHBOARD_AUDITOR);
+        $selectedKeys = $this->context['selectedKeys'] ?? array_keys($cardMap);
+
+        if (in_array('completed', $selectedKeys, true)) {
+            $rows[] = [];
+            $rows[] = ['Note', "Completed includes statuses 'received' and 'completed' and is based on the document creation month."];
+        }
+
         $rows[] = [];
-        $rows[] = ['Note', "Completed includes statuses 'received' and 'completed' and is based on the document creation month."];
+        if (!($this->context['explicitSelection'] ?? false)) {
+            $rows[] = ['Cards included:', 'All cards'];
+        } else {
+            $names = [];
+            foreach ($selectedKeys as $key) {
+                $names[] = $cardMap[$key] ?? $key;
+            }
+            $rows[] = ['Cards included:', implode(', ', $names)];
+        }
 
         return $rows;
     }

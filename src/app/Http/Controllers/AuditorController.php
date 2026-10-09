@@ -48,10 +48,38 @@ class AuditorController extends Controller
 
         $stats = $this->buildAuditorDashboardStats($startOfMonth, $endOfMonth);
 
+        // Card selection (repo inline-validation style): only narrows the
+        // already organization-wide output, never widens it. Stats are
+        // computed fully first; the lists are subset here (filter after
+        // computing). No `cards` parameter (or nothing valid) selects all,
+        // which is the only way the UI-unselectable 'rejected' key is included.
+        $validated = $request->validate([
+            'cards' => ['nullable', 'array'],
+            'cards.*' => ['string', 'max:60'],
+        ]);
+        $rawCards = $validated['cards'] ?? null;
+        $selectedKeys = \App\Support\ExportCards::resolve(
+            \App\Support\ExportCards::DASHBOARD_AUDITOR,
+            $rawCards
+        );
+        $explicitSelection = is_array($rawCards) && $rawCards !== [];
+
+        $auditorHeaders = \App\Support\ExportCards::headers(
+            \App\Support\ExportCards::DASHBOARD_AUDITOR
+        );
+        $selectedLists = [];
+        foreach ($selectedKeys as $key) {
+            $header = $auditorHeaders[$key];
+            $selectedLists[$header] = $stats['documentLists'][$header] ?? [];
+        }
+        $stats['documentLists'] = $selectedLists;
+
         return Excel::download(
             new AuditorDashboardSummaryExport($stats, [
                 'month' => $startOfMonth->format('F Y'),
                 'scope' => 'Organization-wide',
+                'selectedKeys' => $selectedKeys,
+                'explicitSelection' => $explicitSelection,
             ]),
             'audit-dashboard-summary-' . $startOfMonth->format('Y-m') . '.xlsx'
         );
@@ -153,7 +181,18 @@ class AuditorController extends Controller
         foreach ($activeRoutes as $route) {
             $predefinedRoute = isset($policies[$route->document_type_id]) ? $policies[$route->document_type_id]->predefined_route : null;
             $allowedMinutes = \App\Services\SlaResolver::resolve($route->department_id, $route->document_type_id, $route->route_order ?? null, $predefinedRoute);
-            $referenceTime = \Carbon\Carbon::parse($route->updated_at, 'Asia/Manila');
+            // Custody clock: when this department took custody of the step.
+            // Legacy rows may predate received_at, so fall back to created_at.
+            // Mirrors CheckNearOverdueDocuments (the app default timezone is
+            // Asia/Manila per config/app.php, so this parses identically to
+            // the explicit 'Asia/Manila' form used elsewhere on this dashboard).
+            $custodyStart = $route->received_at ?? $route->created_at;
+
+            if (!$custodyStart) {
+                continue;
+            }
+
+            $referenceTime = \Carbon\Carbon::parse($custodyStart, 'Asia/Manila');
             $deadline = $referenceTime->copy()->addMinutes($allowedMinutes);
             if ($now->greaterThan($deadline)) {
                 $overdueDocuments[] = [
