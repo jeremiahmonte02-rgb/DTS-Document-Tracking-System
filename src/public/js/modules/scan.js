@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </h6>
                         <span class="badge font-mono bg-dark text-white text-xxs">${escapeHtml(doc.document_number || doc.id)}</span>
                     </div>
-                    <div class="card-body bg-white p-3 text-sm">
+                    <div class="card-body bg-body p-3 text-sm">
                         <div class="row g-2">
                             <div class="col-sm-6"><strong>Title:</strong> <span class="text-secondary">${escapeHtml(doc.title)}</span></div>
                             <div class="col-sm-6"><strong>Type:</strong> <span class="text-secondary">${escapeHtml(doc.document_type_name || 'General File')}</span></div>
@@ -261,18 +261,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         rowModifier = 'border-info';
                     }
 
-                    stepRow.className = `d-flex align-items-center justify-content-between p-2 mb-2 rounded border shadow-3xs bg-white ${rowModifier}`;
+                    stepRow.className = `d-flex align-items-center justify-content-between p-2 mb-2 rounded border shadow-3xs bg-body ${rowModifier}`;
                     stepRow.innerHTML = `
                         <div class="d-flex align-items-center">
                             <span class="badge ${badgeStyle} rounded-circle me-2 font-mono" style="width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; text-align:center; font-size:10px;">${route.route_order}</span>
-                            <span class="font-medium text-xs text-dark">${escapeHtml(route.department_name)}</span>
+                            <span class="font-medium text-xs text-body">${escapeHtml(route.department_name)}</span>
                         </div>
                         <span class="badge text-uppercase text-xxs px-2 py-0.5 ${badgeStyle}">${escapeHtml(route.status)}</span>
                     `;
                     routeMapContainer.appendChild(stepRow);
                 });
             } else {
-                routeMapContainer.innerHTML = '<div class="text-muted text-xs p-2 bg-light rounded text-center">No structural routing paths defined.</div>';
+                routeMapContainer.innerHTML = '<div class="text-muted text-xs p-2 bg-body-tertiary rounded text-center">No structural routing paths defined.</div>';
             }
         }
 

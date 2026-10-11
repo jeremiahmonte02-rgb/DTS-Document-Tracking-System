@@ -30,6 +30,8 @@
     --text-success: #198754;
     --text-steel: #71717A;
     --text-warning: #856404;
+    --at-border: #dfe4ee;
+    --at-ring: #cfd6e4;
     color-scheme: light;
 }
 
@@ -2804,15 +2806,15 @@ body {
 }
 .timeline-item.at-row::before {
     left: 9px;
-    background-color: #cfd6e4;
+    background-color: var(--at-ring);
 }
 .at-grid {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 6px 16px;
     align-items: center;
-    background: #fff;
-    border: 1px solid #dfe4ee;
+    background: var(--surface);
+    border: 1px solid var(--at-border);
     border-radius: 12px;
     padding: 14px 18px;
     box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
@@ -2851,8 +2853,8 @@ body {
     height: 18px;
     border-radius: 50%;
     background: var(--bs-secondary, #6c757d);
-    border: 3px solid #fff;
-    box-shadow: 0 0 0 1px #cfd6e4;
+    border: 3px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--at-ring);
     z-index: 1;
 }
 .at-dot.ok {
@@ -3022,6 +3024,8 @@ body {
     --text-success: #34D399;
     --text-steel: #9AA3B5;
     --text-warning: #FBBF24;
+    --at-border: #2A3348;
+    --at-ring: #2A3348;
 
     /* Bootstrap agreement: Bootstrap 5.3 components (dropdowns, modals,
        buttons, form controls) follow these automatically. */
@@ -3293,4 +3297,81 @@ body {
     --bs-table-active-bg: rgba(248, 113, 113, 0.22);
     --bs-table-hover-bg: rgba(248, 113, 113, 0.22);
     --bs-table-hover-color: #E8EBF1;
+}
+
+/* ============================================================
+   Batch 3 — converted screens (document-details, scan,
+   audit/department-details). Every dark-specific rule below is scoped
+   under `.theme-ready`, which exists only on converted pages, so pinned
+   pages (and shared partials/JS as they render there) are unaffected.
+   Token swaps elsewhere resolve per context via the light pin.
+   ============================================================ */
+
+/* Audit-trail chips: primary text on a blue tint needs a lighter pair in
+   dark. .at-chip-light sits on the saturated hero fill and is untouched. */
+[data-bs-theme="dark"] .theme-ready .at-chip:not(.at-chip-light) {
+    color: #5B9BFF;
+    background: rgba(91, 155, 255, 0.14);
+}
+
+/* Metrics icon blocks: brighter glyphs on the unchanged translucent tints
+   (large-icon UI; all pairs below pass 3:1 on the dark card). */
+[data-bs-theme="dark"] .theme-ready .metrics-icon.emerald { color: #34D399; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.amber { color: #FBBF24; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.blue { color: #60A5FA; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.red { color: #F87171; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.slate { color: #94A3B8; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.violet { color: #A78BFA; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.orange { color: #FB923C; }
+
+/* Dark-only contrast fixes. Bootstrap text/bg utilities are !important,
+   so one justified !important per rule beats the utility; the light pin
+   re-asserts the original utilities on unconverted pages.
+   - bg-info + white text fails in both themes (1.96:1); dark text #10141D
+     on cyan passes (9.41:1). Covers route-step "next" badges, in-transit
+     badges, scan custody headers and role badges on converted pages.
+   - text-danger/text-success/text-secondary fail as text on dark
+     (3.56/3.55/3.43:1); variants pass (5.82/8.38/6.35:1). The secondary
+     rule is kept explicit rather than relying on Bootstrap's own dark
+     handling of the utility, so converted pages are deterministic. */
+[data-bs-theme="dark"] .theme-ready .bg-info.text-white,
+[data-bs-theme="dark"] .theme-ready .badge.bg-info {
+    color: #10141D !important;
+}
+
+[data-bs-theme="dark"] .theme-ready .text-danger {
+    color: var(--text-danger) !important;
+}
+
+[data-bs-theme="dark"] .theme-ready .text-success {
+    color: var(--text-success) !important;
+}
+
+[data-bs-theme="dark"] .theme-ready .text-secondary {
+    color: var(--text-steel) !important;
+}
+
+/* Scan default step rows use .border-light (fixed near-white). Swap the
+   border to the dark border color on converted pages only. */
+[data-bs-theme="dark"] .theme-ready .border-light {
+    border-color: #2A3348 !important;
+}
+
+/* Scan result backstop (Batch 3 fix): scan.js ships without a
+   cache-busting query string (scan.blade.php loads it bare), so browsers
+   may still run pre-Batch-3 markup emitting .bg-white/.bg-light/.text-dark
+   inside these two containers. These rules repaint exactly that stale DOM
+   in dark; current markup (bg-body/bg-body-tertiary/text-body) does not
+   match these selectors and is governed by adaptive classes instead.
+   span:not(.badge) keeps warning badges' dark-on-yellow text intact, and
+   the Attempt Receipt button (text-dark on its yellow fill) is a <button>,
+   never a span, so it is untouched. */
+[data-bs-theme="dark"] .theme-ready #scanCardResultContainer .card-body.bg-white,
+[data-bs-theme="dark"] .theme-ready #routeStepMapContainer .bg-white,
+[data-bs-theme="dark"] .theme-ready #routeStepMapContainer .bg-light {
+    background-color: #1A2130 !important;
+}
+
+[data-bs-theme="dark"] .theme-ready #routeStepMapContainer span.text-dark:not(.badge) {
+    color: #E8EBF1 !important;
 }

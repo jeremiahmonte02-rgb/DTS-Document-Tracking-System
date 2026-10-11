@@ -6,6 +6,9 @@
 
 @section('pageTitle', 'Document Details')
 
+{{-- Batch 3 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 <style>
     @media print {
         body {
@@ -126,7 +129,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card-footer bg-white no-print d-print-none">
+                        <div class="card-footer bg-body no-print d-print-none">
                             @php
                                 $lastStep = collect($routes)->sortBy('route_order')->last();
                                 $isFinalDepartment = $lastStep && auth()->user() && $lastStep->department_id === auth()->user()->department_id;
@@ -154,7 +157,7 @@
 
                     <!-- Audit Trail -->
                     <div class="card mb-4 print-page-break">
-                        <div class="card-header bg-white">
+                        <div class="card-header bg-body">
                             <h5 class="mb-0">
                                 <i class="bi bi-clock-history"></i> Audit Trail & Document History
                             </h5>
@@ -173,7 +176,7 @@
                 <!-- QR Code and Quick Actions -->
                 <div class="col-lg-4">
                     <div class="card mb-4 print-page-break">
-                        <div class="card-header bg-white">
+                        <div class="card-header bg-body">
                             <h6 class="mb-0">
                                 <i class="bi bi-qr-code"></i> QR Code
                             </h6>
@@ -224,7 +227,7 @@
                                         }
 
                                         $badgeStyle = 'bg-secondary text-white';
-                                        $rowModifier = 'border-light-subtle bg-white';
+                                        $rowModifier = 'border-light-subtle bg-body';
 
                                         if ($isCurrent) {
                                             $badgeStyle = 'bg-warning text-dark fw-bold';
@@ -243,7 +246,7 @@
                                             <span class="badge {{ $badgeStyle }} rounded-circle me-2 font-mono d-flex align-items-center justify-content-center" style="width: 22px; height: 22px;">
                                                 {{ $route->route_order }}
                                             </span>
-                                            <span class="fw-semibold text-xs text-dark">{{ $route->department_name }}</span>
+                                            <span class="fw-semibold text-xs text-body">{{ $route->department_name }}</span>
                                         </div>
                                         <span class="badge text-uppercase text-xxs px-2 py-1 {{ $badgeStyle }}">
                                             {{ $route->status }}
@@ -255,7 +258,7 @@
                     </div>
 
                     <div class="card mb-4 no-print d-print-none">
-                        <div class="card-header bg-white">
+                        <div class="card-header bg-body">
                             <h6 class="mb-0">
                                 <i class="bi bi-lightning"></i> Quick Actions
                             </h6>
@@ -278,7 +281,7 @@
                     </div>
 
                     <div class="card">
-                        <div class="card-header bg-white">
+                        <div class="card-header bg-body">
                             <h6 class="mb-0">
                                 <i class="bi bi-shield-check"></i> Security Info
                             </h6>
@@ -318,7 +321,7 @@
                             <label for="issueDocId" class="form-label">
                                 <i class="bi bi-file-earmark-text"></i> Document ID
                             </label>
-                            <input type="text" class="form-control" id="issueDocId" value="{{ $document->document_number }}" readonly style="background-color: #f8f9fa;">
+                            <input type="text" class="form-control bg-body-tertiary" id="issueDocId" value="{{ $document->document_number }}" readonly>
                         </div>
 
                         <!-- Issue Description -->
@@ -377,7 +380,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="modal-footer bg-light">
+                    <div class="modal-footer bg-body-tertiary">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="bi bi-x-circle"></i> Cancel
                         </button>
@@ -413,7 +416,7 @@
 
                                             <ul class="list-group list-group-flush" id="edit-visual-dept-pool">
                                                 @foreach($departments ?? [] as $dept)
-                                                    <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark transition-colors"
+                                                     <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-body transition-colors"
                                                         data-value="{{ $dept->id ?? $dept }}" style="letter-spacing: -0.01em;">
                                                         {{ $dept->name ?? $dept }}
                                                     </li>
@@ -422,7 +425,7 @@
 
                                             <div id="edit-immutablePolicyNotice" class="d-none my-auto p-4 text-center d-flex flex-column align-items-center justify-content-center w-100 h-100">
                                                 <i class="bi bi-shield-lock text-danger mb-2" style="font-size: 1.75rem;"></i>
-                                                <h6 class="fw-bold text-dark mb-1" style="font-family: 'Satoshi', sans-serif;">Enforced Routing Policy</h6>
+                                                 <h6 class="fw-bold text-body mb-1" style="font-family: 'Satoshi', sans-serif;">Enforced Routing Policy</h6>
                                                 <p class="text-muted small mb-0 px-2" style="font-size: 0.85rem;">
                                                     The workflow pathway for this document type has been strictly locked by the system Auditor to ensure organizational compliance.
                                                 </p>
@@ -540,12 +543,12 @@
             routeListContainer.classList.remove('d-none');
 
             const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-light shadow-2xs mb-1 rounded border';
+            li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-body-tertiary shadow-2xs mb-1 rounded border';
             li.setAttribute('data-dept-id', id);
             li.innerHTML = `
                 <div class="d-flex align-items-center">
                     <span class="badge bg-primary index-counter-badge me-2">0</span>
-                    <span class="text-dark font-medium font-mono">${escapeHtml(name)}</span>
+                    <span class="text-body font-medium font-mono">${escapeHtml(name)}</span>
                 </div>
                 <div class="d-flex gap-1" role="group">
                     <button type="button" class="btn btn-white btn-sm move-up-btn" title="Move Up"><i class="bi bi-arrow-up"></i></button>
@@ -757,7 +760,7 @@
                             }
                         }
 
-                        div.classList.remove('border-warning', 'bg-warning-subtle', 'bg-opacity-10', 'border-success-subtle', 'border-info-subtle', 'border-light-subtle', 'bg-white');
+                        div.classList.remove('border-warning', 'bg-warning-subtle', 'bg-opacity-10', 'border-success-subtle', 'border-info-subtle', 'border-light-subtle', 'bg-white', 'bg-body');
                         if (route.status === 'current') {
                             div.classList.add('border-warning', 'bg-warning-subtle', 'bg-opacity-10');
                         } else if (route.status === 'received' || route.status === 'completed') {
@@ -765,7 +768,7 @@
                         } else if (route.status === 'next') {
                             div.classList.add('border-info-subtle');
                         } else {
-                            div.classList.add('border-light-subtle', 'bg-white');
+                            div.classList.add('border-light-subtle', 'bg-body');
                         }
                     });
                 }

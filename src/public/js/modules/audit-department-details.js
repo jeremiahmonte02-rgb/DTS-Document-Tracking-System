@@ -314,7 +314,7 @@
 
                 var rowHTML = ''
                     + '<tr>'
-                    + '<td><strong>' + escapeHtml(dt.name) + '</strong> <span class="badge bg-light text-dark border">' + escapeHtml(dt.code) + '</span></td>'
+                    + '<td><strong>' + escapeHtml(dt.name) + '</strong> <span class="badge bg-body-tertiary text-body border">' + escapeHtml(dt.code) + '</span></td>'
                     + '<td>'
                     + '<input type="hidden" name="sla[' + index + '][document_type_id]" value="' + dt.id + '">'
                     + '<input type="number" class="form-control form-control-sm" name="sla[' + index + '][value]" value="' + value + '" min="1" placeholder="Global Default">'

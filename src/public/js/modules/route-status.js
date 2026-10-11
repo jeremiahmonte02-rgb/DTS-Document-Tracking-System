@@ -25,7 +25,7 @@
         if (s === 'next') {
             return { badge: 'bg-info text-white', row: 'border-info-subtle' };
         }
-        return { badge: 'bg-secondary text-white', row: 'border-light-subtle bg-white' };
+        return { badge: 'bg-secondary text-white', row: 'border-light-subtle bg-body' };
     }
 
     // Build one timeline row matching the Blade markup in
@@ -41,7 +41,7 @@
             + '<div class="d-flex align-items-center">'
             + '<span class="badge ' + st.badge + ' rounded-circle me-2 font-mono d-flex align-items-center justify-content-center" style="width: 22px; height: 22px;">'
             + esc(route.route_order) + '</span>'
-            + '<span class="fw-semibold text-xs text-dark">' + esc(route.department_name) + '</span>'
+            + '<span class="fw-semibold text-xs text-body">' + esc(route.department_name) + '</span>'
             + '</div>'
             + '<span class="badge text-uppercase text-xxs px-2 py-1 ' + st.badge + '">'
             + esc(String(route.status || '').toUpperCase()) + '</span>';

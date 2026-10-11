@@ -81,8 +81,8 @@
             + '<div class="at-grid">'
             + '<div>'
             + '<div class="text-xxs text-muted font-mono tabular-nums">' + escapeHtml(ev.formatted_date || ev.created_at) + '</div>'
-            + '<div class="text-xs font-semibold text-dark mt-0.5">' + escapeHtml(ev.event_label) + ' - <span class="text-primary font-normal">' + escapeHtml(ev.execution_department) + '</span></div>'
-            + '<p class="text-muted text-xxs mb-0 mt-0.5 bg-light p-1 rounded border">Note: ' + escapeHtml(ev.note || 'No transaction notes added.') + ' <br><span class="text-dark font-medium">By: ' + escapeHtml(ev.processed_by_user) + '</span></p>'
+            + '<div class="text-xs font-semibold text-body mt-0.5">' + escapeHtml(ev.event_label) + ' - <span class="text-primary font-normal">' + escapeHtml(ev.execution_department) + '</span></div>'
+            + '<p class="text-muted text-xxs mb-0 mt-0.5 bg-body-tertiary p-1 rounded border">Note: ' + escapeHtml(ev.note || 'No transaction notes added.') + ' <br><span class="text-body font-medium">By: ' + escapeHtml(ev.processed_by_user) + '</span></p>'
             + '</div>'
             + '<div class="at-side">' + rightHtml + '</div>'
             + '</div>';

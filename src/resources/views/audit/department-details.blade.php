@@ -8,6 +8,9 @@
 
 @section('pageTitle', 'Department Analytics')
 
+{{-- Batch 3 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show mx-4 mt-3" role="alert">
@@ -164,7 +167,7 @@
                 <div class="table-container">
                     <div class="section-header" style="padding: 1.25rem 1.5rem; margin-bottom: 0; border-bottom: 1px solid var(--whisper);">
                         <h5>Current Documents</h5>
-                        <button class="btn btn-sm btn-outline-primary border-0" id="refresh-documents-btn" title="Refresh documents" style="font-size: 0.8125rem; color: var(--steel);">
+                        <button class="btn btn-sm btn-outline-primary border-0" id="refresh-documents-btn" title="Refresh documents" style="font-size: 0.8125rem; color: var(--text-steel);">
                             <i class="bi bi-arrow-clockwise"></i>
                         </button>
                     </div>
@@ -238,7 +241,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn" style="border: 1px solid var(--whisper); border-radius: 0.75rem; color: var(--steel); font-size: 0.8125rem; font-weight: 600;" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn" style="border: 1px solid var(--whisper); border-radius: 0.75rem; color: var(--text-steel); font-size: 0.8125rem; font-weight: 600;" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn" style="background: var(--accent); color: #fff; border-radius: 0.75rem; font-size: 0.8125rem; font-weight: 600;">Save SLA Settings</button>
                 </div>
             </form>

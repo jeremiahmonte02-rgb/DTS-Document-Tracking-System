@@ -6,6 +6,9 @@
 
 @section('pageTitle', 'Scan QR Code')
 
+{{-- Batch 3 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
             <!-- Scanner Interface -->
             <div class="card mb-4">
@@ -34,7 +37,7 @@
 
                         <!-- Manual Entry -->
                         <div class="col-md-6">
-                            <div class="card bg-light h-100">
+                            <div class="card bg-body-tertiary h-100">
                                 <div class="card-body">
                                     <h6 class="card-title">
                                         <i class="bi bi-keyboard"></i> Manual Entry
