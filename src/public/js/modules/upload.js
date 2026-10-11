@@ -91,7 +91,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (targetBtn.classList.contains('move-down-btn')) {
                     if (listItem.dataset.predefined === 'true') return;
                     const nextSibling = listItem.nextElementSibling;
-                    if (nextSibling) listItem.parentNode.insertBefore(listItem, nextSibling);
+                    if (nextSibling && nextSibling.dataset.predefined === 'true') return;
+                    // Move the next row above this one (== this row moves down
+                    // one). insertBefore(listItem, nextSibling) would be a
+                    // no-op: a node re-inserted before its own next sibling
+                    // stays exactly where it was.
+                    if (nextSibling) listItem.parentNode.insertBefore(nextSibling, listItem);
                 }
 
                 synchronizeSerializedRouteInputs();
@@ -131,13 +136,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         wipeRouteChainCanvas();
                         data.predefined_route.forEach(step => {
                             const li = document.createElement('li');
-                            li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-light shadow-2xs mb-1 rounded border';
+                            li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-body-tertiary shadow-2xs mb-1 rounded border';
                             li.setAttribute('data-dept-id', step.department_id);
                             li.setAttribute('data-predefined', 'true');
                             li.innerHTML = `
                                 <div class="d-flex align-items-center">
                                     <span class="badge bg-primary index-counter-badge me-2">0</span>
-                                    <span class="text-dark font-medium font-mono">${escapeHtml(step.department_name || 'Department')}</span>
+                                    <span class="text-body font-medium font-mono">${escapeHtml(step.department_name || 'Department')}</span>
                                 </div>
                             `;
                             routeListContainer.appendChild(li);
@@ -195,13 +200,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (existingMatch) return;
 
             const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-light shadow-2xs mb-1 rounded border';
+            li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-body-tertiary shadow-2xs mb-1 rounded border';
             li.setAttribute('data-dept-id', option.value);
             li.setAttribute('data-predefined', 'false');
             li.innerHTML = `
                 <div class="d-flex align-items-center">
                     <span class="badge bg-primary index-counter-badge me-2">0</span>
-                    <span class="text-dark font-medium font-mono">${escapeHtml(option.text)}</span>
+                    <span class="text-body font-medium font-mono">${escapeHtml(option.text)}</span>
                 </div>
                 <div class="d-flex gap-1" role="group">
                     <button type="button" class="btn btn-white btn-sm move-up-btn" title="Move Up"><i class="bi bi-arrow-up"></i></button>
@@ -331,12 +336,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             sortedRoutes.forEach(route => {
                 const li = document.createElement('li');
-                li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-light shadow-2xs mb-1 rounded border';
+                li.className = 'list-group-item d-flex justify-content-between align-items-center text-xs p-2 bg-body-tertiary shadow-2xs mb-1 rounded border';
                 li.setAttribute('data-dept-id', route.department_id);
                 li.innerHTML = `
                     <div class="d-flex align-items-center">
                         <span class="badge bg-primary index-counter-badge me-2">${route.route_order}</span>
-                        <span class="text-dark font-medium font-mono">${escapeHtml(route.department_name || 'Department Ref')}</span>
+                        <span class="text-body font-medium font-mono">${escapeHtml(route.department_name || 'Department Ref')}</span>
                     </div>
                     <div class="d-flex gap-1" role="group">
                         <button type="button" class="btn btn-white btn-sm move-up-btn"><i class="bi bi-arrow-up"></i></button>

@@ -6,6 +6,9 @@
 
 @section('pageTitle', 'Upload Document')
 
+{{-- Batch 4 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
             <div class="row justify-content-center">
                 <div class="col-lg-8">
@@ -51,27 +54,27 @@
 
                                                     <ul class="list-group list-group-flush" id="visual-dept-pool">
                                                         @foreach($departments ?? [] as $dept)
-                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark transition-colors"
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-body transition-colors"
                                                                 data-value="{{ $dept->id ?? $dept }}" style="letter-spacing: -0.01em;">
                                                                 {{ $dept->name ?? $dept }}
                                                             </li>
                                                         @endforeach
 
                                                         @if(empty($departments))
-                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Central Services">Central Services</li>
-                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="College of Computing and Information Sciences">College of Computing and Information Sciences</li>
-                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Customer Service">Customer Service</li>
-                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Executive Office">Executive Office</li>
-                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Facilities">Facilities</li>
-                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="Finance Department">Finance Department</li>
-                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="HR Department">HR Department</li>
-                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-dark" data-value="IT Department">IT Department</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-body" data-value="Central Services">Central Services</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-body" data-value="College of Computing and Information Sciences">College of Computing and Information Sciences</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-body" data-value="Customer Service">Customer Service</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-body" data-value="Executive Office">Executive Office</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-body" data-value="Facilities">Facilities</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-body" data-value="Finance Department">Finance Department</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-body" data-value="HR Department">HR Department</li>
+                                                            <li class="list-group-item list-group-item-action border-0 py-2.5 px-3 rounded-2 text-nowrap cursor-pointer mb-1 text-body" data-value="IT Department">IT Department</li>
                                                         @endif
                                                     </ul>
 
                                                     <div id="immutablePolicyNotice" class="d-none my-auto p-4 text-center d-flex flex-column align-items-center justify-content-center w-100 h-100">
                                                         <i class="bi bi-shield-lock text-danger mb-2" style="font-size: 1.75rem;"></i>
-                                                        <h6 class="fw-bold text-dark mb-1" style="font-family: 'Satoshi', sans-serif;">Enforced Routing Policy</h6>
+                                                        <h6 class="fw-bold text-body mb-1" style="font-family: 'Satoshi', sans-serif;">Enforced Routing Policy</h6>
                                                         <p class="text-muted small mb-0 px-2" style="font-size: 0.85rem;">
                                                             The workflow pathway for this document type has been strictly locked by the system Auditor to ensure organizational compliance.
                                                         </p>

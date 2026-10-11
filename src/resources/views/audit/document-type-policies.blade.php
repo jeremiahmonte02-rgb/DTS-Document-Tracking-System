@@ -6,6 +6,9 @@
 
 @section('pageTitle', 'Routing Settings')
 
+{{-- Batch 4 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
             <div class="policy-header">
                 <h1>Document Type Routing Settings</h1>

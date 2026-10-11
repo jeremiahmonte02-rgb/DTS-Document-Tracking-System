@@ -2410,7 +2410,7 @@ body {
 .route-builder-pool {
     border: 1px solid #d1d5db !important;
     border-radius: 0.75rem;
-    background: #fff;
+    background: var(--surface);
     height: 240px;
     overflow: hidden;
     position: relative;
@@ -2432,7 +2432,7 @@ body {
 .route-builder-route {
     border: 1px solid #d1d5db !important;
     border-radius: 0.75rem;
-    background: #fff;
+    background: var(--surface);
     height: 240px;
     display: flex;
     align-items: center;
@@ -3280,7 +3280,53 @@ body {
 }
 
 /* ============================================================
-   Batch 2 fix — contextual table rows in dark (overdue rows).
+   Batch 4 — converted screens (upload, audit/policies). Every
+   dark-specific rule below is scoped under `.theme-ready`, which exists
+   only on converted pages, so pinned pages render exactly as today.
+   Token/variable swaps elsewhere resolve per context via the light pin.
+   ============================================================ */
+
+/* Route-builder pool/route containers: base border keeps its custom
+   !important in light; dark reasserts the border color (justified: beats
+   the existing !important; backgrounds already follow --surface). */
+[data-bs-theme="dark"] .theme-ready .route-builder-pool,
+[data-bs-theme="dark"] .theme-ready .route-builder-route {
+    border-color: #2A3348 !important;
+}
+
+/* Policy toggle + immutable/mutable pills: dark-readable text on the
+   unchanged tints and switch track. */
+[data-bs-theme="dark"] .theme-ready .policy-toggle .toggle-label.immutable { color: #F87171; }
+[data-bs-theme="dark"] .theme-ready .badge-policy.badge-immutable { color: #F87171; }
+[data-bs-theme="dark"] .theme-ready .badge-policy.badge-mutable { color: #34D399; }
+[data-bs-theme="dark"] .theme-ready .badge-policy.badge-default { color: #9AA3B5; }
+
+/* Route-pool selected rows keep Bootstrap's tint classes; the text color
+   follows the dark success variant (light pin keeps #059669). */
+[data-bs-theme="dark"] .theme-ready .route-pool .list-group-item.selected { color: #34D399; }
+
+/* Form labels use a hardcoded ink color: follow body text in dark. */
+[data-bs-theme="dark"] .theme-ready .form-label { color: #E8EBF1; }
+
+/* Custom outline buttons: beat their own base !important declarations
+   (justified) with dark-readable text/border; fills and hover fills stay
+   exactly as today (transient states, pre-existing contrast). */
+[data-bs-theme="dark"] .theme-ready .btn-custom-academic {
+    color: #34D399 !important;
+    border-color: #34D399 !important;
+}
+
+[data-bs-theme="dark"] .theme-ready .btn-custom-clear {
+    color: #9AA3B5 !important;
+    border-color: #3A4458 !important;
+}
+
+/* Details edit-routing pool rows carry text-dark (that view is frozen for
+   this batch, so the utility is beaten here instead): justified !important,
+   scoped to the pool that exists only on the converted details page. */
+[data-bs-theme="dark"] .theme-ready #edit-visual-dept-pool .list-group-item.text-dark {
+    color: #E8EBF1 !important;
+}
    Bootstrap paints table cells from the row's table variables
    (background-color plus an inset box-shadow), so the variables must be
    overridden, not `background`. Scoped under `.theme-ready`: pinned pages
