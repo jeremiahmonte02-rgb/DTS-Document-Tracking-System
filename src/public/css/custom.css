@@ -3,7 +3,8 @@
    ============================================================ */
 @import url('https://api.fontshare.com/css?f[]=satoshi@400,500,600,700,900&display=swap');
 
-:root {
+:root,
+[data-bs-theme="light"] {
     --primary-color: #0d6efd;
     --secondary-color: #6c757d;
     --success-color: #198754;
@@ -24,12 +25,18 @@
     --radius-card: 2.5rem;
     --radius-badge: 0.375rem;
     --font-display: 'Satoshi', system-ui, -apple-system, sans-serif;
+    --body-bg: #f8f9fa;
+    --text-danger: #dc3545;
+    --text-success: #198754;
+    --text-steel: #71717A;
+    --text-warning: #856404;
+    color-scheme: light;
 }
 
 /* Body and General Styles */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f8f9fa;
+    background-color: var(--body-bg);
     min-height: 100vh;
 }
 
@@ -255,7 +262,7 @@ body {
 
 /* Top Navigation Bar */
 .top-navbar {
-    background-color: white;
+    background-color: var(--surface);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     padding: 1rem 1.5rem;
     position: sticky;
@@ -969,12 +976,12 @@ body {
 
 .activity-item {
     padding: 1rem;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid var(--bs-border-color);
     transition: background-color 0.2s;
 }
 
 .activity-item:hover {
-    background-color: #f8f9fa;
+    background-color: var(--bs-tertiary-bg);
 }
 
 .activity-item:last-child {
@@ -1440,7 +1447,7 @@ body {
     font-size: 0.8125rem;
     font-weight: 500;
     font-family: var(--font-display);
-    color: var(--steel);
+    color: var(--text-steel);
     background: transparent;
     border: 1px solid var(--whisper);
     border-radius: 0.375rem;
@@ -1741,7 +1748,7 @@ body {
 .dept-modal .btn-cancel {
     border: 1px solid var(--whisper);
     border-radius: 0.75rem;
-    color: var(--steel);
+    color: var(--text-steel);
     font-family: var(--font-display);
     font-size: 0.8125rem;
     font-weight: 500;
@@ -2529,7 +2536,7 @@ body {
 .dashboard-filter-form button:active,
 .dashboard-filter-form button:focus-visible {
     background-color: #fee2e2; /* soft rose tint — light red fill */
-    color: var(--danger-color) !important; /* §2: strong red text/icon contrast */
+    color: var(--text-danger) !important; /* §2: strong red text/icon contrast */
     box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06); /* subtle lift — extra definition */
 }
 
@@ -2979,4 +2986,311 @@ body {
 
 .export-menu .dropdown-divider {
     margin: 0.5rem 0;
+}
+
+/* ============================================================
+   Batch 0 — Dark mode foundation (visual only)
+   - Light tokens live on `:root, [data-bs-theme="light"]` above, so a
+     light region nested in a dark page re-asserts light.
+   - Dark overrides below never change a light value; unconverted page
+     content is pinned with data-bs-theme="light" in layouts/app.blade.php
+     (see the pin comment there) until its batch declares
+     `@section('theme_ready')`. Remove the pin per view as batches land;
+     delete the pin mechanism when every screen is converted.
+   - Fills (primary/success/danger/warning) are intentionally unchanged.
+   ============================================================ */
+[data-bs-theme="dark"] {
+    color-scheme: dark;
+
+    /* App tokens (light values above are unchanged; the light pin
+       `[data-bs-theme="light"]` re-asserts them inside unconverted pages).
+       --steel is overridden (not just varianted) because every var(--steel)
+       usage in the codebase is text color: #71717A fails on dark (3.33:1)
+       while #9AA3B5 passes (6.35:1). Fill tokens are never overridden. */
+    --canvas: #10141D;
+    --surface: #1A2130;
+    --ink: #E8EBF1;
+    --steel: #9AA3B5;
+    --whisper: rgba(42, 51, 72, 0.6);
+    --shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.45);
+    --body-bg: #10141D;
+
+    /* Dark text variants: the base --danger-color/--success-color/--steel
+       tokens keep their light values (fills + light-pinned content), so
+       text on dark surfaces uses these instead. */
+    --text-danger: #F87171;
+    --text-success: #34D399;
+    --text-steel: #9AA3B5;
+    --text-warning: #FBBF24;
+
+    /* Bootstrap agreement: Bootstrap 5.3 components (dropdowns, modals,
+       buttons, form controls) follow these automatically. */
+    --bs-body-bg: #10141D;
+    --bs-body-color: #E8EBF1;
+    --bs-emphasis-color: #E8EBF1;
+    --bs-secondary-bg: #1A2130;
+    --bs-tertiary-bg: #222B3D;
+    --bs-border-color: #2A3348;
+    --bs-secondary-color: #9AA3B5;
+    --bs-tertiary-color: #7C8698;
+    --bs-link-color: #5B9BFF;
+    --bs-link-hover-color: #8FBDFF;
+}
+
+/* Theme toggle (topbar). Reuses .btn-link; ensures a 44px touch target
+   and a visible keyboard focus ring in both themes. */
+#themeToggle {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+}
+
+#themeToggle:focus-visible {
+    outline: 3px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* QR guard: QR modules must stay dark-on-light in both themes. Scoped to
+   the still-image containers only — never #qr-reader (live scanner video). */
+[data-bs-theme="dark"] #modalQrCode,
+[data-bs-theme="dark"] #qrCodePrintContainer,
+[data-bs-theme="dark"] #qrCodeContainer,
+[data-bs-theme="dark"] .qr-code-container,
+[data-bs-theme="dark"] .qr-code-wrapper {
+    background-color: #ffffff;
+}
+
+[data-bs-theme="dark"] #modalQrCode {
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+/* ============================================================
+   Batch 1 — converted screens (dashboard, audit/dashboard, inbox,
+   outbox). Rules below are scoped to elements that exist ONLY on
+   converted pages (dashboard filter form, inbox/outbox table wrappers,
+   selectable cards), plus the pin backstop itself — so pinned pages
+   render exactly as today even under a dark shell. Generic surfaces
+   (cards, tables, dropdowns, modals, banners) follow the Batch 0
+   tokens/Bootstrap variables and need no rules here.
+   ============================================================ */
+
+/* Pinned content backstop: fully readable under a dark shell. Resolves
+   to identical light values inside the pin. */
+.theme-pin {
+    background-color: var(--body-bg);
+    color: var(--bs-body-color);
+}
+
+/* Inbox/outbox thead: the .table-light class is kept (its light rendering
+   is already governed by the winning .table-container-style rules and
+   Bootstrap table vars); these ID-scoped custom properties give converted
+   tables a dark header without touching pinned pages' theads. */
+[data-bs-theme="dark"] #inbox-table-wrapper .table-light,
+[data-bs-theme="dark"] #outbox-table-wrapper .table-light {
+    --bs-table-bg: #222B3D;
+    --bs-table-color: #E8EBF1;
+    --bs-table-border-color: #2A3348;
+}
+
+/* Dashboard month-filter Export button: Bootstrap btn-light stays light
+   by default, so restyle it on converted dashboards only. */
+[data-bs-theme="dark"] .dashboard-filter-form .btn-light {
+    --bs-btn-bg: #222B3D;
+    --bs-btn-border-color: #2A3348;
+    --bs-btn-color: #E8EBF1;
+    --bs-btn-hover-bg: #2A3348;
+    --bs-btn-hover-border-color: #2A3348;
+    --bs-btn-hover-color: #E8EBF1;
+    --bs-btn-active-bg: #2A3348;
+    --bs-btn-active-border-color: #2A3348;
+    --bs-btn-active-color: #E8EBF1;
+}
+
+/* Selectable-card selected state in dark: stronger tint/ring so the
+   border + tint + badge read on dark surfaces (no transform, as light). */
+[data-bs-theme="dark"] .stat-card[data-card-key].is-selected {
+    border-color: #5B9BFF;
+    background-color: rgba(91, 155, 255, 0.14);
+    box-shadow: 0 0 0 0.2rem rgba(91, 155, 255, 0.25);
+}
+
+[data-bs-theme="dark"] .stat-card[data-card-key].is-selected:hover {
+    box-shadow: 0 0 0 0.2rem rgba(91, 155, 255, 0.3);
+}
+
+/* ============================================================
+   Batch 2 — converted screens (users, activity-log, profile,
+   notifications, audit/documents, audit/issues, audit/departments).
+   Every dark-specific rule below is scoped under `.theme-ready`, which
+   exists only on converted pages, so pinned pages render exactly as
+   today even under a dark shell. Token/Bootstrap-variable swaps elsewhere
+   resolve per context via the light pin and need no scoping.
+   ============================================================ */
+
+/* Converted cards read as cards: deterministic surface + edge. The
+   QR still-image containers are .modal-card/.qr-code-*, never .card, so
+   they stay white via the Batch 0 QR guard. .is-selected keeps its own
+   styling (excluded here and equally specific below via its own rule). */
+[data-bs-theme="dark"] .theme-ready .card:not(.is-selected) {
+    background-color: #1A2130;
+    border-color: #2A3348;
+}
+
+/* Stat cards on the Batch 1 dashboards: same visible edge. */
+[data-bs-theme="dark"] .theme-ready .stat-card:not(.is-selected) {
+    border: 1px solid #2A3348;
+    background-color: #1A2130;
+}
+
+/* Outline buttons keep readable text in dark (fills unchanged).
+   btn-outline-warning already passes (dark text on yellow) and is skipped.
+   Text/border pairs: secondary #9AA3B5 (6.35:1), danger #F87171 (5.82:1),
+   primary #5B9BFF (5.81:1), success #34D399 (8.38:1) on card #1A2130. */
+[data-bs-theme="dark"] .theme-ready .btn-outline-secondary {
+    --bs-btn-color: #9AA3B5;
+    --bs-btn-border-color: #3A4458;
+    --bs-btn-hover-color: #E8EBF1;
+    --bs-btn-hover-bg: rgba(154, 163, 181, 0.15);
+    --bs-btn-hover-border-color: #9AA3B5;
+    --bs-btn-active-color: #E8EBF1;
+    --bs-btn-active-bg: rgba(154, 163, 181, 0.2);
+    --bs-btn-active-border-color: #9AA3B5;
+}
+
+[data-bs-theme="dark"] .theme-ready .btn-outline-primary {
+    --bs-btn-color: #5B9BFF;
+    --bs-btn-border-color: #5B9BFF;
+    --bs-btn-hover-color: #FFFFFF;
+    --bs-btn-active-color: #FFFFFF;
+}
+
+[data-bs-theme="dark"] .theme-ready .btn-outline-success {
+    --bs-btn-color: #34D399;
+    --bs-btn-border-color: #34D399;
+    --bs-btn-hover-color: #FFFFFF;
+    --bs-btn-active-color: #FFFFFF;
+}
+
+[data-bs-theme="dark"] .theme-ready .btn-outline-danger {
+    --bs-btn-color: #F87171;
+    --bs-btn-border-color: #F87171;
+    --bs-btn-hover-color: #FFFFFF;
+    --bs-btn-active-color: #FFFFFF;
+}
+
+/* Document numbers/links: Bootstrap .text-primary is !important, so this
+   single justified !important beats the utility (light pin re-asserts
+   #0d6efd, so pinned pages are unaffected). */
+[data-bs-theme="dark"] .theme-ready .text-primary {
+    color: #5B9BFF !important;
+}
+
+/* Audit status badges: translucent tints of the status hue with readable
+   text (fills intentionally replace the saturated light fills in dark).
+   Priority text reuses the dark text variants. */
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-pending,
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-in_progress {
+    background: rgba(245, 158, 11, 0.16);
+    color: #FBBF24;
+    border-color: rgba(245, 158, 11, 0.45);
+}
+
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-transit,
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-in_transit,
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-open {
+    background: rgba(59, 130, 246, 0.16);
+    color: #93C5FD;
+    border-color: rgba(59, 130, 246, 0.45);
+}
+
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-received,
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-resolved {
+    background: rgba(16, 185, 129, 0.16);
+    color: #34D399;
+    border-color: rgba(16, 185, 129, 0.45);
+}
+
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-completed {
+    background: rgba(5, 150, 105, 0.18);
+    color: #34D399;
+    border-color: rgba(5, 150, 105, 0.5);
+}
+
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-rejected {
+    background: rgba(239, 68, 68, 0.16);
+    color: #F87171;
+    border-color: rgba(239, 68, 68, 0.45);
+}
+
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-cancelled,
+[data-bs-theme="dark"] .theme-ready .audit-badge.status-closed {
+    background: rgba(107, 114, 128, 0.25);
+    color: #9AA3B5;
+    border-color: rgba(107, 114, 128, 0.5);
+}
+
+[data-bs-theme="dark"] .theme-ready .audit-badge.priority-low {
+    color: var(--text-success);
+}
+
+[data-bs-theme="dark"] .theme-ready .audit-badge.priority-medium {
+    color: #FBBF24;
+}
+
+[data-bs-theme="dark"] .theme-ready .audit-badge.priority-high,
+[data-bs-theme="dark"] .theme-ready .audit-badge.priority-critical {
+    color: var(--text-danger);
+}
+
+/* Department status badges: same translucent treatment. */
+[data-bs-theme="dark"] .theme-ready .dept-badge.dept-active {
+    background: rgba(16, 185, 129, 0.16);
+    color: #34D399;
+    border-color: rgba(16, 185, 129, 0.45);
+}
+
+[data-bs-theme="dark"] .theme-ready .dept-badge.dept-inactive {
+    background: rgba(107, 114, 128, 0.25);
+    color: #9AA3B5;
+    border-color: rgba(107, 114, 128, 0.5);
+}
+
+/* Metrics icon blocks: brighter glyphs on the unchanged translucent tints
+   (tints over the dark card stay legible; large-icon UI, 3:1 minimum). */
+[data-bs-theme="dark"] .theme-ready .metrics-icon.emerald { color: #34D399; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.amber { color: #FBBF24; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.blue { color: #60A5FA; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.red { color: #F87171; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.slate { color: #94A3B8; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.violet { color: #A78BFA; }
+[data-bs-theme="dark"] .theme-ready .metrics-icon.orange { color: #FB923C; }
+
+/* Unread notification rows: unread is bold-only in light; add a subtle
+   tint in dark so scanability survives (nothing changes in light). */
+[data-bs-theme="dark"] .theme-ready .notif-unread {
+    background-color: rgba(91, 155, 255, 0.08);
+}
+
+/* ============================================================
+   Batch 2 fix — contextual table rows in dark (overdue rows).
+   Bootstrap paints table cells from the row's table variables
+   (background-color plus an inset box-shadow), so the variables must be
+   overridden, not `background`. Scoped under `.theme-ready`: pinned pages
+   (e.g. audit department details) keep Bootstrap's light pastel rows.
+   Only .table-danger is restyled — it is the sole contextual row class
+   used on converted pages (audit.js overdue rows); table-warning/success/
+   info/primary/secondary/active/dark rows appear nowhere in views or JS.
+   ============================================================ */
+[data-bs-theme="dark"] .theme-ready .table-danger {
+    --bs-table-color: #E8EBF1;
+    --bs-table-bg: rgba(248, 113, 113, 0.14);
+    --bs-table-border-color: rgba(248, 113, 113, 0.35);
+    --bs-table-striped-bg: rgba(248, 113, 113, 0.07);
+    --bs-table-active-bg: rgba(248, 113, 113, 0.22);
+    --bs-table-hover-bg: rgba(248, 113, 113, 0.22);
+    --bs-table-hover-color: #E8EBF1;
 }
