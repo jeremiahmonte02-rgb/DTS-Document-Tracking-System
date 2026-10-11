@@ -4,6 +4,9 @@
 
 @section('pageTitle', 'Outbox')
 
+{{-- Batch 1 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
             <!-- Filters and Search -->
             <div class="card mb-4">
@@ -49,7 +52,7 @@
 
             <!-- Documents Table -->
             <div class="card">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <div class="card-header bg-body d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="bi bi-send"></i> Sent Documents
                         <span class="badge bg-primary ms-2" id="documentCount">0</span>
@@ -90,7 +93,7 @@
                         </table>
                     </div>
                 </div>
-                <div class="card-footer bg-white">
+                <div class="card-footer bg-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <small class="text-muted">
                             <span id="showingCount">Loading...</span>

@@ -4,6 +4,9 @@
 
 @section('pageTitle', 'User Management')
 
+{{-- Batch 2 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
             <div class="card mb-4">
                 <div class="card-body">
@@ -118,7 +121,7 @@
                  data-store-url="{{ route('api.users.store') }}"
                  data-toggle-url="{{ route('api.users.toggle-status', '__ID__') }}"
                  data-update-url="{{ route('api.users.update', '__ID__') }}">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <div class="card-header bg-body d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="bi bi-people"></i> System Users
                     </h5>

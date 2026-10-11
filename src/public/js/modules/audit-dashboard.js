@@ -55,6 +55,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
+
+            // Batch 1 dark mode: light values are Chart.js defaults / the
+            // spec above, so light output is unchanged; series hues identical.
+            if (window.ChartTheme) {
+                var createdStatus = Chart.getChart(canvas);
+                window.ChartTheme.register(createdStatus, canvas, function (pal, isDark) {
+                    createdStatus.options.plugins.legend.labels.color = isDark ? pal.text : '#666';
+                    createdStatus.data.datasets.forEach(function (ds) {
+                        ds.borderColor = isDark ? pal.surface : '#ffffff';
+                    });
+                });
+            }
         } catch (error) {
             console.error('[Audit Dashboard] Failed to initialize Status Chart:', error);
         }
@@ -103,6 +115,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
+
+            // Batch 1 dark mode: Chart.js tick/grid defaults restored in
+            // light, so light output is unchanged; series hue is identical.
+            if (window.ChartTheme) {
+                var createdDept = Chart.getChart(canvas);
+                window.ChartTheme.register(createdDept, canvas, function (pal, isDark) {
+                    createdDept.options.scales.y.ticks.color = isDark ? pal.text : '#666';
+                    createdDept.options.scales.y.grid.color = isDark ? pal.grid : 'rgba(0, 0, 0, 0.1)';
+                    createdDept.options.scales.x.ticks.color = isDark ? pal.text : '#666';
+                });
+            }
         } catch (error) {
             console.error('[Audit Dashboard] Failed to initialize Department Chart:', error);
         }
@@ -149,6 +172,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
+
+            // Batch 1 dark mode: Chart.js tick/grid defaults restored in
+            // light, so light output is unchanged; series hue is identical.
+            if (window.ChartTheme) {
+                var createdBottleneck = Chart.getChart(canvas);
+                window.ChartTheme.register(createdBottleneck, canvas, function (pal, isDark) {
+                    createdBottleneck.options.scales.x.ticks.color = isDark ? pal.text : '#666';
+                    createdBottleneck.options.scales.x.grid.color = isDark ? pal.grid : 'rgba(0, 0, 0, 0.1)';
+                    createdBottleneck.options.scales.y.ticks.color = isDark ? pal.text : '#666';
+                });
+            }
         } catch (error) {
             console.error('[Audit Dashboard] Failed to init SLA Bottleneck Chart:', error);
         }
@@ -203,6 +237,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
+
+            // Batch 1 dark mode: Chart.js tick/grid defaults restored in
+            // light, so light output is unchanged; series hue is identical.
+            if (window.ChartTheme) {
+                var createdIssues = Chart.getChart(canvas);
+                window.ChartTheme.register(createdIssues, canvas, function (pal, isDark) {
+                    createdIssues.options.scales.x.ticks.color = isDark ? pal.text : '#666';
+                    createdIssues.options.scales.x.grid.color = isDark ? pal.grid : 'rgba(0, 0, 0, 0.1)';
+                    createdIssues.options.scales.y.ticks.color = isDark ? pal.text : '#666';
+                });
+            }
         } catch (error) {
             console.error('[Audit Dashboard] Failed to initialize Issues by Department Chart:', error);
         }

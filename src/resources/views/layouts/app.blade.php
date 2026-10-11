@@ -1,6 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        // Batch 0 dark-mode pre-paint: apply the stored theme before any
+        // stylesheet loads to avoid a flash of the wrong theme. Storage
+        // failures fall back to light. Re-applied on bfcache restores below.
+        // Batch 1 developer preview gate (remove in the final batch with the
+        // theme.js gate): without localStorage dts_theme_preview === '1' the
+        // toggle stays hidden (see #themeToggle) and any stored dts_theme is
+        // ignored here, so a stored "dark" can never trap a user in dark.
+        (function () {
+            function previewEnabled() {
+                try {
+                    return localStorage.getItem('dts_theme_preview') === '1';
+                } catch (e) {
+                    return false;
+                }
+            }
+            try {
+                if (previewEnabled() && localStorage.getItem('dts_theme') === 'dark') {
+                    document.documentElement.setAttribute('data-bs-theme', 'dark');
+                }
+            } catch (e) {
+                /* storage unavailable: stay light */
+            }
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted) {
+                    try {
+                        document.documentElement.setAttribute(
+                            'data-bs-theme',
+                            (previewEnabled() && localStorage.getItem('dts_theme') === 'dark') ? 'dark' : 'light'
+                        );
+                    } catch (e) {
+                        document.documentElement.setAttribute('data-bs-theme', 'light');
+                    }
+                }
+            });
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -30,6 +67,13 @@
                 <h5 class="mb-0">@yield('pageTitle', 'Dashboard')</h5>
             </div>
             <div class="d-flex align-items-center gap-3">
+                {{-- Batch 1 developer preview gate (remove in the final batch with
+                     the pre-paint and theme.js gates): hidden until localStorage
+                     dts_theme_preview === '1'. --}}
+                <button type="button" class="btn btn-link" id="themeToggle" hidden
+                        aria-pressed="false" aria-label="Switch to dark mode">
+                    <i class="bi bi-moon-stars fs-5" id="themeToggleIcon" aria-hidden="true"></i>
+                </button>
                 <div class="dropdown">
                     <button class="btn btn-link position-relative dropdown-toggle" type="button"
                             id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false"
@@ -116,7 +160,19 @@
         </nav>
 
         <!-- Page Content -->
-        <div class="container-fluid p-4">
+        {{-- Partial-rollout pin (Batch 0): page content renders light until
+             the child view declares theme support with `@section('theme_ready')`.
+             The shell (page background, sidebar, topbar, bell/profile
+             dropdowns, confirm modal, toasts, spinner) follows the user theme;
+             content-embedded chrome (announcement banner, access-denied modal)
+             stays pinned with its host page and converts with it. Remove the
+             pin per view as batches land; delete this condition entirely once
+             every screen is converted. Batch 0 converts no page. --}}
+        @hasSection('theme_ready')
+        <div class="container-fluid p-4 theme-ready">
+        @else
+        <div class="container-fluid p-4 theme-pin" data-bs-theme="light">
+        @endif
             @yield('content')
         </div>
     </div>
@@ -161,6 +217,9 @@
 
     <!-- Global Formatting Utility -->
     <script src="{{ asset('js/core/format.js') }}?v={{ filemtime(public_path('js/core/format.js')) }}"></script>
+
+    <!-- Theme state (Batch 0 dark-mode foundation) -->
+    <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
 
     @yield('scripts')
 </body>

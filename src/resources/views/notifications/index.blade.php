@@ -4,6 +4,9 @@
 
 @section('pageTitle', 'Notifications')
 
+{{-- Batch 2 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
             <div class="card mb-4">
                 <div class="card-body d-flex flex-wrap gap-2 align-items-center justify-content-between">

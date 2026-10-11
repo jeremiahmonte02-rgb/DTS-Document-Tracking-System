@@ -6,6 +6,9 @@
 
 @section('pageTitle', 'Department Management')
 
+{{-- Batch 2 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
             <div class="page-header">
                 <h1>Department Management</h1>

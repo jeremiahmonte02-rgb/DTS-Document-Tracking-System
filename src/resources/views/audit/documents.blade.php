@@ -6,6 +6,9 @@
 
 @section('pageTitle', 'Audit Portal')
 
+{{-- Batch 2 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
             <div class="audit-header">
                 <h1>Documents Directory</h1>
@@ -120,7 +123,7 @@
                         <span class="count-badge" id="documentCount">0</span>
                     </h5>
                     <div>
-                        <button class="btn btn-sm btn-outline-secondary border-0" id="refreshTableBtn" title="Refresh data" style="font-size: 0.8125rem; color: var(--steel);">
+                        <button class="btn btn-sm btn-outline-secondary border-0" id="refreshTableBtn" title="Refresh data" style="font-size: 0.8125rem; color: var(--text-steel);">
                             <i class="bi bi-arrow-clockwise"></i>
                         </button>
                     </div>

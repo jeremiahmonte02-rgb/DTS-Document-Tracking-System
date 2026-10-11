@@ -4,6 +4,9 @@
 
 @section('pageTitle', 'My Profile')
 
+{{-- Batch 2 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
     @if(session('success'))
     <div class="alert alert-success d-flex align-items-center alert-dismissible fade show shadow-sm mb-4 pe-5" role="alert" style="background-color: #d1e7dd; border-color: #badbcc; color: #0f5132; padding: 1rem 1.25rem; border-radius: 0.375rem; position: relative;">
@@ -19,7 +22,7 @@
         <!-- Account details + avatar -->
         <div class="col-lg-4">
             <div class="card">
-                <div class="card-header bg-white">
+                <div class="card-header bg-body">
                     <h5 class="mb-0"><i class="bi bi-person-badge"></i> Account Details</h5>
                 </div>
                 <div class="card-body text-center">
@@ -49,7 +52,7 @@
         <!-- Profile information -->
         <div class="col-lg-8">
             <div class="card h-100">
-                <div class="card-header bg-white">
+                <div class="card-header bg-body">
                     <h5 class="mb-0"><i class="bi bi-info-circle"></i> Profile Information</h5>
                 </div>
                 <div class="card-body">
@@ -118,7 +121,7 @@
                 </table>
             </div>
         </div>
-        <div class="card-footer bg-white">
+        <div class="card-footer bg-body">
             <nav aria-label="Document pagination">
                 <ul class="pagination pagination-sm mb-0"></ul>
             </nav>

@@ -54,6 +54,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
+
+            // Batch 1 dark mode: redraw with theme chrome on dts:themechange.
+            // Light values below are Chart.js defaults / the spec above, so
+            // light output is unchanged; series hues are identical in dark.
+            if (window.ChartTheme) {
+                var created = Chart.getChart(canvas);
+                window.ChartTheme.register(created, canvas, function (pal, isDark) {
+                    created.options.plugins.legend.labels.color = isDark ? pal.text : '#666';
+                    created.data.datasets.forEach(function (ds) {
+                        ds.borderColor = isDark ? pal.surface : '#ffffff';
+                    });
+                });
+            }
         } catch (error) {
             console.error('[Dashboard Module Alert] Failed to initialize Status Chart components:', error);
         }
@@ -103,6 +116,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
+
+            // Batch 1 dark mode: Chart.js tick/grid defaults are restored in
+            // light, so light output is unchanged; series hue is identical.
+            if (window.ChartTheme) {
+                var createdBar = Chart.getChart(canvas);
+                window.ChartTheme.register(createdBar, canvas, function (pal, isDark) {
+                    createdBar.options.scales.y.ticks.color = isDark ? pal.text : '#666';
+                    createdBar.options.scales.y.grid.color = isDark ? pal.grid : 'rgba(0, 0, 0, 0.1)';
+                    createdBar.options.scales.x.ticks.color = isDark ? pal.text : '#666';
+                });
+            }
         } catch (error) {
             console.error('[Dashboard Module Alert] Failed to initialize Department Chart components:', error);
         }

@@ -4,6 +4,9 @@
 
 @section('pageTitle', 'Dashboard')
 
+{{-- Batch 1 dark-mode: this view is converted; remove only if reverting to pinned light. --}}
+@section('theme_ready', 'converted')
+
 @section('content')
 
             @if(session('success'))
@@ -206,7 +209,7 @@
                 <!-- Charts -->
                 <div class="col-lg-8">
                     <div class="card mb-4">
-                        <div class="card-header bg-white">
+                        <div class="card-header bg-body">
                             <h5 class="mb-0">
                                 <i class="bi bi-bar-chart"></i> Document Status Distribution
                             </h5>
@@ -219,7 +222,7 @@
                     </div>
                     
                     <div class="card">
-                        <div class="card-header bg-white">
+                        <div class="card-header bg-body">
                             <h5 class="mb-0">
                                 <i class="bi bi-graph-up"></i> Documents by Department
                             </h5>
@@ -235,7 +238,7 @@
                 <!-- Activity Feed -->
                 <div class="col-lg-4 no-print d-print-none">
                     <div class="card">
-                        <div class="card-header bg-white">
+                        <div class="card-header bg-body">
                             <h5 class="mb-0">
                                 <i class="bi bi-activity"></i> Recent Activity
                             </h5>
@@ -254,7 +257,7 @@
                                             </div>
                                             <small class="text-muted">
                                                 {{ $event->note }}<br>
-                                                <span class="text-dark fw-medium">{{ $event->user_name }}</span>
+                                                <span class="text-body fw-medium">{{ $event->user_name }}</span>
                                                 &middot;
                                                 <span class="text-muted">{{ $event->document_number }}</span>
                                             </small>
@@ -293,6 +296,7 @@
     <!-- QRCode.js -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
+    <script src="{{ asset('js/chart-theme.js') }}"></script>
     <script src="{{ asset('js/modules/dashboard.js') }}?v={{ filemtime(public_path('js/modules/dashboard.js')) }}"></script>
     <script src="{{ asset('js/export-card-select.js') }}"></script>
 @endsection
