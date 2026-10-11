@@ -53,11 +53,14 @@ class DashboardController extends Controller
         // already department-scoped output, never widens it. Stats are
         // computed fully first; the lists are subset here (filter after
         // computing). No `cards` parameter (or nothing valid) selects all.
-        $validated = $request->validate([
+        // A non-array `cards` value is ignored (export all) instead of
+        // redirecting with a validation error; per-element rules still apply.
+        $cardsInput = $request->input('cards');
+        $validated = $request->validate(is_array($cardsInput) ? [
             'cards' => ['nullable', 'array'],
             'cards.*' => ['string', 'max:60'],
-        ]);
-        $rawCards = $validated['cards'] ?? null;
+        ] : []);
+        $rawCards = is_array($cardsInput) ? ($validated['cards'] ?? null) : null;
         $selectedKeys = \App\Support\ExportCards::resolve(
             \App\Support\ExportCards::DASHBOARD_STANDARD,
             $rawCards

@@ -24,9 +24,10 @@
                     >
                     <div class="dropdown d-inline">
                         <button type="button" class="btn btn-sm btn-light text-secondary border-0 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-printer"></i> Export</button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item" href="{{ route('audit.export', ['month' => $startOfMonth->format('Y-m')]) }}" data-no-spinner="true">Export as Excel</a></li>
-                            <li><button type="button" class="dropdown-item" onclick="window.print()">Export as Snapshot</button></li>
+                        <ul class="dropdown-menu dropdown-menu-end shadow export-menu">
+                            <li><a class="dropdown-item export-menu-item" id="exportExcelLink" data-base-href="{{ route('audit.export', ['month' => $startOfMonth->format('Y-m')]) }}" href="{{ route('audit.export', ['month' => $startOfMonth->format('Y-m')]) }}" data-no-spinner="true"><i class="bi bi-file-earmark-excel text-success"></i><span><span class="d-block">Export as Excel</span><small class="d-block text-muted">Selected cards, or all if none selected</small></span></a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button type="button" class="dropdown-item export-menu-item" onclick="window.print()"><i class="bi bi-printer text-muted"></i>Export as Snapshot</button></li>
                         </ul>
                     </div>
                     @if($startOfMonth->format('Y-m') !== now()->format('Y-m'))
@@ -40,7 +41,7 @@
             <!-- KPI Metric Cards -->
             <div class="row g-4 mb-4">
                 <div class="col-md-6 col-lg-3">
-                    <div class="card stat-card primary">
+                    <div class="card stat-card primary" data-card-key="total" role="button" tabindex="0" aria-pressed="false" aria-label="Include Total Documents in export">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
@@ -52,11 +53,12 @@
                                 </div>
                             </div>
                         </div>
+                        <span class="export-card-check" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span>
                     </div>
                 </div>
 
                 <div class="col-md-6 col-lg-3">
-                    <div class="card stat-card warning">
+                    <div class="card stat-card warning" data-card-key="pending" role="button" tabindex="0" aria-pressed="false" aria-label="Include Pending Transfer in export">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
@@ -68,11 +70,12 @@
                                 </div>
                             </div>
                         </div>
+                        <span class="export-card-check" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span>
                     </div>
                 </div>
 
                 <div class="col-md-6 col-lg-3">
-                    <div class="card stat-card info">
+                    <div class="card stat-card info" data-card-key="in_transit" role="button" tabindex="0" aria-pressed="false" aria-label="Include In Transit in export">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
@@ -84,11 +87,12 @@
                                 </div>
                             </div>
                         </div>
+                        <span class="export-card-check" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span>
                     </div>
                 </div>
 
                 <div class="col-md-6 col-lg-3">
-                    <div class="card stat-card success">
+                    <div class="card stat-card success" data-card-key="completed" role="button" tabindex="0" aria-pressed="false" aria-label="Include Completed in export">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
@@ -100,11 +104,12 @@
                                 </div>
                             </div>
                         </div>
+                        <span class="export-card-check" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span>
                     </div>
                 </div>
 
                 <div class="col-md-6 col-lg-3">
-                    <div class="card stat-card {{ $overdueCount > 0 ? 'danger' : 'success' }}">
+                    <div class="card stat-card {{ $overdueCount > 0 ? 'danger' : 'success' }}" data-card-key="overdue" role="button" tabindex="0" aria-pressed="false" aria-label="Include SLA Overdue in export">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
@@ -116,6 +121,7 @@
                                 </div>
                             </div>
                         </div>
+                        <span class="export-card-check" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span>
                     </div>
                 </div>
 
@@ -308,6 +314,8 @@
                     </div>
                 </div>
             </div>
+
+            <span id="exportCardLiveRegion" class="visually-hidden" role="status" aria-live="polite"></span>
 @endsection
 
 @section('scripts')
@@ -315,4 +323,5 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <script src="{{ asset('js/modules/audit-dashboard.js') }}?v={{ filemtime(public_path('js/modules/audit-dashboard.js')) }}"></script>
+    <script src="{{ asset('js/export-card-select.js') }}"></script>
 @endsection

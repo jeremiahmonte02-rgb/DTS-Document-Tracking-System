@@ -2880,3 +2880,103 @@ body {
         flex-wrap: wrap;
     }
 }
+
+/* Export card selection (dashboards only). Selectable analytics cards carry
+   [data-card-key]; .is-selected is toggled by export-card-select.js. The
+   selected state uses border + tint + check badge (never color alone) and
+   works without hover for touch devices. */
+.stat-card[data-card-key] {
+    cursor: pointer;
+}
+
+.stat-card[data-card-key]:focus-visible {
+    outline: 3px solid #0d6efd;
+    outline-offset: 2px;
+}
+
+.stat-card[data-card-key].is-selected {
+    border: 2px solid #0d6efd;
+    background-color: rgba(13, 110, 253, 0.08);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    transform: none;
+}
+
+.stat-card[data-card-key].is-selected:hover {
+    transform: none;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.export-card-check {
+    display: none;
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: #0d6efd;
+    background-color: #ffffff;
+    border-radius: 50%;
+}
+
+.stat-card[data-card-key].is-selected .export-card-check {
+    display: inline-block;
+}
+
+@media print {
+    .stat-card[data-card-key] {
+        cursor: default;
+    }
+
+    .stat-card[data-card-key].is-selected {
+        border: none;
+        background-color: transparent;
+        box-shadow: none;
+        transform: none;
+    }
+
+    .stat-card[data-card-key].is-selected:hover {
+        box-shadow: none;
+    }
+
+    .export-card-check {
+        display: none !important;
+    }
+}
+
+/* Export dropdown menu (dashboards only). Keeps the Bootstrap
+   dropdown-menu-end alignment so the menu never overlaps the cards. */
+.export-menu {
+    min-width: 15rem;
+    max-width: 18rem;
+    padding: 0.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.export-menu .export-menu-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    white-space: normal;
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+}
+
+.export-menu .export-menu-item > i {
+    font-size: 1.1rem;
+    line-height: 1.4;
+}
+
+.export-menu .export-menu-item:hover {
+    background-color: rgba(13, 110, 253, 0.08);
+}
+
+.export-menu .export-menu-item:focus-visible {
+    outline: 3px solid #0d6efd;
+    outline-offset: -3px;
+}
+
+.export-menu .dropdown-divider {
+    margin: 0.5rem 0;
+}

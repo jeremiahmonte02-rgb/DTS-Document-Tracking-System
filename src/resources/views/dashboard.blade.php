@@ -35,9 +35,10 @@
                     >
                     <div class="dropdown d-inline">
                         <button type="button" class="btn btn-sm btn-light text-secondary border-0 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-printer"></i> Export</button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item" href="{{ route('dashboard.export', ['month' => $startOfMonth->format('Y-m')]) }}" data-no-spinner="true">Export as Excel</a></li>
-                            <li><button type="button" class="dropdown-item" onclick="window.print()">Export as Snapshot</button></li>
+                        <ul class="dropdown-menu dropdown-menu-end shadow export-menu">
+                            <li><a class="dropdown-item export-menu-item" id="exportExcelLink" data-base-href="{{ route('dashboard.export', ['month' => $startOfMonth->format('Y-m')]) }}" href="{{ route('dashboard.export', ['month' => $startOfMonth->format('Y-m')]) }}" data-no-spinner="true"><i class="bi bi-file-earmark-excel text-success"></i><span><span class="d-block">Export as Excel</span><small class="d-block text-muted">Selected cards, or all if none selected</small></span></a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button type="button" class="dropdown-item export-menu-item" onclick="window.print()"><i class="bi bi-printer text-muted"></i>Export as Snapshot</button></li>
                         </ul>
                     </div>
                     @if($startOfMonth->format('Y-m') !== now()->format('Y-m'))
@@ -52,7 +53,7 @@
             <!-- Statistics Cards -->
             <div class="row g-4 mb-4">
                 <div class="col-md-6 col-lg-3">
-                    <div class="card stat-card primary">
+                    <div class="card stat-card primary" @if(auth()->user()->hasPermission('users.manage')) data-card-key="total" role="button" tabindex="0" aria-pressed="false" aria-label="Include Total Documents in export"@endif>
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
@@ -64,11 +65,12 @@
                                 </div>
                             </div>
                         </div>
+                        @if(auth()->user()->hasPermission('users.manage'))<span class="export-card-check" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span>@endif
                     </div>
                 </div>
                 
                 <div class="col-md-6 col-lg-3">
-                    <div class="card stat-card warning">
+                    <div class="card stat-card warning" @if(auth()->user()->hasPermission('users.manage')) data-card-key="pending" role="button" tabindex="0" aria-pressed="false" aria-label="Include Pending Transfer in export"@endif>
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
@@ -80,11 +82,12 @@
                                 </div>
                             </div>
                         </div>
+                        @if(auth()->user()->hasPermission('users.manage'))<span class="export-card-check" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span>@endif
                     </div>
                 </div>
                 
                 <div class="col-md-6 col-lg-3">
-                    <div class="card stat-card success">
+                    <div class="card stat-card success" @if(auth()->user()->hasPermission('users.manage')) data-card-key="received" role="button" tabindex="0" aria-pressed="false" aria-label="Include Received in Month in export"@endif>
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
@@ -96,11 +99,12 @@
                                 </div>
                             </div>
                         </div>
+                        @if(auth()->user()->hasPermission('users.manage'))<span class="export-card-check" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span>@endif
                     </div>
                 </div>
                 
                 <div class="col-md-6 col-lg-3">
-                    <div class="card stat-card info">
+                    <div class="card stat-card info" @if(auth()->user()->hasPermission('users.manage')) data-card-key="in_transit" role="button" tabindex="0" aria-pressed="false" aria-label="Include In Transit in export"@endif>
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
@@ -112,6 +116,7 @@
                                 </div>
                             </div>
                         </div>
+                        @if(auth()->user()->hasPermission('users.manage'))<span class="export-card-check" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span>@endif
                     </div>
                 </div>
 
@@ -132,7 +137,7 @@
                 </div>
 
                 <div class="col-md-6 col-lg-3">
-                    <div class="card stat-card {{ $overdueCount > 0 ? 'danger' : 'success' }}">
+                    <div class="card stat-card {{ $overdueCount > 0 ? 'danger' : 'success' }}" @if(auth()->user()->hasPermission('users.manage')) data-card-key="overdue" role="button" tabindex="0" aria-pressed="false" aria-label="Include Overdue in export"@endif>
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
@@ -144,6 +149,7 @@
                                 </div>
                             </div>
                         </div>
+                        @if(auth()->user()->hasPermission('users.manage'))<span class="export-card-check" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span>@endif
                     </div>
                 </div>
 
@@ -163,6 +169,8 @@
                     </div>
                 </div>
             </div>
+
+            <span id="exportCardLiveRegion" class="visually-hidden" role="status" aria-live="polite"></span>
 
             <!-- Quick Actions -->
             <div class="row g-4 mb-4 no-print d-print-none">
@@ -286,4 +294,5 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
     <script src="{{ asset('js/modules/dashboard.js') }}?v={{ filemtime(public_path('js/modules/dashboard.js')) }}"></script>
+    <script src="{{ asset('js/export-card-select.js') }}"></script>
 @endsection
