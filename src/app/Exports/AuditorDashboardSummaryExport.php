@@ -130,8 +130,8 @@ class AuditorDashboardSummarySheet implements FromArray, WithTitle, ShouldAutoSi
             ['Completed', $stats['completedDocuments'] ?? 0],
             ['Rejected', $stats['rejectedDocuments'] ?? 0],
             ['SLA Overdue', $stats['overdueCount'] ?? 0],
-            ['Avg Dwell Time (hrs)', $stats['avgDwellHours'] ?? 0],
-            ['Avg Completion (hrs)', $stats['avgCompletionHours'] ?? 0],
+            ['Avg Dwell Time (hrs)', $stats['avgDwellHours'] ?? 'N/A'],
+            ['Avg Completion (hrs)', $stats['avgCompletionHours'] ?? 'N/A'],
             ['Total Issues', $stats['totalIssues'] ?? 0],
             ['Open Issues', $stats['openIssues'] ?? 0],
             ['Resolved Issues', $stats['resolvedIssues'] ?? 0],
@@ -173,6 +173,9 @@ class AuditorDashboardSummarySheet implements FromArray, WithTitle, ShouldAutoSi
             $rows[] = [];
             $rows[] = ['Note', "Completed includes statuses 'received' and 'completed' and is based on the document creation month."];
         }
+
+        $rows[] = [];
+        $rows[] = ['Note', 'Avg Dwell Time and Avg Completion: documents created in the selected month that have been completed (Avg Dwell n = ' . ($stats['avgDwellCount'] ?? 0) . ', Avg Completion n = ' . ($stats['avgCompletionCount'] ?? 0) . ')'];
 
         $rows[] = [];
         if (!($this->context['explicitSelection'] ?? false)) {

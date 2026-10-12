@@ -286,7 +286,11 @@ class AuditorController extends Controller
             ->pluck('count', 'name')
             ->toArray();
 
-        // 6. Average dwell time — scoped to selected month
+        // 6. Average dwell time — cohort by creation month (same created_at
+        // bounds as the Total card): documents created in the month that have
+        // since completed, apportioned per processed route step as below.
+        // Lifecycle is measured in minutes (not hours) so sub-hour lifecycles
+        // are not truncated to 0.
         // Redefined: The average time a document spends in the "current" status (from receipt to release)
         // We calculate this by looking at steps that transitioned FROM 'current' TO 'received' (or terminal status)
         // Since we don't have a 'released_at' timestamp on the route row, we use the timestamp
@@ -298,14 +302,14 @@ class AuditorController extends Controller
             ->where('status', 'completed')
             ->whereNotNull('completed_at')
             ->whereNotNull('uploaded_at')
-            ->whereBetween('completed_at', [$startOfMonth, $endOfMonth])
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->get();
 
-        $totalDwellHours = 0;
+        $totalDwellMinutes = 0;
         $totalCompletedSteps = 0;
 
         foreach ($completedDocumentsData as $doc) {
-            $lifecycleHours = \Carbon\Carbon::parse($doc->uploaded_at)->diffInHours(\Carbon\Carbon::parse($doc->completed_at));
+            $lifecycleMinutes = \Carbon\Carbon::parse($doc->uploaded_at)->diffInMinutes(\Carbon\Carbon::parse($doc->completed_at));
 
             // How many steps did this document go through?
             $stepCount = DB::table('document_routes')
@@ -315,22 +319,30 @@ class AuditorController extends Controller
 
             if ($stepCount > 0) {
                 // If a document took 100 hours to complete across 4 steps, the average dwell per department is 25 hours.
-                $totalDwellHours += ($lifecycleHours / $stepCount);
+                $totalDwellMinutes += ($lifecycleMinutes / $stepCount);
                 $totalCompletedSteps++;
             }
         }
 
-        $avgDwellHours = $totalCompletedSteps > 0 ? round($totalDwellHours / $totalCompletedSteps, 1) : 0;
+        $avgDwellHours = $totalCompletedSteps > 0 ? round($totalDwellMinutes / $totalCompletedSteps / 60, 3) : null;
 
-        // 7. Average completion time — scoped by completed_at within selected month
-        $avgCompletionHours = DB::table('documents')
+        // 7. Average completion time — cohort by creation month (same
+        // created_at bounds as the Total card). Null when no document
+        // qualifies.
+        $avgCompletionMinutes = DB::table('documents')
             ->where('status', 'completed')
             ->whereNotNull('completed_at')
             ->whereNotNull('uploaded_at')
-            ->whereBetween('completed_at', [$startOfMonth, $endOfMonth])
-            ->select(DB::raw('AVG(TIMESTAMPDIFF(HOUR, uploaded_at, completed_at)) as avg_hours'))
-            ->value('avg_hours');
-        $avgCompletionHours = $avgCompletionHours ? round((float) $avgCompletionHours, 1) : 0;
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->select(DB::raw('AVG(TIMESTAMPDIFF(MINUTE, uploaded_at, completed_at)) as avg_minutes'))
+            ->value('avg_minutes');
+        $avgCompletionHours = $avgCompletionMinutes !== null ? round((float) $avgCompletionMinutes / 60, 3) : null;
+        $avgCompletionCount = DB::table('documents')
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
+            ->whereNotNull('uploaded_at')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->count();
 
         // 8. Recent activity feed — scoped to selected month
         $activityFeed = DB::table('document_events')
@@ -382,7 +394,9 @@ class AuditorController extends Controller
             'slaBottlenecksByDept' => $slaBottlenecksByDept,
             'issuesByDepartment' => $issuesByDepartment,
             'avgDwellHours' => $avgDwellHours,
+            'avgDwellCount' => $totalCompletedSteps,
             'avgCompletionHours' => $avgCompletionHours,
+            'avgCompletionCount' => $avgCompletionCount,
             'activityFeed' => $activityFeed,
             'documentLists' => $documentLists,
         ];

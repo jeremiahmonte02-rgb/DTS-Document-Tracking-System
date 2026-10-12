@@ -206,22 +206,26 @@ class DashboardController extends Controller
         // uploaded_at and completed_at, DIVIDED by the number of completed
         // route steps. Since we don't have a 'released_at' timestamp on the
         // route row, per-step dwell is apportioned from the whole lifecycle.
+        // Cohort by creation month (same created_at bounds as the Total card):
+        // a document created in the month enters the average when it completes,
+        // even if completion falls in a later month. Lifecycle is measured in
+        // minutes (not hours) so sub-hour lifecycles are not truncated to 0.
         $completedDocumentsData = DB::table('documents')
             ->where('status', 'completed')
             ->whereNotNull('completed_at')
             ->whereNotNull('uploaded_at')
-            ->whereBetween('completed_at', [$startOfMonth, $endOfMonth])
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->when($userDeptId, fn ($q) => $q->where(function ($sub) use ($userDeptId) {
                 $sub->where('sender_department_id', $userDeptId)
                     ->orWhere('current_department_id', $userDeptId);
             }))
             ->get();
 
-        $totalDwellHours = 0;
+        $totalDwellMinutes = 0;
         $totalCompletedSteps = 0;
 
         foreach ($completedDocumentsData as $doc) {
-            $lifecycleHours = Carbon::parse($doc->uploaded_at)->diffInHours(Carbon::parse($doc->completed_at));
+            $lifecycleMinutes = Carbon::parse($doc->uploaded_at)->diffInMinutes(Carbon::parse($doc->completed_at));
 
             // How many steps did this document go through?
             $stepCount = DB::table('document_routes')
@@ -231,12 +235,12 @@ class DashboardController extends Controller
 
             if ($stepCount > 0) {
                 // If a document took 100 hours to complete across 4 steps, the average dwell per department is 25 hours.
-                $totalDwellHours += ($lifecycleHours / $stepCount);
+                $totalDwellMinutes += ($lifecycleMinutes / $stepCount);
                 $totalCompletedSteps++;
             }
         }
 
-        $avgDwellHours = $totalCompletedSteps > 0 ? round($totalDwellHours / $totalCompletedSteps, 1) : 0;
+        $avgDwellHours = $totalCompletedSteps > 0 ? round($totalDwellMinutes / $totalCompletedSteps / 60, 3) : null;
 
         // 6. Overdue Detection — live operational state, intentionally UNscoped
         // by month (a genuinely-overdue-right-now document counts regardless
@@ -311,20 +315,33 @@ class DashboardController extends Controller
 
         $overdueCount = count($overdueDocumentNumbers);
 
-        // 7. Average completion time — scoped by completed_at within selected
-        // month and to the viewer's own department (no admin org-wide exception)
-        $avgCompletionHours = DB::table('documents')
+        // 7. Average completion time — cohort by creation month (same
+        // created_at bounds as the Total card) with status 'completed', scoped
+        // to the viewer's own department (no admin org-wide exception).
+        // Lifecycle measured in minutes so sub-hour means survive; null when
+        // no document qualifies.
+        $avgCompletionMinutes = DB::table('documents')
             ->where('status', 'completed')
             ->whereNotNull('completed_at')
             ->whereNotNull('uploaded_at')
-            ->whereBetween('completed_at', [$startOfMonth, $endOfMonth])
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->when($userDeptId, fn ($q) => $q->where(function ($sub) use ($userDeptId) {
                 $sub->where('sender_department_id', $userDeptId)
                     ->orWhere('current_department_id', $userDeptId);
             }))
-            ->select(DB::raw('AVG(TIMESTAMPDIFF(HOUR, uploaded_at, completed_at)) as avg_hours'))
-            ->value('avg_hours');
-        $avgCompletionHours = $avgCompletionHours ? round((float) $avgCompletionHours, 1) : 0;
+            ->select(DB::raw('AVG(TIMESTAMPDIFF(MINUTE, uploaded_at, completed_at)) as avg_minutes'))
+            ->value('avg_minutes');
+        $avgCompletionHours = $avgCompletionMinutes !== null ? round((float) $avgCompletionMinutes / 60, 3) : null;
+        $avgCompletionCount = DB::table('documents')
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
+            ->whereNotNull('uploaded_at')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->when($userDeptId, fn ($q) => $q->where(function ($sub) use ($userDeptId) {
+                $sub->where('sender_department_id', $userDeptId)
+                    ->orWhere('current_department_id', $userDeptId);
+            }))
+            ->count();
 
         // Column-per-card source for the "Document Lists" export sheet.
         // NEW key only — every pre-existing key above is untouched.
@@ -345,9 +362,11 @@ class DashboardController extends Controller
             'departmentDistribution' => $departmentDistribution,
             'activityFeed' => $activityFeed,
             'avgDwellHours' => $avgDwellHours,
+            'avgDwellCount' => $totalCompletedSteps,
             'overdueCount' => $overdueCount,
             'overdueDocuments' => $overdueDocuments,
             'avgCompletionHours' => $avgCompletionHours,
+            'avgCompletionCount' => $avgCompletionCount,
             'documentLists' => $documentLists,
         ];
     }

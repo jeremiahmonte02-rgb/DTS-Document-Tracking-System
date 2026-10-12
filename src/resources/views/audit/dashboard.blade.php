@@ -133,8 +133,12 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
-                                    <h6 class="text-muted mb-2">Avg Dwell Time</h6>
+                                    <h6 class="text-muted mb-2" title="Documents created in {{ $startOfMonth->format('F Y') }} that have been completed">Avg Dwell Time</h6>
+                                    @if($avgDwellHours !== null)
                                     <h2 class="mb-0 tabular-nums js-format-time" data-hours="{{ $avgDwellHours }}">{{ $avgDwellHours }} <small class="fs-6 text-muted">hrs</small></h2>
+                                    @else
+                                    <h2 class="mb-0 tabular-nums">N/A</h2>
+                                    @endif
                                 </div>
                                 <div class="stat-icon">
                                     <i class="bi bi-clock-history"></i>
@@ -149,8 +153,12 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div style="min-width: 0;">
-                                    <h6 class="text-muted mb-2">Avg Completion</h6>
+                                    <h6 class="text-muted mb-2" title="Documents created in {{ $startOfMonth->format('F Y') }} that have been completed">Avg Completion</h6>
+                                    @if($avgCompletionHours !== null)
                                     <h2 class="mb-0 tabular-nums js-format-time" data-hours="{{ $avgCompletionHours }}">{{ $avgCompletionHours }} <small class="fs-6 text-muted">hrs</small></h2>
+                                    @else
+                                    <h2 class="mb-0 tabular-nums">N/A</h2>
+                                    @endif
                                 </div>
                                 <div class="stat-icon">
                                     <i class="bi bi-check2-all"></i>

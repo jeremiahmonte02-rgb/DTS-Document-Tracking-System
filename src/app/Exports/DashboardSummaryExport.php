@@ -128,9 +128,9 @@ class DashboardSummarySheet implements FromArray, WithTitle, ShouldAutoSize, Wit
             ['Pending Transfer', $stats['pendingDocuments'] ?? 0],
             ['In Transit', $stats['inTransitDocuments'] ?? 0],
             ['Received in Month', $stats['receivedInMonth'] ?? 0],
-            ['Avg Dwell Time (hrs)', $stats['avgDwellHours'] ?? 0],
+            ['Avg Dwell Time (hrs)', $stats['avgDwellHours'] ?? 'N/A'],
             ['Overdue', $stats['overdueCount'] ?? 0],
-            ['Avg Completion (hrs)', $stats['avgCompletionHours'] ?? 0],
+            ['Avg Completion (hrs)', $stats['avgCompletionHours'] ?? 'N/A'],
             [],
             ['Status', 'Count'],
         ];
@@ -155,6 +155,9 @@ class DashboardSummarySheet implements FromArray, WithTitle, ShouldAutoSize, Wit
             $rows[] = [];
             $rows[] = ['Note', 'Received in Month counts distinct documents with a receipt event in the selected month and may include documents created in earlier months.'];
         }
+
+        $rows[] = [];
+        $rows[] = ['Note', 'Avg Dwell Time and Avg Completion: documents created in the selected month that have been completed (Avg Dwell n = ' . ($stats['avgDwellCount'] ?? 0) . ', Avg Completion n = ' . ($stats['avgCompletionCount'] ?? 0) . ')'];
 
         $rows[] = [];
         if (!($this->context['explicitSelection'] ?? false)) {
