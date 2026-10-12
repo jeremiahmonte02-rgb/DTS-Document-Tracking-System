@@ -3082,13 +3082,6 @@ body {
    tokens/Bootstrap variables and need no rules here.
    ============================================================ */
 
-/* Pinned content backstop: fully readable under a dark shell. Resolves
-   to identical light values inside the pin. */
-.theme-pin {
-    background-color: var(--body-bg);
-    color: var(--bs-body-color);
-}
-
 /* Inbox/outbox thead: the .table-light class is kept (its light rendering
    is already governed by the winning .table-container-style rules and
    Bootstrap table vars); these ID-scoped custom properties give converted
@@ -3403,21 +3396,66 @@ body {
     border-color: #2A3348 !important;
 }
 
-/* Scan result backstop (Batch 3 fix): scan.js ships without a
-   cache-busting query string (scan.blade.php loads it bare), so browsers
-   may still run pre-Batch-3 markup emitting .bg-white/.bg-light/.text-dark
-   inside these two containers. These rules repaint exactly that stale DOM
-   in dark; current markup (bg-body/bg-body-tertiary/text-body) does not
-   match these selectors and is governed by adaptive classes instead.
-   span:not(.badge) keeps warning badges' dark-on-yellow text intact, and
-   the Attempt Receipt button (text-dark on its yellow fill) is a <button>,
-   never a span, so it is untouched. */
-[data-bs-theme="dark"] .theme-ready #scanCardResultContainer .card-body.bg-white,
-[data-bs-theme="dark"] .theme-ready #routeStepMapContainer .bg-white,
-[data-bs-theme="dark"] .theme-ready #routeStepMapContainer .bg-light {
-    background-color: #1A2130 !important;
+/* ============================================================
+   Batch 5 — login page (standalone; the whole page is converted, so rules
+   are scoped under `[data-bs-theme="dark"] .login-page`). The navy brand
+   page, gradients, medallion, sign-in button, trust dot, focus ring and
+   bottom links already read well and are untouched. Card, error alert and
+   deactivated modal follow Bootstrap/theme tokens automatically.
+   ============================================================ */
+[data-bs-theme="dark"] .login-page {
+    --login-ink: #E8EBF1;
+    --login-steel: #9AA3B5;
+    --login-line: #2A3348;
 }
 
-[data-bs-theme="dark"] .theme-ready #routeStepMapContainer span.text-dark:not(.badge) {
-    color: #E8EBF1 !important;
+[data-bs-theme="dark"] .login-page .login-title { color: #E8EBF1; }
+[data-bs-theme="dark"] .login-page .login-trust-row { color: #9AA3B5; }
+
+[data-bs-theme="dark"] .login-page .login-input {
+    background-color: #10141D;
+    border-color: #2A3348;
+    color: #E8EBF1;
+}
+
+[data-bs-theme="dark"] .login-page .login-pw-toggle { color: #9AA3B5; }
+
+[data-bs-theme="dark"] .login-page .login-pw-toggle:hover {
+    color: #E8EBF1;
+    background: rgba(91, 155, 255, 0.14);
+}
+
+[data-bs-theme="dark"] .login-page .login-forgot-link { color: #5B9BFF; }
+[data-bs-theme="dark"] .login-page .login-forgot-link:hover { color: #8FBDFF; }
+
+[data-bs-theme="dark"] .login-page .login-secure-strip {
+    background: #161C2B;
+    border-top-color: #2A3348;
+    color: #9AA3B5;
+}
+
+[data-bs-theme="dark"] .login-page .login-secure-strip i { color: #5B9BFF; }
+
+[data-bs-theme="dark"] .login-page .text-danger { color: var(--text-danger) !important; }
+
+/* Autofill guard: without this, Chrome/Safari paint autofilled fields pale
+   yellow (light) or pale blue (dark), breaking both themes' inputs. The
+   light theme is untouched — this rule only matches under dark. */
+[data-bs-theme="dark"] .login-page .login-input:-webkit-autofill,
+[data-bs-theme="dark"] .login-page .login-input:-webkit-autofill:hover,
+[data-bs-theme="dark"] .login-page .login-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #E8EBF1;
+    caret-color: #E8EBF1;
+    -webkit-box-shadow: 0 0 0 1000px #10141D inset;
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+/* ============================================================
+   Batch 5 — release polish. Any pre-existing white card header left on a
+   converted page (e.g. profile documents card) follows the card surface
+   in dark; QR areas are .modal-card/.qr-code-*, never .card-header, so
+   the QR guard is unaffected. Pinned pages cannot match (.theme-ready).
+   ============================================================ */
+[data-bs-theme="dark"] .theme-ready .card-header.bg-white {
+    background-color: #1A2130;
 }

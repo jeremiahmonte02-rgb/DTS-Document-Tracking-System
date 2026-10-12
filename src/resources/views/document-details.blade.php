@@ -493,7 +493,7 @@
     <!-- Page Modules -->
     <script src="{{ asset('js/modules/timeline-renderer.js') }}?v={{ filemtime(public_path('js/modules/timeline-renderer.js')) }}"></script>
     <script src="{{ asset('js/modules/document-details.js') }}"></script>
-    <script src="{{ asset('js/modules/route-status.js') }}"></script>
+    <script src="{{ asset('js/modules/route-status.js') }}?v={{ filemtime(public_path('js/modules/route-status.js')) }}"></script>
     <script src="{{ asset('js/modules/realtime-document.js') }}"></script>
 
     <!-- Utility Functions -->

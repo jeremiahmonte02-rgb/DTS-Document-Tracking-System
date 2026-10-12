@@ -1,35 +1,19 @@
 /**
- * Theme State - Document Tracking System (Batch 0 dark-mode foundation).
+ * Theme State - Document Tracking System.
  *
  * Owns the `dts_theme` choice ("light" | "dark", localStorage key
  * `dts_theme`; anything else means light; default light; no OS following).
- * Vanilla JS, no dependencies. Must not touch page content, charts, or any
- * other feature: it only flips `data-bs-theme` on <html>, persists the
- * choice, updates the topbar toggle, and announces changes.
+ * Vanilla JS, no dependencies. It flips `data-bs-theme` on <html>, persists
+ * the choice, updates the topbar toggle, re-applies on bfcache restores
+ * (see the pre-paint script in layouts/app.blade.php), and dispatches
+ * `dts:themechange` (charts repaint on it). Print forces light (see below).
  */
 (function () {
     'use strict';
 
     var STORAGE_KEY = 'dts_theme';
-    var PREVIEW_KEY = 'dts_theme_preview';
-
-    // Batch 1 developer preview gate (remove in the final batch with the
-    // pre-paint and layout gates): dark mode is unreachable unless
-    // localStorage dts_theme_preview === '1'. Without the flag, any stored
-    // dts_theme value is ignored and the toggle stays hidden, so a stored
-    // "dark" can never trap a user without a toggle.
-    function previewEnabled() {
-        try {
-            return window.localStorage.getItem(PREVIEW_KEY) === '1';
-        } catch (e) {
-            return false;
-        }
-    }
 
     function storedTheme() {
-        if (!previewEnabled()) {
-            return 'light';
-        }
         try {
             return window.localStorage.getItem(STORAGE_KEY) === 'dark' ? 'dark' : 'light';
         } catch (e) {
@@ -71,14 +55,10 @@
 
     function init() {
         // Align the toggle with whatever the pre-paint script (or the
-        // default light render) already set; no event on load. The toggle
-        // stays hidden unless the Batch 1 preview gate is enabled.
-        var toggle = document.getElementById('themeToggle');
-        if (toggle && previewEnabled()) {
-            toggle.hidden = false;
-        }
+        // default light render) already set; no event on load.
         syncToggle(storedTheme());
 
+        var toggle = document.getElementById('themeToggle');
         if (toggle) {
             toggle.addEventListener('click', function () {
                 applyTheme(storedTheme() === 'dark' ? 'light' : 'dark', true);

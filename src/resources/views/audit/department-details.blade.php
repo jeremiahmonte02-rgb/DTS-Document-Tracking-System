@@ -250,5 +250,5 @@
 @endsection
 
 @section('scripts')
-    <script src="{{ asset('js/modules/audit-department-details.js') }}"></script>
+    <script src="{{ asset('js/modules/audit-department-details.js') }}?v={{ filemtime(public_path('js/modules/audit-department-details.js')) }}"></script>
 @endsection

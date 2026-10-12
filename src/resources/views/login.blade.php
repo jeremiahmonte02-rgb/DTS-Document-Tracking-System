@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        // Dark-mode pre-paint (same mechanism as layouts/app.blade.php): apply
+        // the stored theme before any stylesheet loads. No toggle on this
+        // page: it follows the stored theme and defaults to light.
+        (function () {
+            try {
+                if (localStorage.getItem('dts_theme') === 'dark') {
+                    document.documentElement.setAttribute('data-bs-theme', 'dark');
+                }
+            } catch (e) {
+                /* storage unavailable: stay light */
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Document Tracking System</title>
