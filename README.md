@@ -6,7 +6,7 @@
 > expired — please contact the team at **itb11dts@gmail.com** for access.
 
 
-> This link is **temporary** and may not always be available (e.g. free-tier hosting spin-down, expired tunnel, or the service being taken offline after submission/grading). If it fails to load, please contact the team at **itb11dts@gmail.com**.
+
 
 ## Tech Stack
 
